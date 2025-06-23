@@ -2,10 +2,16 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+	<key>BGTaskSchedulerPermittedIdentifiers</key>
+	<array>
+		<string>com.example.medsoft_patient.sendLocation</string>
+	</array>
+	<key>CADisableMinimumFrameDurationOnPhone</key>
+	<true/>
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>
-	<string>Medsoft Patient</string>
+	<string>Medsoft Track</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>
@@ -24,10 +30,31 @@
 	<string>$(FLUTTER_BUILD_NUMBER)</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>This app continuously tracks your location, even in the background, to monitor ambulance movement and ensure worker safety during active emergency duty.</string>
+	<key>NSLocationAlwaysUsageDescription</key>
+	<string>This app needs your location at all times to send real-time position updates to our emergency response system for safety tracking.</string>
+	<key>NSLocationUsageDescription</key>
+	<string>Your location is used to report ambulance movement for real-time monitoring and safety of field personnel.</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>This app collects your location during active use to update ambulance tracking systems for safety oversight.</string>
+	<key>NSUserTrackingUsageDescription</key>
+	<string>This app uses your location and tracking data to ensure real-time safety monitoring during ambulance operations.</string>
+	<key>UIApplicationSupportsIndirectInputEvents</key>
+	<true/>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>location</string>
+		<string>processing</string>
+		<string>fetch</string>
+		<string>remote-notification</string>
+	</array>
 	<key>UILaunchStoryboardName</key>
 	<string>LaunchScreen</string>
 	<key>UIMainStoryboardFile</key>
 	<string>Main</string>
+	<key>UIStatusBarStyle</key>
+	<string></string>
 	<key>UISupportedInterfaceOrientations</key>
 	<array>
 		<string>UIInterfaceOrientationPortrait</string>
@@ -41,9 +68,7 @@
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
-	<key>CADisableMinimumFrameDurationOnPhone</key>
-	<true/>
-	<key>UIApplicationSupportsIndirectInputEvents</key>
-	<true/>
+	<key>UIUserNotificationUsageDescription</key>
+	<string>We need your permission to show notifications for location updates.</string>
 </dict>
 </plist>

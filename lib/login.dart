@@ -67,6 +67,7 @@ class _LoginScreenState extends State<LoginScreen> with WidgetsBindingObserver {
   }
 
   bool _isLoading = false;
+
   String _errorMessage = '';
   // Map<String, String>? _selectedRole;
   // String _selectedRole = '';
@@ -117,7 +118,6 @@ class _LoginScreenState extends State<LoginScreen> with WidgetsBindingObserver {
     bool isLoggedIn = prefs.getBool('isLoggedIn') ?? false;
     String? xServer = prefs.getString('X-Server');
     bool isGotToken = xServer != null && xServer.isNotEmpty;
-
     String? xMedsoftServer = prefs.getString('X-Medsoft-Token');
     bool isGotMedsoftToken =
         xMedsoftServer != null && xMedsoftServer.isNotEmpty;
@@ -396,10 +396,13 @@ class _LoginScreenState extends State<LoginScreen> with WidgetsBindingObserver {
           //     },
           //   ),
           // );
+
           Navigator.pushReplacement(
             context,
             MaterialPageRoute(builder: (context) => HomeScreen()),
           );
+
+          // fetchRoom();
         } else {
           setState(() {
             _errorMessage = 'Login failed: ${data['message']}';
