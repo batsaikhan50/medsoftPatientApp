@@ -4,7 +4,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:http/http.dart' as http;
+import 'package:medsoft_patient/guide.dart';
 import 'package:medsoft_patient/login.dart';
+import 'package:medsoft_patient/profile_screen.dart';
 import 'package:medsoft_patient/webview_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -26,18 +28,46 @@ class _HomeScreenState extends State<HomeScreen> {
   Map<String, dynamic> sharedPreferencesData = {};
   bool _isLoading = false;
   dynamic roomInfo = {};
+  Widget _currentBody = Container(); // default screen
 
   @override
   void initState() {
     super.initState();
+    _currentBody = _buildLocationBody();
     _initializeNotifications();
     platform.setMethodCallHandler(_methodCallHandler);
     // _sendXTokenToAppDelegate();
     _loadSharedPreferencesData();
     // _sendXServerToAppDelegate();
     _sendXMedsoftTokenToAppDelegate();
-    fetchRoom();
+    // fetchRoom();
     _startLocationTracking();
+  }
+
+  Future<void> _checkInitialLoginState() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    bool isLoggedIn = prefs.getBool('isLoggedIn') ?? false;
+
+    String? xServer = prefs.getString('X-Server');
+    bool isGotToken = xServer != null && xServer.isNotEmpty;
+
+    String? xMedsoftServer = prefs.getString('X-Medsoft-Token');
+    bool isGotMedsoftToken =
+        xMedsoftServer != null && xMedsoftServer.isNotEmpty;
+
+    String? username = prefs.getString('Username');
+    bool isGotUsername = username != null && username.isNotEmpty;
+
+    debugPrint(
+      'Login State: isLoggedIn=$isLoggedIn, isGotToken=$isGotToken, isGotMedsoftToken=$isGotMedsoftToken, isGotUsername=$isGotUsername',
+    );
+
+    if (!(isLoggedIn && isGotToken && isGotMedsoftToken && isGotUsername)) {
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) => const LoginScreen()),
+      );
+    }
   }
 
   Future<void> fetchRoom() async {
@@ -244,11 +274,124 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  Widget _buildLocationBody() {
+    return Center(
+      child: ElevatedButton.icon(
+        style: ElevatedButton.styleFrom(
+          backgroundColor: const Color(0xFF00CCCC),
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+        ),
+        onPressed:
+            _isLoading
+                ? null
+                : () async {
+                  setState(() => _isLoading = true);
+                  await fetchRoom();
+                },
+        icon: const Icon(Icons.map),
+        label: Text(
+          _isLoading ? 'Түр хүлээнэ үү...' : 'Газрын зураг харах',
+          style: const TextStyle(fontSize: 18),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Empty Screen')),
-      body: const Center(child: Text('This is an empty screen')),
+      appBar: AppBar(
+        backgroundColor: Color(0xFF00CCCC),
+        title: const Text('Байршил тогтоогч'),
+      ),
+      drawer: Drawer(
+        child: Column(
+          children: <Widget>[
+            DrawerHeader(
+              decoration: const BoxDecoration(
+                color: Color.fromARGB(255, 236, 169, 175),
+              ),
+              child: Center(
+                child: Image.asset(
+                  'assets/icon/locationlogologin.png',
+                  width: 150,
+                  height: 150,
+                ),
+              ),
+            ),
+            ListTile(
+              title: Center(
+                child: Text(
+                  sharedPreferencesData['Username'] ?? 'Guest',
+                  style: const TextStyle(fontSize: 20),
+                ),
+              ),
+            ),
+            const Divider(),
+            ListTile(
+              leading: const Icon(Icons.info_outline, color: Colors.blueAccent),
+              title: const Text(
+                'Хэрэглэх заавар',
+                style: TextStyle(fontSize: 18),
+              ),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const GuideScreen()),
+                );
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.location_on, color: Colors.teal),
+              title: const Text('Байршил', style: TextStyle(fontSize: 18)),
+              onTap: () {
+                Navigator.pop(context);
+                setState(() {
+                  _currentBody = _buildLocationBody();
+                });
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.person, color: Colors.deepPurple),
+              title: const Text('Профайл', style: TextStyle(fontSize: 18)),
+              onTap: () {
+                Navigator.pop(context);
+                setState(() {
+                  _currentBody = const ProfileScreen();
+                });
+              },
+            ),
+
+            const Spacer(),
+            Container(
+              margin: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: const Color.fromARGB(255, 217, 83, 96),
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: ListTile(
+                title: const Center(
+                  child: Text(
+                    'Гарах',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+                onTap: _logOut,
+              ),
+            ),
+            const SizedBox(height: 50),
+          ],
+        ),
+      ),
+      body: _currentBody,
     );
   }
 }

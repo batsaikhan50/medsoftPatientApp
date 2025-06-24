@@ -8,6 +8,7 @@ import 'package:http/http.dart' as http;
 import 'package:keyboard_actions/keyboard_actions.dart';
 import 'package:medsoft_patient/constants.dart';
 import 'package:medsoft_patient/home_screen.dart';
+import 'package:medsoft_patient/main.dart';
 import 'package:medsoft_patient/webview_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -92,6 +93,8 @@ class _LoginScreenState extends State<LoginScreen> with WidgetsBindingObserver {
     r'^[А-ЯӨҮ]{2}[0-9]{2}(0[1-9]|1[0-2]|2[0-9]|3[0-2])(0[1-9]|[12][0-9]|3[01])[0-9]{2}$',
   );
   final RegExp mongolianCyrillicRegex = RegExp(r'^[А-Яа-яӨөҮүЁё]+$');
+
+  String? username;
 
   @override
   void didChangeMetrics() {
@@ -399,7 +402,7 @@ class _LoginScreenState extends State<LoginScreen> with WidgetsBindingObserver {
 
           Navigator.pushReplacement(
             context,
-            MaterialPageRoute(builder: (context) => HomeScreen()),
+            MaterialPageRoute(builder: (context) => MainHomeScreen()),
           );
 
           // fetchRoom();
@@ -439,6 +442,7 @@ class _LoginScreenState extends State<LoginScreen> with WidgetsBindingObserver {
     }
 
     setState(() {
+      username = prefs.getString('Username');
       sharedPreferencesData = data;
     });
   }
