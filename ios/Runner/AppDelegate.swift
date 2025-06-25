@@ -346,9 +346,7 @@ import UserNotifications
 
     var request = URLRequest(url: url)
     request.httpMethod = "POST"
-    // request.addValue(token, forHTTPHeaderField: "X-Token")
-    // request.addValue(hospital, forHTTPHeaderField: "X-Server")
-    // request.addValue(medsoftToken, forHTTPHeaderField: "X-Medsoft-Token")
+    // Keep headers as patient currently uses
     request.addValue("Bearer \(medsoftToken)", forHTTPHeaderField: "Authorization")
     request.addValue("application/json", forHTTPHeaderField: "Content-Type")
 
@@ -382,18 +380,41 @@ import UserNotifications
         return
       }
 
-      if let response = response as? HTTPURLResponse {
-        NSLog("Response status code: \(response.statusCode)")
+      guard let httpResponse = response as? HTTPURLResponse else {
+        NSLog("Invalid response")
+        return
+      }
 
-        if let data = data, let responseString = String(data: data, encoding: .utf8) {
-          NSLog("Response body: \(responseString)")
-        }
+      NSLog("Response status code: \(httpResponse.statusCode)")
 
-        if response.statusCode == 200 {
-          NSLog("Successfully sent location data for roomId \(roomId)")
-        } else {
-          NSLog("Failed to send location data for roomId \(roomId)")
+      guard let data = data else {
+        NSLog("No data received")
+        return
+      }
+
+      do {
+        if let json = try JSONSerialization.jsonObject(with: data, options: []) as? [String: Any],
+          let arrivedData = json["data"] as? [String: Any],
+          let arrivedInFifty = arrivedData["arrivedInFifty"] as? Bool
+        {
+
+          UserDefaults.standard.set(arrivedInFifty, forKey: "arrivedInFifty")
+          NSLog("Saved arrivedInFifty = \(arrivedInFifty) to UserDefaults")
+
+          if arrivedInFifty {
+            DispatchQueue.main.async {
+              self.flutterChannel?.invokeMethod("arrivedInFiftyReached", arguments: nil)
+            }
+          }
         }
+      } catch {
+        NSLog("Failed to parse JSON: \(error)")
+      }
+
+      if httpResponse.statusCode == 200 {
+        NSLog("Successfully sent location data for roomId \(roomId)")
+      } else {
+        NSLog("Failed to send location data for roomId \(roomId)")
       }
     }
     task.resume()

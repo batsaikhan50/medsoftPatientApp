@@ -386,7 +386,7 @@ class _LoginScreenState extends State<LoginScreen> with WidgetsBindingObserver {
 
           // await prefs.setString('X-Server', _selectedRole?['name'] ?? '');
           await prefs.setString('X-Medsoft-Token', token);
-          await prefs.setString('Username', _usernameController.text);
+          await prefs.setString('Username', _usernameLoginController.text);
 
           _loadSharedPreferencesData();
 

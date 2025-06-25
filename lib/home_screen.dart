@@ -98,6 +98,7 @@ class _HomeScreenState extends State<HomeScreen> {
         final url = roomInfo['url'];
         final title = "Patient Map";
         final roomId = roomInfo['roomId'];
+        final roomIdNum = roomInfo['_id'];
 
         await platform.invokeMethod('sendRoomIdToAppDelegate', {
           'roomId': roomId,
@@ -106,7 +107,9 @@ class _HomeScreenState extends State<HomeScreen> {
         Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (context) => WebViewScreen(url: url, title: title),
+            builder:
+                (context) =>
+                    WebViewScreen(url: url, title: title, roomId: roomId, roomIdNum: roomIdNum),
           ),
         );
       }
