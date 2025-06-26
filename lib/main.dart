@@ -439,7 +439,7 @@ class _MainHomeScreenState extends State<MainHomeScreen> {
               ),
               child: Center(
                 child: Image.asset(
-                  'assets/icon/locationlogologin.png', // Ensure this path is correct
+                  'assets/icon/logo.png', // Ensure this path is correct
                   width: 150,
                   height: 150,
                 ),

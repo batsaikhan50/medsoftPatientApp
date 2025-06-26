@@ -682,7 +682,7 @@ class _LoginScreenState extends State<LoginScreen> with WidgetsBindingObserver {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            Image.asset('assets/icon/locationlogologin.png', height: 150),
+            Image.asset('assets/icon/logo.png', height: 150),
             const Text(
               'Тавтай морил',
               style: TextStyle(

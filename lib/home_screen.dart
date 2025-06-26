@@ -108,8 +108,12 @@ class _HomeScreenState extends State<HomeScreen> {
           context,
           MaterialPageRoute(
             builder:
-                (context) =>
-                    WebViewScreen(url: url, title: title, roomId: roomId, roomIdNum: roomIdNum),
+                (context) => WebViewScreen(
+                  url: url,
+                  title: title,
+                  roomId: roomId,
+                  roomIdNum: roomIdNum,
+                ),
           ),
         );
       }
@@ -319,7 +323,7 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
               child: Center(
                 child: Image.asset(
-                  'assets/icon/locationlogologin.png',
+                  'assets/icon/logo.png',
                   width: 150,
                   height: 150,
                 ),

@@ -134,6 +134,7 @@ class _WebViewScreenState extends State<WebViewScreen> {
               duration: Duration(seconds: 1),
             ),
           );
+          Navigator.of(context).pop();
         } else {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
@@ -233,7 +234,10 @@ class _WebViewScreenState extends State<WebViewScreen> {
           widget.title == 'Patient Map'
               ? Stack(
                 children: [
+                  // The WebView itself
                   WebViewWidget(controller: _controller),
+
+                  // Refresh button - top right
                   Positioned(
                     top: 16,
                     right: 16,
@@ -245,33 +249,31 @@ class _WebViewScreenState extends State<WebViewScreen> {
                       },
                     ),
                   ),
-                  Positioned(
-                    bottom: 24,
-                    left: 0,
-                    right: 0,
-                    child: Center(
-                      child: _buildActionButton(
-                        icon: Icons.send,
-                        label: 'Send Location',
-                        onPressed: _sendLocation,
-                      ),
-                    ),
-                  ),
+
+                  // Arrived button - now just below Refresh
                   if (widget.roomIdNum != null && arrivedInFifty)
                     Positioned(
-                      bottom: 80,
-                      left: 0,
-                      right: 0,
-                      child: Center(
-                        child: _buildActionButton(
-                          icon: Icons.check_circle,
-                          label: 'Arrived',
-                          onPressed: () {
-                            _markArrived(widget.roomIdNum!);
-                          },
-                        ),
+                      top: 72,
+                      right: 16,
+                      child: _buildActionButton(
+                        icon: Icons.check_circle,
+                        label: 'Arrived',
+                        onPressed: () {
+                          _markArrived(widget.roomIdNum!);
+                        },
                       ),
                     ),
+
+                  // Send Location button - bottom right but slightly to the left
+                  Positioned(
+                    bottom: 24,
+                    right: 90, // move a bit to the left from the right edge
+                    child: _buildActionButton(
+                      icon: Icons.send,
+                      label: 'Send Location',
+                      onPressed: _sendLocation,
+                    ),
+                  ),
                 ],
               )
               : WebViewWidget(controller: _controller),
