@@ -414,8 +414,11 @@ import UserNotifications
       if httpResponse.statusCode == 200 {
         NSLog("Successfully sent location data for roomId \(roomId)")
       } else {
+        let responseString = String(data: data, encoding: .utf8) ?? "Unable to decode response"
         NSLog("Failed to send location data for roomId \(roomId)")
+        NSLog("Status code: \(httpResponse.statusCode), Response body: \(responseString)")
       }
+
     }
     task.resume()
   }

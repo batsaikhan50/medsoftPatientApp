@@ -98,11 +98,11 @@ class _MainHomeScreenState extends State<MainHomeScreen> {
   @override
   void initState() {
     super.initState();
-    _currentBody = _buildLocationBody(); // Initialize with the location body
     _initializeNotifications();
-    platform.setMethodCallHandler(_methodCallHandler);
     _loadSharedPreferencesData();
     _sendXMedsoftTokenToAppDelegate();
+    _currentBody = _buildLocationBody(); // Initialize with the location body
+    platform.setMethodCallHandler(_methodCallHandler);
     _startLocationTracking();
   }
 
@@ -159,9 +159,13 @@ class _MainHomeScreenState extends State<MainHomeScreen> {
 
             final roomIdNum = roomInfo!['_id'];
 
+            debugPrint('roomIdNum: ' + roomIdNum);
             await platform.invokeMethod('sendRoomIdToAppDelegate', {
               'roomId': roomId,
             });
+            debugPrint("WebView loading URL: ${url}");
+            debugPrint("WebView loading roomId: ${roomId}");
+            debugPrint("WebView loading roomIdNum: ${roomIdNum}");
 
             Navigator.push(
               context,
@@ -444,8 +448,7 @@ class _MainHomeScreenState extends State<MainHomeScreen> {
             ListTile(
               title: Center(
                 child: Text(
-                  sharedPreferencesData['Username'] ??
-                      'Зочин', // Fallback to "Зочин"
+                  sharedPreferencesData['Username'] ?? 'Зочин',
                   style: const TextStyle(fontSize: 20),
                 ),
               ),

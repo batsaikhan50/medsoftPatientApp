@@ -119,8 +119,6 @@ class _LoginScreenState extends State<LoginScreen> with WidgetsBindingObserver {
   Future<void> _getInitialScreenString() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     bool isLoggedIn = prefs.getBool('isLoggedIn') ?? false;
-    String? xServer = prefs.getString('X-Server');
-    bool isGotToken = xServer != null && xServer.isNotEmpty;
     String? xMedsoftServer = prefs.getString('X-Medsoft-Token');
     bool isGotMedsoftToken =
         xMedsoftServer != null && xMedsoftServer.isNotEmpty;
@@ -128,9 +126,9 @@ class _LoginScreenState extends State<LoginScreen> with WidgetsBindingObserver {
     String? username = prefs.getString('Username');
     bool isGotUsername = username != null && username.isNotEmpty;
 
-    if (isLoggedIn && isGotToken && isGotMedsoftToken && isGotUsername) {
+    if (isLoggedIn && isGotMedsoftToken && isGotUsername) {
       debugPrint(
-        'isLoggedIn: $isLoggedIn, isGotToken: $isGotToken, isGotMedsoftToken: $isGotMedsoftToken, isGotUsername: $isGotUsername',
+        'isLoggedIn: $isLoggedIn, isGotMedsoftToken: $isGotMedsoftToken, isGotUsername: $isGotUsername',
       );
     } else {
       return debugPrint("empty shared");
@@ -1039,7 +1037,7 @@ class _LoginScreenState extends State<LoginScreen> with WidgetsBindingObserver {
                           builder:
                               (context) => WebViewScreen(
                                 url:
-                                    '$baseUrl/forget?callback=medsofttrack://callback',
+                                    '$baseUrl/forget?callback=medsoftpatient://callback',
                                 title: '',
                               ),
                         ),

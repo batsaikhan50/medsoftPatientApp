@@ -28,7 +28,7 @@ class _WebViewScreenState extends State<WebViewScreen> {
   late final WebViewController _controller;
   bool arrivedInFifty = false;
 
-  static const platform = MethodChannel('com.example.medsoft_patient/location');
+  static const platform = MethodChannel('com.example.medsoftpatient/location');
   @override
   void initState() {
     super.initState();
@@ -41,7 +41,7 @@ class _WebViewScreenState extends State<WebViewScreen> {
     _controller.setNavigationDelegate(
       NavigationDelegate(
         onNavigationRequest: (NavigationRequest request) {
-          if (request.url.startsWith('medsofttrack://callback')) {
+          if (request.url.startsWith('medsoftpatient://callback')) {
             Navigator.of(context).pop();
             return NavigationDecision.prevent;
           }
@@ -233,6 +233,7 @@ class _WebViewScreenState extends State<WebViewScreen> {
           widget.title == 'Patient Map'
               ? Stack(
                 children: [
+                  WebViewWidget(controller: _controller),
                   Positioned(
                     top: 16,
                     right: 16,
@@ -244,8 +245,6 @@ class _WebViewScreenState extends State<WebViewScreen> {
                       },
                     ),
                   ),
-
-                  // Send Location button - bottom center
                   Positioned(
                     bottom: 24,
                     left: 0,
@@ -258,8 +257,6 @@ class _WebViewScreenState extends State<WebViewScreen> {
                       ),
                     ),
                   ),
-
-                  // Arrived button - shown conditionally
                   if (widget.roomIdNum != null && arrivedInFifty)
                     Positioned(
                       bottom: 80,
