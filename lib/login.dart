@@ -675,6 +675,10 @@ class _LoginScreenState extends State<LoginScreen> with WidgetsBindingObserver {
               TextFormField(
                 controller: _usernameController,
                 focusNode: _usernameFocus,
+                keyboardType: TextInputType.number,
+                inputFormatters: [
+                  FilteringTextInputFormatter.digitsOnly, // only allows digits
+                ],
                 textInputAction: TextInputAction.next,
                 onFieldSubmitted: (_) {
                   FocusScope.of(context).requestFocus(_usernameFocus);
@@ -687,7 +691,6 @@ class _LoginScreenState extends State<LoginScreen> with WidgetsBindingObserver {
                   ),
                 ),
               ),
-
             const SizedBox(height: 20),
 
             if (_selectedToggleIndex == 0)
