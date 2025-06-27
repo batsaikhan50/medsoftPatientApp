@@ -3,14 +3,14 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
-import 'package:shared_preferences/shared_preferences.dart'; // add this import
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 
 class WebViewScreen extends StatefulWidget {
   final String url;
   final String title;
-  final String? roomId; // add roomId
-  final String? roomIdNum; // add roomIdNum
+  final String? roomId;
+  final String? roomIdNum;
 
   const WebViewScreen({
     super.key,
@@ -28,7 +28,7 @@ class _WebViewScreenState extends State<WebViewScreen> {
   late final WebViewController _controller;
   bool arrivedInFifty = false;
 
-  static const platform = MethodChannel('com.example.medsoftpatient/location');
+  static const platform = MethodChannel('com.example.medsoft_patient/location');
   @override
   void initState() {
     super.initState();
@@ -50,37 +50,31 @@ class _WebViewScreenState extends State<WebViewScreen> {
       ),
     );
 
-    // Add method call handler here
+    const platform = MethodChannel('com.example.medsoft_patient/location');
     platform.setMethodCallHandler((call) async {
       if (call.method == 'arrivedInFiftyReached') {
-        debugPrint("arrivedInFiftyReached received in Dart");
+        final bool arrived = call.arguments?['arrivedInFifty'] ?? false;
+        debugPrint(
+          "arrivedInFiftyReached received in Dart: ${call.arguments?['arrivedInFifty']}",
+        );
 
         final prefs = await SharedPreferences.getInstance();
-        await prefs.setBool('arrivedInFifty', true);
+        await prefs.setBool('arrivedInFifty', arrived);
 
         setState(() {
-          arrivedInFifty = true;
+          arrivedInFifty = arrived;
         });
 
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text("Та 50 метр дотор ирлээ."),
-              backgroundColor: Colors.blue,
-              duration: Duration(seconds: 2),
-            ),
-          );
-        }
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("Та 50 метр дотор ирлээ."),
+            backgroundColor: Colors.blue,
+            duration: Duration(seconds: 2),
+          ),
+        );
+      } else {
+        debugPrint("not arrivedInFiftyReached");
       }
-    });
-
-    _loadArrivedInFiftyFlag();
-  }
-
-  Future<void> _loadArrivedInFiftyFlag() async {
-    final prefs = await SharedPreferences.getInstance();
-    setState(() {
-      arrivedInFifty = prefs.getBool('arrivedInFifty') ?? false;
     });
   }
 
@@ -231,13 +225,11 @@ class _WebViewScreenState extends State<WebViewScreen> {
         ),
       ),
       body:
-          widget.title == 'Patient Map'
+          widget.title == 'Газрын зураг'
               ? Stack(
                 children: [
-                  // The WebView itself
                   WebViewWidget(controller: _controller),
 
-                  // Refresh button - top right
                   Positioned(
                     top: 16,
                     right: 16,
@@ -250,27 +242,25 @@ class _WebViewScreenState extends State<WebViewScreen> {
                     ),
                   ),
 
-                  // Arrived button - now just below Refresh
                   if (widget.roomIdNum != null && arrivedInFifty)
                     Positioned(
                       top: 72,
                       right: 16,
                       child: _buildActionButton(
                         icon: Icons.check_circle,
-                        label: 'Arrived',
+                        label: 'Ирсэн',
                         onPressed: () {
                           _markArrived(widget.roomIdNum!);
                         },
                       ),
                     ),
 
-                  // Send Location button - bottom right but slightly to the left
                   Positioned(
                     bottom: 24,
-                    right: 90, // move a bit to the left from the right edge
+                    right: 90,
                     child: _buildActionButton(
                       icon: Icons.send,
-                      label: 'Send Location',
+                      label: 'Байршил илгээх',
                       onPressed: _sendLocation,
                     ),
                   ),

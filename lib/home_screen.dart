@@ -28,7 +28,7 @@ class _HomeScreenState extends State<HomeScreen> {
   Map<String, dynamic> sharedPreferencesData = {};
   bool _isLoading = false;
   dynamic roomInfo = {};
-  Widget _currentBody = Container(); // default screen
+  Widget _currentBody = Container();
 
   @override
   void initState() {
@@ -36,12 +36,10 @@ class _HomeScreenState extends State<HomeScreen> {
     _currentBody = _buildLocationBody();
     _initializeNotifications();
     platform.setMethodCallHandler(_methodCallHandler);
-    // _sendXTokenToAppDelegate();
+
     _loadSharedPreferencesData();
-    // _sendXServerToAppDelegate();
+
     _sendXMedsoftTokenToAppDelegate();
-    // fetchRoom();
-    _startLocationTracking();
   }
 
   Future<void> _checkInitialLoginState() async {
@@ -73,18 +71,12 @@ class _HomeScreenState extends State<HomeScreen> {
   Future<void> fetchRoom() async {
     final prefs = await SharedPreferences.getInstance();
     final token = prefs.getString('X-Medsoft-Token') ?? '';
-    // final server = prefs.getString('X-Server') ?? '';
 
     final uri = Uri.parse('https://app.medsoft.care/api/room/get/patient');
 
     final response = await http.get(
       uri,
-      headers: {
-        'Authorization': 'Bearer $token',
-        // 'X-Medsoft-Token': token,
-        // 'X-Server': server,
-        // 'X-Token': Constants.xToken,
-      },
+      headers: {'Authorization': 'Bearer $token'},
     );
 
     if (response.statusCode == 200) {
@@ -96,13 +88,15 @@ class _HomeScreenState extends State<HomeScreen> {
         });
 
         final url = roomInfo['url'];
-        final title = "Patient Map";
+        final title = "Газрын зураг";
         final roomId = roomInfo['roomId'];
         final roomIdNum = roomInfo['_id'];
 
         await platform.invokeMethod('sendRoomIdToAppDelegate', {
           'roomId': roomId,
         });
+
+        await platform.invokeMethod('startLocationManagerAfterLogin');
 
         Navigator.push(
           context,
@@ -118,10 +112,30 @@ class _HomeScreenState extends State<HomeScreen> {
         );
       }
     } else {
-      // Handle error
       setState(() => _isLoading = false);
       debugPrint('Failed to fetch patients: ${response.statusCode}');
+      if (response.statusCode == 401 || response.statusCode == 403) {
+        _logOut();
+      }
     }
+  }
+
+  void _logOut() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    await prefs.remove('isLoggedIn');
+    await prefs.remove('X-Medsoft-Token');
+    await prefs.remove('Username');
+
+    try {
+      await platform.invokeMethod('stopLocationUpdates');
+    } on PlatformException catch (e) {
+      debugPrint("Failed to stop location updates: '${e.message}'.");
+    }
+
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(builder: (context) => const LoginScreen()),
+    );
   }
 
   Future<void> _methodCallHandler(MethodCall call) async {
@@ -191,28 +205,6 @@ class _HomeScreenState extends State<HomeScreen> {
     await flutterLocalNotificationsPlugin.initialize(initializationSettings);
   }
 
-  // Future<void> _sendXTokenToAppDelegate() async {
-  //   try {
-  //     await platform.invokeMethod('sendXTokenToAppDelegate', {
-  //       'xToken': Constants.xToken,
-  //     });
-  //   } on PlatformException catch (e) {
-  //     debugPrint("Failed to send xToken to AppDelegate: '${e.message}'.");
-  //   }
-  // }
-
-  // Future<void> _sendXServerToAppDelegate() async {
-  //   SharedPreferences prefs = await SharedPreferences.getInstance();
-
-  //   try {
-  //     await platform.invokeMethod('sendXServerToAppDelegate', {
-  //       'xServer': prefs.getString('X-Server'),
-  //     });
-  //   } on PlatformException catch (e) {
-  //     debugPrint("Failed to send xToken to AppDelegate: '${e.message}'.");
-  //   }
-  // }
-
   Future<void> _sendXMedsoftTokenToAppDelegate() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
 
@@ -231,25 +223,6 @@ class _HomeScreenState extends State<HomeScreen> {
     } on PlatformException catch (e) {
       debugPrint("Error starting location manager: $e");
     }
-  }
-
-  void _logOut() async {
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-    await prefs.remove('isLoggedIn');
-    await prefs.remove('X-Server');
-    await prefs.remove('X-Medsoft-Token');
-    await prefs.remove('Username');
-
-    try {
-      await platform.invokeMethod('stopLocationUpdates');
-    } on PlatformException catch (e) {
-      debugPrint("Failed to stop location updates: '${e.message}'.");
-    }
-
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(builder: (context) => const LoginScreen()),
-    );
   }
 
   Future<void> _showNotification() async {

@@ -3,11 +3,11 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_app_badger/flutter_app_badger.dart';
 import 'package:http/http.dart' as http;
 import 'package:keyboard_actions/keyboard_actions.dart';
 import 'package:medsoft_patient/constants.dart';
-import 'package:medsoft_patient/home_screen.dart';
 import 'package:medsoft_patient/main.dart';
 import 'package:medsoft_patient/webview_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -70,8 +70,7 @@ class _LoginScreenState extends State<LoginScreen> with WidgetsBindingObserver {
   bool _isLoading = false;
 
   String _errorMessage = '';
-  // Map<String, String>? _selectedRole;
-  // String _selectedRole = '';
+
   bool _isPasswordLoginVisible = false;
   bool _isPasswordVisible = false;
   bool _isPasswordCheckVisible = false;
@@ -80,7 +79,6 @@ class _LoginScreenState extends State<LoginScreen> with WidgetsBindingObserver {
 
   bool _isKeyboardVisible = false;
 
-  // List<Map<String, String>> _serverNames = [];
   Map<String, dynamic> sharedPreferencesData = {};
 
   Map<String, bool> _passwordRulesStatus = {};
@@ -111,10 +109,6 @@ class _LoginScreenState extends State<LoginScreen> with WidgetsBindingObserver {
   bool isMongolianCyrillic(String text) {
     return mongolianCyrillicRegex.hasMatch(text);
   }
-
-  // static const platform = MethodChannel(
-  //   'com.example.new_project_location/location',
-  // );
 
   Future<void> _getInitialScreenString() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
@@ -153,10 +147,6 @@ class _LoginScreenState extends State<LoginScreen> with WidgetsBindingObserver {
                   };
                 }),
               );
-
-          // setState(() {
-          //   _serverNames = serverNames;
-          // });
         } else {
           setState(() {
             _errorMessage = 'Failed to load servers.';
@@ -194,7 +184,7 @@ class _LoginScreenState extends State<LoginScreen> with WidgetsBindingObserver {
 
     _passwordController.addListener(_updatePasswordRules);
     _passwordCheckController.addListener(_updatePasswordRules);
-    _regNoController.addListener(_validateRegNo); // Add this line
+    _regNoController.addListener(_validateRegNo);
 
     _dragPosition =
         _selectedToggleIndex *
@@ -341,14 +331,6 @@ class _LoginScreenState extends State<LoginScreen> with WidgetsBindingObserver {
       _isLoading = true;
     });
 
-    // if (_selectedRole == null) {
-    //   setState(() {
-    //     _errorMessage = 'Please select a server';
-    //     _isLoading = false;
-    //   });
-    //   return;
-    // }
-
     final body = {
       'username': _usernameLoginController.text,
       'password': _passwordLoginController.text,
@@ -382,28 +364,17 @@ class _LoginScreenState extends State<LoginScreen> with WidgetsBindingObserver {
 
           final String token = data['data']['token'];
 
-          // await prefs.setString('X-Server', _selectedRole?['name'] ?? '');
           await prefs.setString('X-Medsoft-Token', token);
           await prefs.setString('Username', _usernameLoginController.text);
 
           _loadSharedPreferencesData();
 
           _isLoading = false;
-          // Navigator.pushReplacement(
-          //   context,
-          //   MaterialPageRoute(
-          //     builder: (context) {
-          //       return const MyHomePage(title: 'Байршил тогтоогч');
-          //     },
-          //   ),
-          // );
 
           Navigator.pushReplacement(
             context,
             MaterialPageRoute(builder: (context) => MainHomeScreen()),
           );
-
-          // fetchRoom();
         } else {
           setState(() {
             _errorMessage = 'Login failed: ${data['message']}';
@@ -473,8 +444,6 @@ class _LoginScreenState extends State<LoginScreen> with WidgetsBindingObserver {
 
   Widget buildAnimatedToggle() {
     List<Map<String, String>> toggleOptions = [
-      // {'label': 'Нэвтрэх', 'icon': 'assets/icon/userWithPhone.png'},
-      // {'label': 'Бүртгүүлэх', 'icon': 'assets/icon/ambulanceCar.png'},
       {'label': 'Нэвтрэх'},
       {'label': 'Бүртгүүлэх'},
     ];
@@ -533,8 +502,6 @@ class _LoginScreenState extends State<LoginScreen> with WidgetsBindingObserver {
                 decoration: BoxDecoration(
                   color:
                       _selectedToggleIndex == 0
-                          // ? const Color(0xFF1E88E5)
-                          // : const Color(0xFFE53935),
                           ? const Color(0xFF009688)
                           : const Color(0xFF0077b3),
                   borderRadius: BorderRadius.circular(25),
@@ -557,12 +524,7 @@ class _LoginScreenState extends State<LoginScreen> with WidgetsBindingObserver {
                           color: isSelected ? Colors.white : Colors.black87,
                           size: 24,
                         ),
-                        // Image.asset(
-                        //   option['icon']!,
-                        //   width: 24,
-                        //   height: 24,
-                        //   color: isSelected ? Colors.white : Colors.black87,
-                        // ),
+
                         const SizedBox(width: 8),
                         Text(
                           option['label']!,
@@ -590,7 +552,6 @@ class _LoginScreenState extends State<LoginScreen> with WidgetsBindingObserver {
       keyboardBarColor: Colors.grey[200],
       actions: [
         if (_selectedToggleIndex == 0)
-          // KeyboardActionsItem(focusNode: _codeFocus),
           KeyboardActionsItem(
             focusNode: _usernameLoginFocus,
             displayArrows: true,
@@ -655,14 +616,10 @@ class _LoginScreenState extends State<LoginScreen> with WidgetsBindingObserver {
       body: GestureDetector(
         onTap: () => FocusScope.of(context).unfocus(),
         child: SafeArea(
-          child:
-          // _selectedToggleIndex == 1
-          //     ?
-          KeyboardActions(
+          child: KeyboardActions(
             config: _buildKeyboardActionsConfig(context),
             child: _buildLoginForm(),
           ),
-          // : _buildLoginForm(),
         ),
       ),
     );
@@ -682,7 +639,7 @@ class _LoginScreenState extends State<LoginScreen> with WidgetsBindingObserver {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            Image.asset('assets/icon/logo.png', height: 150),
+            Image.asset('assets/icon/logoTransparent.png', height: 150),
             const Text(
               'Тавтай морил',
               style: TextStyle(
@@ -696,94 +653,24 @@ class _LoginScreenState extends State<LoginScreen> with WidgetsBindingObserver {
             buildAnimatedToggle(),
             const SizedBox(height: 20),
 
-            // if (_selectedToggleIndex == 0)
-            //   TextFormField(
-            //     controller: _codeController,
-            //     focusNode: _codeFocus,
-            //     textInputAction: TextInputAction.done,
-            //     onFieldSubmitted: (_) => FocusScope.of(context).unfocus(),
-            //     keyboardType: TextInputType.text,
-            //     decoration: InputDecoration(
-            //       labelText: 'Нэг удаагын код',
-            //       prefixIcon: const Icon(Icons.vpn_key),
-            //       border: OutlineInputBorder(
-            //         borderRadius: BorderRadius.circular(12),
-            //       ),
-            //     ),
-            //   ),
-
-            // if (_selectedToggleIndex == 0) const SizedBox(height: 20),
-            // if (_serverNames.isNotEmpty && _selectedToggleIndex == 0)
-            //   Container(
-            //     height: 56,
-            //     padding: const EdgeInsets.symmetric(horizontal: 10),
-            //     decoration: BoxDecoration(
-            //       borderRadius: BorderRadius.circular(12),
-            //       border: Border.all(
-            //         color: const Color(0xFF808080),
-            //         width: 1.0,
-            //       ),
-            //     ),
-            //     child: Row(
-            //       children: [
-            //         const Icon(Icons.local_hospital, color: Colors.black),
-            //         const SizedBox(width: 10),
-            //         Expanded(
-            //           child: DropdownButton<Map<String, String>>(
-            //             value: _selectedRole,
-            //             hint: const Text('Эмнэлэг сонгох'),
-            //             isExpanded: true,
-            //             onChanged: (Map<String, String>? newValue) async {
-            //               if (newValue != null) {
-            //                 setState(() {
-            //                   _selectedRole = newValue;
-            //                   _errorMessage = '';
-            //                 });
-            //                 SharedPreferences prefs =
-            //                     await SharedPreferences.getInstance();
-            //                 await prefs.setString(
-            //                   'forgetUrl',
-            //                   newValue['url'] ?? '',
-            //                 );
-            //               }
-            //             },
-            //             items:
-            //                 _serverNames
-            //                     .map<DropdownMenuItem<Map<String, String>>>((
-            //                       Map<String, String> value,
-            //                     ) {
-            //                       return DropdownMenuItem<Map<String, String>>(
-            //                         value: value,
-            //                         child: Text(value['name']!),
-            //                       );
-            //                     })
-            //                     .toList(),
-            //             underline: const SizedBox.shrink(),
-            //           ),
-            //         ),
-            //       ],
-            //     ),
-            //   ),
-
-            // if (_serverNames.isNotEmpty && _selectedToggleIndex == 0)
-            //   const SizedBox(height: 20),
             if (_selectedToggleIndex == 0)
               TextFormField(
                 controller: _usernameLoginController,
                 focusNode: _usernameLoginFocus,
+                keyboardType: TextInputType.number,
+                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                 textInputAction: TextInputAction.next,
                 onFieldSubmitted: (_) {
                   FocusScope.of(context).requestFocus(_usernameLoginFocus);
                 },
                 decoration: InputDecoration(
-                  labelText: 'Нэвтрэх нэр',
+                  labelText: 'Утасны дугаар',
                   prefixIcon: const Icon(Icons.person),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
                 ),
               ),
-
             if (_selectedToggleIndex == 1)
               TextFormField(
                 controller: _usernameController,
@@ -830,7 +717,6 @@ class _LoginScreenState extends State<LoginScreen> with WidgetsBindingObserver {
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  // errorText: _passwordRulesStatus,
                 ),
               ),
 
@@ -863,7 +749,6 @@ class _LoginScreenState extends State<LoginScreen> with WidgetsBindingObserver {
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  // errorText: _passwordRulesStatus,
                 ),
               ),
 
@@ -1027,11 +912,9 @@ class _LoginScreenState extends State<LoginScreen> with WidgetsBindingObserver {
                     SharedPreferences prefs =
                         await SharedPreferences.getInstance();
                     String? baseUrl = prefs.getString('forgetUrl');
-                    // String? hospital = _selectedRole?['name'];
 
                     if (baseUrl != null && baseUrl.isNotEmpty) {
                       Navigator.push(
-                        // ignore: use_build_context_synchronously
                         context,
                         MaterialPageRoute(
                           builder:

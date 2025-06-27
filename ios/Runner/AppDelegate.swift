@@ -32,6 +32,7 @@ import UserNotifications
       } else if call.method == "sendLocationToAPIByButton" {
         self?.sendLocationToAPIByButton(result: result)
       } else if call.method == "startLocationManagerAfterLogin" {
+          print("Invoked startLocationManagerAfterLogin")
         self?.requestTrackingPermissionIfNeededAndStartLocation()
         result(nil)
       } else if call.method == "sendXMedsoftTokenToAppDelegate" {
@@ -397,15 +398,20 @@ import UserNotifications
           let arrivedData = json["data"] as? [String: Any],
           let arrivedInFifty = arrivedData["arrivedInFifty"] as? Bool
         {
-
-          UserDefaults.standard.set(arrivedInFifty, forKey: "arrivedInFifty")
-          NSLog("Saved arrivedInFifty = \(arrivedInFifty) to UserDefaults")
-
           if arrivedInFifty {
             DispatchQueue.main.async {
-              self.flutterChannel?.invokeMethod("arrivedInFiftyReached", arguments: nil)
+              self.flutterChannel?.invokeMethod(
+                "arrivedInFiftyReached", arguments: ["arrivedInFifty": arrivedInFifty])
             }
           }
+
+          NSLog("arrivedInFifty in delegate \(arrivedInFifty)")
+        }
+
+        if httpResponse.statusCode == 200 {
+          NSLog("Successfully sent location data for roomId \(roomId)")
+        } else {
+          NSLog("Failed to send location data for roomId \(roomId)")
         }
       } catch {
         NSLog("Failed to parse JSON: \(error)")

@@ -103,7 +103,7 @@ class _MainHomeScreenState extends State<MainHomeScreen> {
     _sendXMedsoftTokenToAppDelegate();
     _currentBody = _buildLocationBody(); // Initialize with the location body
     platform.setMethodCallHandler(_methodCallHandler);
-    _startLocationTracking();
+    // _startLocationTracking();
   }
 
   Future<void> fetchRoom() async {
@@ -154,7 +154,7 @@ class _MainHomeScreenState extends State<MainHomeScreen> {
               roomInfo!.containsKey('url') &&
               roomInfo!.containsKey('roomId')) {
             final url = roomInfo!['url'] as String;
-            final title = "Patient Map";
+            final title = "Газрын зураг";
             final roomId = roomInfo!['roomId'] as String;
 
             final roomIdNum = roomInfo!['_id'];
@@ -163,6 +163,9 @@ class _MainHomeScreenState extends State<MainHomeScreen> {
             await platform.invokeMethod('sendRoomIdToAppDelegate', {
               'roomId': roomId,
             });
+
+            await platform.invokeMethod('startLocationManagerAfterLogin');
+
             debugPrint("WebView loading URL: ${url}");
             debugPrint("WebView loading roomId: ${roomId}");
             debugPrint("WebView loading roomIdNum: ${roomIdNum}");
@@ -439,7 +442,7 @@ class _MainHomeScreenState extends State<MainHomeScreen> {
               ),
               child: Center(
                 child: Image.asset(
-                  'assets/icon/logo.png', // Ensure this path is correct
+                  'assets/icon/logoTransparent.png', // Ensure this path is correct
                   width: 150,
                   height: 150,
                 ),
