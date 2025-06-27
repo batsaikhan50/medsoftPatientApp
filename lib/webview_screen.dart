@@ -225,7 +225,7 @@ class _WebViewScreenState extends State<WebViewScreen> {
         ),
       ),
       body:
-          widget.title == 'Газрын зураг'
+          widget.title == 'Байршил'
               ? Stack(
                 children: [
                   WebViewWidget(controller: _controller),

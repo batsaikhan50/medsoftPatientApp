@@ -154,7 +154,7 @@ class _MainHomeScreenState extends State<MainHomeScreen> {
               roomInfo!.containsKey('url') &&
               roomInfo!.containsKey('roomId')) {
             final url = roomInfo!['url'] as String;
-            final title = "Газрын зураг";
+            final title = "Байршил";
             final roomId = roomInfo!['roomId'] as String;
 
             final roomIdNum = roomInfo!['_id'];
