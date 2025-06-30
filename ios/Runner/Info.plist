@@ -29,15 +29,13 @@
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
-	<string>This app continuously tracks your location, even in the background, to monitor ambulance movement and ensure worker safety during active emergency duty.</string>
+	<string>This app uses your location to help the ambulance find you and to display its live route and arrival time.</string>
 	<key>NSLocationAlwaysUsageDescription</key>
-	<string>This app needs your location at all times to send real-time position updates to our emergency response system for safety tracking.</string>
+	<string>Location is required to continuously share your position with the ambulance team during an active emergency request.</string>
 	<key>NSLocationUsageDescription</key>
-	<string>Your location is used to report ambulance movement for real-time monitoring and safety of field personnel.</string>
+	<string>Your location is used to assist emergency responders in navigating to your position and to show their live location on the map.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
-	<string>This app collects your location during active use to update ambulance tracking systems for safety oversight.</string>
-	<key>NSUserTrackingUsageDescription</key>
-	<string>This app uses your location and tracking data to ensure real-time safety monitoring during ambulance operations.</string>
+	<string>While using the app, your location is shown on the map along with the ambulance so you can track its progress in real time.</string>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
 	<key>UIBackgroundModes</key>
