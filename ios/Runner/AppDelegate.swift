@@ -76,6 +76,9 @@ import UserNotifications
 
   func requestTrackingAuthorization() {
     if #available(iOS 14, *) {
+      let idfa = ASIdentifierManager.shared().advertisingIdentifier.uuidString
+      print("IDFA: \(idfa)")
+
       ATTrackingManager.requestTrackingAuthorization { status in
         switch status {
         case .authorized:
