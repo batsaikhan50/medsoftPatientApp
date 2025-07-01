@@ -1,4 +1,5 @@
 import AdSupport
+import AppTrackingTransparency
 import BackgroundTasks
 import CoreLocation
 import Flutter
@@ -18,9 +19,9 @@ import UserNotifications
     _ application: UIApplication,
     didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
   ) -> Bool {
-    GeneratedPluginRegistrant.register(with: self)
-
-    // self.requestTrackingPermissionIfNeededAndStartLocation()
+    DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+      self.requestTrackingAuthorization()
+    }
 
     let controller = window?.rootViewController as! FlutterViewController
     flutterChannel = FlutterMethodChannel(
@@ -34,24 +35,7 @@ import UserNotifications
         self?.sendLocationToAPIByButton(result: result)
       } else if call.method == "startLocationManagerAfterLogin" {
         print("Invoked startLocationManagerAfterLogin")
-
         self?.startLocationManagerAfterLogin()
-
-        // if #available(iOS 14, *) {
-        //   // If you're still using ATT, check its status first.
-        //   let status = ATTrackingManager.trackingAuthorizationStatus
-        //   switch status {
-        //   case .authorized, .denied, .restricted, .notDetermined:
-        //     self?.startLocationManagerAfterLogin()
-        //     NSLog("ATT Status at call time: \(status.rawValue)")
-
-        //   @unknown default:
-        //     NSLog("Unknown ATT status")
-        //   }
-        // } else {
-        //   self?.startLocationManagerAfterLogin()
-        // }
-
         result(nil)
       } else if call.method == "sendXMedsoftTokenToAppDelegate" {
         if let args = call.arguments as? [String: Any],
@@ -77,6 +61,8 @@ import UserNotifications
       }
     }
 
+    GeneratedPluginRegistrant.register(with: self)
+
     BGTaskScheduler.shared.register(
       forTaskWithIdentifier: "com.example.medsoft_patient.sendLocation", using: nil
     ) { task in
@@ -88,24 +74,26 @@ import UserNotifications
     return super.application(application, didFinishLaunchingWithOptions: launchOptions)
   }
 
-  // func requestTrackingPermissionIfNeededAndStartLocation() {
-  //   if #available(iOS 14, *) {
-  //     ATTrackingManager.requestTrackingAuthorization { status in
-  //       switch status {
-  //       case .authorized:
-  //         NSLog("ATT: Tracking authorized")
-
-  //       case .denied, .restricted, .notDetermined:
-  //         NSLog("ATT: Tracking denied or restricted")
-
-  //       @unknown default:
-  //         break
-  //       }
-  //     }
-  //   }
-  // }
+  func requestTrackingAuthorization() {
+    if #available(iOS 14, *) {
+      ATTrackingManager.requestTrackingAuthorization { status in
+        switch status {
+        case .authorized:
+          NSLog("ATT: Tracking authorized")
+        case .denied, .restricted, .notDetermined:
+          NSLog("ATT: Tracking denied or restricted")
+        @unknown default:
+          NSLog("ATT: Unknown tracking status")
+        }
+      }
+    } else {
+      NSLog("ATT: Not available on iOS <14")
+    }
+  }
 
   func requestNotificationPermission() {
+
+    NSLog("NOTI REQ")
     UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .badge, .sound]) {
       granted, error in
       if granted {
