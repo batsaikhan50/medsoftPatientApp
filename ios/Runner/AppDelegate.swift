@@ -1,5 +1,5 @@
 import AdSupport
-import AppTrackingTransparency
+// import AppTrackingTransparency
 import BackgroundTasks
 import CoreLocation
 import Flutter
@@ -19,9 +19,9 @@ import UserNotifications
     _ application: UIApplication,
     didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
   ) -> Bool {
-    DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
-      self.requestTrackingAuthorization()
-    }
+    // DispatchQueue.main.async() {
+    //   self.requestTrackingAuthorization()
+    // }
 
     let controller = window?.rootViewController as! FlutterViewController
     flutterChannel = FlutterMethodChannel(
@@ -74,25 +74,25 @@ import UserNotifications
     return super.application(application, didFinishLaunchingWithOptions: launchOptions)
   }
 
-  func requestTrackingAuthorization() {
-    if #available(iOS 14, *) {
-      let idfa = ASIdentifierManager.shared().advertisingIdentifier.uuidString
-      print("IDFA: \(idfa)")
+  // func requestTrackingAuthorization() {
+  //   if #available(iOS 14, *) {
+  //     let idfa = ASIdentifierManager.shared().advertisingIdentifier.uuidString
+  //     print("IDFA: \(idfa)")
 
-      ATTrackingManager.requestTrackingAuthorization { status in
-        switch status {
-        case .authorized:
-          NSLog("ATT: Tracking authorized")
-        case .denied, .restricted, .notDetermined:
-          NSLog("ATT: Tracking denied or restricted")
-        @unknown default:
-          NSLog("ATT: Unknown tracking status")
-        }
-      }
-    } else {
-      NSLog("ATT: Not available on iOS <14")
-    }
-  }
+  //     ATTrackingManager.requestTrackingAuthorization { status in
+  //       switch status {
+  //       case .authorized:
+  //         NSLog("ATT: Tracking authorized")
+  //       case .denied, .restricted, .notDetermined:
+  //         NSLog("ATT: Tracking denied or restricted")
+  //       @unknown default:
+  //         NSLog("ATT: Unknown tracking status")
+  //       }
+  //     }
+  //   } else {
+  //     NSLog("ATT: Not available on iOS <14")
+  //   }
+  // }
 
   func requestNotificationPermission() {
 
