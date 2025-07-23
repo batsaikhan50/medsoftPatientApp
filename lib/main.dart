@@ -35,7 +35,7 @@ class MyApp extends StatelessWidget {
           } else if (snapshot.hasError) {
             return Scaffold(
               body: Center(
-                child: Text("Error checking login status: ${snapshot.error}"),
+                child: Text("Нэвтрэх төлөв шалгах үед алдаа гарлаа: ${snapshot.error}"),
               ),
             );
           } else if (snapshot.hasData) {
@@ -166,9 +166,9 @@ class _MainHomeScreenState extends State<MainHomeScreen> {
 
             await platform.invokeMethod('startLocationManagerAfterLogin');
 
-            debugPrint("WebView loading URL: ${url}");
-            debugPrint("WebView loading roomId: ${roomId}");
-            debugPrint("WebView loading roomIdNum: ${roomIdNum}");
+            debugPrint("WebView loading URL: $url");
+            debugPrint("WebView loading roomId: $roomId");
+            debugPrint("WebView loading roomIdNum: $roomIdNum");
 
             Navigator.push(
               context,
