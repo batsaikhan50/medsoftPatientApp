@@ -320,7 +320,7 @@ class _MainHomeScreenState extends State<MainHomeScreen> {
   void _logOut() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     await prefs.remove('isLoggedIn');
-    await prefs.remove('X-Server'); // Assuming 'X-Server' is a key you use
+    await prefs.remove('X-Tenant'); // Assuming 'X-Tenant' is a key you use
     await prefs.remove('X-Medsoft-Token');
     await prefs.remove('Username');
     try {

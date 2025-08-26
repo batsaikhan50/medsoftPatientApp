@@ -130,7 +130,7 @@ class _LoginScreenState extends State<LoginScreen> with WidgetsBindingObserver {
   }
 
   Future<void> _fetchServerData() async {
-    const url = 'https://runner-api-v2.medsoft.care/api/gateway/servers';
+    const url = 'https://runner-api.medsoft.care/api/gateway/servers';
     final headers = {'X-Token': Constants.xToken};
 
     try {
@@ -295,7 +295,7 @@ class _LoginScreenState extends State<LoginScreen> with WidgetsBindingObserver {
           SharedPreferences prefs = await SharedPreferences.getInstance();
 
           await prefs.setBool('isLoggedIn', false);
-          await prefs.remove('X-Server');
+          await prefs.remove('X-Tenant');
           await prefs.remove('X-Medsoft-Token');
           await prefs.remove('Username');
 

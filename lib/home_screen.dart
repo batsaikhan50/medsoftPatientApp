@@ -46,7 +46,7 @@ class _HomeScreenState extends State<HomeScreen> {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     bool isLoggedIn = prefs.getBool('isLoggedIn') ?? false;
 
-    String? xServer = prefs.getString('X-Server');
+    String? xServer = prefs.getString('X-Tenant');
     bool isGotToken = xServer != null && xServer.isNotEmpty;
 
     String? xMedsoftServer = prefs.getString('X-Medsoft-Token');
