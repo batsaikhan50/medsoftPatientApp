@@ -405,6 +405,17 @@ import UserNotifications
                 "arrivedInFiftyReached", arguments: ["arrivedInFifty": arrivedInFifty])
             }
           }
+          NSLog("arrivedInFifty in delegate \(arrivedData["arrivedInFifty"])")
+
+          if let distance = arrivedData["distance"] as? Double {
+            let formatted = Double(round(100 * distance) / 100)
+            DispatchQueue.main.async {
+              self.locationManager?.stopUpdatingLocation()
+              self.locationManager?.distanceFilter = formatted
+              self.locationManager?.startUpdatingLocation()
+              NSLog("Updated distanceFilter to \(formatted) meters")
+            }
+          }
 
           NSLog("arrivedInFifty in delegate \(arrivedInFifty)")
         }
