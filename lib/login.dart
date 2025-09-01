@@ -50,6 +50,8 @@ class _LoginScreenState extends State<LoginScreen> with WidgetsBindingObserver {
     _usernameLoginController.dispose();
     _passwordLoginController.dispose();
     _usernameController.dispose();
+    _passwordController.removeListener(_updatePasswordRules);
+    _passwordCheckController.removeListener(_updatePasswordRules);
     _passwordController.dispose();
     _passwordCheckController.dispose();
     _regNoController.dispose();
@@ -62,8 +64,6 @@ class _LoginScreenState extends State<LoginScreen> with WidgetsBindingObserver {
     _passwordFocus.dispose();
     _passwordCheckFocus.dispose();
     _scrollController.dispose();
-    _passwordController.removeListener(_updatePasswordRules);
-    _passwordCheckController.removeListener(_updatePasswordRules);
     super.dispose();
   }
 
@@ -182,9 +182,41 @@ class _LoginScreenState extends State<LoginScreen> with WidgetsBindingObserver {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
 
-    _passwordController.addListener(_updatePasswordRules);
-    _passwordCheckController.addListener(_updatePasswordRules);
-    _regNoController.addListener(_validateRegNo);
+    _usernameLoginController.addListener(() {
+      setState(() {});
+    });
+
+    _usernameController.addListener(() {
+      setState(() {});
+    });
+
+    _passwordLoginController.addListener(() {
+      setState(() {});
+      _updatePasswordRules();
+    });
+
+    _passwordController.addListener(() {
+      setState(() {});
+      _updatePasswordRules();
+    });
+
+    _passwordCheckController.addListener(() {
+      setState(() {});
+      _updatePasswordRules();
+    });
+
+    _regNoController.addListener(() {
+      setState(() {});
+      _validateRegNo();
+    });
+
+    _firstnameController.addListener(() {
+      setState(() {});
+    });
+
+    _lastnameController.addListener(() {
+      setState(() {});
+    });
 
     _dragPosition =
         _selectedToggleIndex *
@@ -669,7 +701,16 @@ class _LoginScreenState extends State<LoginScreen> with WidgetsBindingObserver {
                     textInputAction: TextInputAction.next,
                     decoration: InputDecoration(
                       labelText: 'Утасны дугаар',
-                      prefixIcon: const Icon(Icons.person),
+                      prefixIcon: const Icon(Icons.phone),
+                      suffixIcon:
+                          _usernameLoginController.text.isNotEmpty
+                              ? IconButton(
+                                icon: const Icon(Icons.clear),
+                                onPressed: () {
+                                  _usernameLoginController.clear();
+                                },
+                              )
+                              : null,
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
                       ),
@@ -684,7 +725,16 @@ class _LoginScreenState extends State<LoginScreen> with WidgetsBindingObserver {
                     textInputAction: TextInputAction.next,
                     decoration: InputDecoration(
                       labelText: 'Утасны дугаар',
-                      prefixIcon: const Icon(Icons.person),
+                      prefixIcon: const Icon(Icons.phone),
+                      suffixIcon:
+                          _usernameController.text.isNotEmpty
+                              ? IconButton(
+                                icon: const Icon(Icons.clear),
+                                onPressed: () {
+                                  _usernameController.clear();
+                                },
+                              )
+                              : null,
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
                       ),
@@ -701,17 +751,31 @@ class _LoginScreenState extends State<LoginScreen> with WidgetsBindingObserver {
                     decoration: InputDecoration(
                       labelText: 'Нууц үг',
                       prefixIcon: const Icon(Icons.lock),
-                      suffixIcon: IconButton(
-                        icon: Icon(
-                          _isPasswordLoginVisible
-                              ? Icons.visibility
-                              : Icons.visibility_off,
-                        ),
-                        onPressed: () {
-                          setState(() {
-                            _isPasswordLoginVisible = !_isPasswordLoginVisible;
-                          });
-                        },
+                      suffixIcon: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          if (_passwordLoginController.text.isNotEmpty)
+                            IconButton(
+                              icon: const Icon(Icons.clear),
+                              onPressed: () {
+                                _passwordLoginController.clear();
+                                setState(() {});
+                              },
+                            ),
+                          IconButton(
+                            icon: Icon(
+                              _isPasswordLoginVisible
+                                  ? Icons.visibility
+                                  : Icons.visibility_off,
+                            ),
+                            onPressed: () {
+                              setState(() {
+                                _isPasswordLoginVisible =
+                                    !_isPasswordLoginVisible;
+                              });
+                            },
+                          ),
+                        ],
                       ),
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
@@ -730,17 +794,30 @@ class _LoginScreenState extends State<LoginScreen> with WidgetsBindingObserver {
                     decoration: InputDecoration(
                       labelText: 'Нууц үг',
                       prefixIcon: const Icon(Icons.lock),
-                      suffixIcon: IconButton(
-                        icon: Icon(
-                          _isPasswordVisible
-                              ? Icons.visibility
-                              : Icons.visibility_off,
-                        ),
-                        onPressed: () {
-                          setState(() {
-                            _isPasswordVisible = !_isPasswordVisible;
-                          });
-                        },
+                      suffixIcon: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          if (_passwordController.text.isNotEmpty)
+                            IconButton(
+                              icon: const Icon(Icons.clear),
+                              onPressed: () {
+                                _passwordController.clear();
+                                setState(() {});
+                              },
+                            ),
+                          IconButton(
+                            icon: Icon(
+                              _isPasswordVisible
+                                  ? Icons.visibility
+                                  : Icons.visibility_off,
+                            ),
+                            onPressed: () {
+                              setState(() {
+                                _isPasswordVisible = !_isPasswordVisible;
+                              });
+                            },
+                          ),
+                        ],
                       ),
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
@@ -789,17 +866,31 @@ class _LoginScreenState extends State<LoginScreen> with WidgetsBindingObserver {
                     decoration: InputDecoration(
                       labelText: 'Нууц үг давтах',
                       prefixIcon: const Icon(Icons.lock),
-                      suffixIcon: IconButton(
-                        icon: Icon(
-                          _isPasswordCheckVisible
-                              ? Icons.visibility
-                              : Icons.visibility_off,
-                        ),
-                        onPressed: () {
-                          setState(() {
-                            _isPasswordCheckVisible = !_isPasswordCheckVisible;
-                          });
-                        },
+                      suffixIcon: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          if (_passwordCheckController.text.isNotEmpty)
+                            IconButton(
+                              icon: const Icon(Icons.clear),
+                              onPressed: () {
+                                _passwordCheckController.clear();
+                                setState(() {});
+                              },
+                            ),
+                          IconButton(
+                            icon: Icon(
+                              _isPasswordCheckVisible
+                                  ? Icons.visibility
+                                  : Icons.visibility_off,
+                            ),
+                            onPressed: () {
+                              setState(() {
+                                _isPasswordCheckVisible =
+                                    !_isPasswordCheckVisible;
+                              });
+                            },
+                          ),
+                        ],
                       ),
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
@@ -818,6 +909,15 @@ class _LoginScreenState extends State<LoginScreen> with WidgetsBindingObserver {
                     decoration: InputDecoration(
                       labelText: 'Регистрын дугаар',
                       prefixIcon: const Icon(Icons.badge),
+                      suffixIcon:
+                          _regNoController.text.isNotEmpty
+                              ? IconButton(
+                                icon: const Icon(Icons.clear),
+                                onPressed: () {
+                                  _regNoController.clear();
+                                },
+                              )
+                              : null,
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
                       ),
@@ -843,6 +943,15 @@ class _LoginScreenState extends State<LoginScreen> with WidgetsBindingObserver {
                     decoration: InputDecoration(
                       labelText: 'Овог',
                       prefixIcon: const Icon(Icons.badge),
+                      suffixIcon:
+                          _lastnameController.text.isNotEmpty
+                              ? IconButton(
+                                icon: const Icon(Icons.clear),
+                                onPressed: () {
+                                  _lastnameController.clear();
+                                },
+                              )
+                              : null,
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
                       ),
@@ -869,6 +978,15 @@ class _LoginScreenState extends State<LoginScreen> with WidgetsBindingObserver {
                     decoration: InputDecoration(
                       labelText: 'Нэр',
                       prefixIcon: const Icon(Icons.badge),
+                      suffixIcon:
+                          _firstnameController.text.isNotEmpty
+                              ? IconButton(
+                                icon: const Icon(Icons.clear),
+                                onPressed: () {
+                                  _firstnameController.clear();
+                                },
+                              )
+                              : null,
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
                       ),

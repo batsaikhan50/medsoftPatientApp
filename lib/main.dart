@@ -7,7 +7,7 @@ import 'package:http/http.dart' as http;
 import 'package:medsoft_patient/guide.dart';
 import 'package:medsoft_patient/login.dart';
 import 'package:medsoft_patient/profile_screen.dart';
-import 'package:medsoft_patient/webview_screen.dart'; // Make sure this import is correct
+import 'package:medsoft_patient/webview_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
@@ -23,7 +23,7 @@ class MyApp extends StatelessWidget {
       title: 'Patient App',
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
-        useMaterial3: true, // Recommended for modern Flutter apps
+        useMaterial3: true,
       ),
       home: FutureBuilder<Widget>(
         future: _getInitialScreen(),
@@ -35,13 +35,14 @@ class MyApp extends StatelessWidget {
           } else if (snapshot.hasError) {
             return Scaffold(
               body: Center(
-                child: Text("Нэвтрэх төлөв шалгах үед алдаа гарлаа: ${snapshot.error}"),
+                child: Text(
+                  "Нэвтрэх төлөв шалгах үед алдаа гарлаа: ${snapshot.error}",
+                ),
               ),
             );
           } else if (snapshot.hasData) {
             return snapshot.data!;
           } else {
-            // Fallback, though snapshot.hasData should cover success
             return const LoginScreen();
           }
         },
@@ -54,9 +55,7 @@ class MyApp extends StatelessWidget {
     bool isLoggedIn = prefs.getBool('isLoggedIn') ?? false;
     debugPrint('isLoggedIn: $isLoggedIn');
 
-    String? xMedsoftToken = prefs.getString(
-      'X-Medsoft-Token',
-    ); // Corrected variable name for clarity
+    String? xMedsoftToken = prefs.getString('X-Medsoft-Token');
     bool isGotMedsoftToken = xMedsoftToken != null && xMedsoftToken.isNotEmpty;
     debugPrint('isGotMedsoftToken: $isGotMedsoftToken');
 
@@ -82,17 +81,14 @@ class MainHomeScreen extends StatefulWidget {
 class _MainHomeScreenState extends State<MainHomeScreen> {
   final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
       FlutterLocalNotificationsPlugin();
-  static const platform = MethodChannel(
-    'com.example.medsoft_patient/location',
-  ); // Ensure this matches your native setup
+  static const platform = MethodChannel('com.example.medsoft_patient/location');
 
   String _liveLocation = "Fetching live location...";
   final List<String> _locationHistory = [];
   Map<String, dynamic> sharedPreferencesData = {};
   bool _isLoading = false;
-  Map<String, dynamic>?
-  roomInfo; // Explicitly make it nullable and Map<String, dynamic>
-  String? _errorMessage; // State variable to hold error message
+  Map<String, dynamic>? roomInfo;
+  String? _errorMessage;
   Widget _currentBody = Container();
 
   @override
@@ -101,16 +97,14 @@ class _MainHomeScreenState extends State<MainHomeScreen> {
     _initializeNotifications();
     _loadSharedPreferencesData();
     _sendXMedsoftTokenToAppDelegate();
-    _currentBody = _buildLocationBody(); // Initialize with the location body
+    _currentBody = _buildLocationBody();
     platform.setMethodCallHandler(_methodCallHandler);
-    // _startLocationTracking();
   }
 
   Future<void> fetchRoom() async {
     setState(() {
       _isLoading = true;
-      _errorMessage =
-          null; // Clear any previous error messages when starting a new fetch
+      _errorMessage = null;
       _currentBody = _buildLocationBody();
     });
 
@@ -130,8 +124,7 @@ class _MainHomeScreenState extends State<MainHomeScreen> {
         });
         debugPrint('Error: Token is empty, setting error and logging out.');
         if (mounted) {
-          // Ensure widget is still in tree before logging out
-          _logOut(); // Force logout if token is missing
+          _logOut();
         }
         return;
       }
@@ -146,10 +139,8 @@ class _MainHomeScreenState extends State<MainHomeScreen> {
         final json = jsonDecode(response.body);
         debugPrint('API Response Body: ${response.body}');
         if (json['success'] == true) {
-          roomInfo =
-              json['data']; // Assign directly, setState will happen later
+          roomInfo = json['data'];
 
-          // Critical check: Ensure roomInfo is a Map and contains expected keys
           if (roomInfo is Map<String, dynamic> &&
               roomInfo!.containsKey('url') &&
               roomInfo!.containsKey('roomId')) {
@@ -182,15 +173,14 @@ class _MainHomeScreenState extends State<MainHomeScreen> {
                     ),
               ),
             );
-            // Now, set state for success after potential navigation
+
             setState(() {
               _isLoading = false;
-              _errorMessage = null; // Clear error on success
+              _errorMessage = null;
               _currentBody = _buildLocationBody();
             });
             debugPrint('Room fetch success! Navigating...');
           } else {
-            // Case: roomInfo is null or missing expected keys
             setState(() {
               _isLoading = false;
               _errorMessage =
@@ -202,7 +192,6 @@ class _MainHomeScreenState extends State<MainHomeScreen> {
             );
           }
         } else {
-          // Case: API call was 200 OK, but 'success' is false
           setState(() {
             _isLoading = false;
             _errorMessage =
@@ -213,7 +202,6 @@ class _MainHomeScreenState extends State<MainHomeScreen> {
           debugPrint('API success false: ${json['message']}');
         }
       } else {
-        // Case: HTTP status code is not 200
         setState(() {
           _isLoading = false;
           _errorMessage =
@@ -225,7 +213,6 @@ class _MainHomeScreenState extends State<MainHomeScreen> {
         );
       }
     } catch (e) {
-      // Case: Any other exception during the process (network issues, parsing errors)
       setState(() {
         _isLoading = false;
         _errorMessage =
@@ -246,7 +233,7 @@ class _MainHomeScreenState extends State<MainHomeScreen> {
       final longitude = locationData['longitude'];
       setState(() {
         _liveLocation =
-            "Сүүлд илгээсэн байршил\nУртраг: $longitude\nӨргөрөг: $latitude"; // Use $ for interpolation
+            "Сүүлд илгээсэн байршил\nУртраг: $longitude\nӨргөрөг: $latitude";
         _addLocationToHistory(latitude, longitude);
       });
     } else if (call.method == 'navigateToLogin') {
@@ -256,8 +243,7 @@ class _MainHomeScreenState extends State<MainHomeScreen> {
   }
 
   void _addLocationToHistory(double latitude, double longitude) {
-    String newLocation =
-        "Уртраг: $longitude\nӨргөрөг: $latitude"; // Use $ for interpolation
+    String newLocation = "Уртраг: $longitude\nӨргөрөг: $latitude";
     if (_locationHistory.length >= 9) {
       _locationHistory.removeAt(0);
     }
@@ -270,7 +256,6 @@ class _MainHomeScreenState extends State<MainHomeScreen> {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     Map<String, dynamic> data = {};
     for (String key in prefs.getKeys()) {
-      // Explicitly handle different types if you know them, otherwise getString is safest default
       if (key == 'isLoggedIn') {
         data[key] = prefs.getBool(key);
       } else {
@@ -320,7 +305,7 @@ class _MainHomeScreenState extends State<MainHomeScreen> {
   void _logOut() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     await prefs.remove('isLoggedIn');
-    await prefs.remove('X-Tenant'); // Assuming 'X-Tenant' is a key you use
+    await prefs.remove('X-Tenant');
     await prefs.remove('X-Medsoft-Token');
     await prefs.remove('Username');
     try {
@@ -329,7 +314,6 @@ class _MainHomeScreenState extends State<MainHomeScreen> {
       debugPrint("Failed to stop location updates: '${e.message}'.");
     }
     if (mounted) {
-      // Check if the widget is still in the tree before navigating
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(builder: (context) => const LoginScreen()),
@@ -340,8 +324,8 @@ class _MainHomeScreenState extends State<MainHomeScreen> {
   Future<void> _showNotification() async {
     const AndroidNotificationDetails androidDetails =
         AndroidNotificationDetails(
-          'medsoft_channel_id', // Unique channel ID
-          'Медсофт Мэдэгдэл', // Channel name
+          'medsoft_channel_id',
+          'Медсофт Мэдэгдэл',
           channelDescription: 'Системээс гарах болон бусад чухал мэдэгдлүүд',
           importance: Importance.max,
           priority: Priority.high,
@@ -371,7 +355,6 @@ class _MainHomeScreenState extends State<MainHomeScreen> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          // Display error message if present
           if (_errorMessage != null)
             Container(
               margin: const EdgeInsets.symmetric(
@@ -380,7 +363,7 @@ class _MainHomeScreenState extends State<MainHomeScreen> {
               ),
               padding: const EdgeInsets.all(15.0),
               decoration: BoxDecoration(
-                color: Colors.red.withOpacity(0.1), // Light red background
+                color: Colors.red.withOpacity(0.1),
                 borderRadius: BorderRadius.circular(10.0),
                 border: Border.all(color: Colors.red, width: 1.5),
               ),
@@ -388,21 +371,21 @@ class _MainHomeScreenState extends State<MainHomeScreen> {
                 _errorMessage!,
                 style: const TextStyle(
                   color: Colors.red,
-                  fontSize: 18, // Increased font size
+                  fontSize: 18,
                   fontWeight: FontWeight.bold,
                 ),
                 textAlign: TextAlign.center,
               ),
             ),
-          // Loading indicator
+
           if (_isLoading) const CircularProgressIndicator(),
-          // Button to fetch map
+
           Padding(
             padding: const EdgeInsets.symmetric(vertical: 20.0),
             child: ElevatedButton.icon(
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFF00CCCC),
-                foregroundColor: Colors.white, // Text color
+                foregroundColor: Colors.white,
                 padding: const EdgeInsets.symmetric(
                   horizontal: 24,
                   vertical: 14,
@@ -411,8 +394,7 @@ class _MainHomeScreenState extends State<MainHomeScreen> {
                   borderRadius: BorderRadius.circular(12),
                 ),
               ),
-              onPressed:
-                  _isLoading ? null : fetchRoom, // Disable button when loading
+              onPressed: _isLoading ? null : fetchRoom,
               icon: const Icon(Icons.map),
               label: Text(
                 _isLoading ? 'Түр хүлээнэ үү...' : 'Газрын зураг харах',
@@ -431,7 +413,7 @@ class _MainHomeScreenState extends State<MainHomeScreen> {
       appBar: AppBar(
         backgroundColor: const Color(0xFF00CCCC),
         title: const Text('Байршил тогтоогч'),
-        foregroundColor: Colors.white, // Make app bar text white
+        foregroundColor: Colors.white,
       ),
       drawer: Drawer(
         child: Column(
@@ -442,7 +424,7 @@ class _MainHomeScreenState extends State<MainHomeScreen> {
               ),
               child: Center(
                 child: Image.asset(
-                  'assets/icon/logoTransparent.png', // Ensure this path is correct
+                  'assets/icon/logoTransparent.png',
                   width: 150,
                   height: 150,
                 ),
