@@ -438,6 +438,7 @@ class _LoginScreenState extends State<LoginScreen> with WidgetsBindingObserver {
       if (key == 'isLoggedIn') {
         data[key] = prefs.getBool(key);
       } else {
+        debugPrint("trouble key: $key");
         data[key] = prefs.getString(key) ?? 'null';
       }
     }

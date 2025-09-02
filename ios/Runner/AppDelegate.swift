@@ -410,14 +410,11 @@ import UserNotifications
           if let distance = arrivedData["distance"] as? Double {
             let formatted = Double(round(100 * distance) / 100)
             DispatchQueue.main.async {
-              self.locationManager?.stopUpdatingLocation()
               self.locationManager?.distanceFilter = formatted
-              self.locationManager?.startUpdatingLocation()
               NSLog("Updated distanceFilter to \(formatted) meters")
             }
           }
 
-          NSLog("arrivedInFifty in delegate \(arrivedInFifty)")
         }
 
         if httpResponse.statusCode == 200 {
@@ -466,11 +463,14 @@ import UserNotifications
   func startLocationManagerAfterLogin() {
     locationManager = CLLocationManager()
     locationManager?.delegate = self
-    locationManager?.desiredAccuracy = kCLLocationAccuracyBest
+    locationManager?.desiredAccuracy = kCLLocationAccuracyNearestTenMeters
     locationManager?.distanceFilter = 10
     locationManager?.allowsBackgroundLocationUpdates = true
     locationManager?.showsBackgroundLocationIndicator = false
     locationManager?.requestWhenInUseAuthorization()
+
+    locationManager?.stopUpdatingLocation()
+    locationManager?.startUpdatingLocation()
   }
 
   func stopLocationUpdates() {

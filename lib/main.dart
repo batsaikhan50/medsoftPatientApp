@@ -254,9 +254,11 @@ class _MainHomeScreenState extends State<MainHomeScreen> {
 
   Future<void> _loadSharedPreferencesData() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
+    final prefsMap = {for (var key in prefs.getKeys()) key: prefs.get(key)};
+    debugPrint("prefs: $prefsMap");
     Map<String, dynamic> data = {};
     for (String key in prefs.getKeys()) {
-      if (key == 'isLoggedIn') {
+      if (key == 'isLoggedIn' || key == 'arrivedInFifty') {
         data[key] = prefs.getBool(key);
       } else {
         data[key] = prefs.getString(key) ?? 'null';

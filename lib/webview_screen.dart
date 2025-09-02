@@ -72,8 +72,6 @@ class _WebViewScreenState extends State<WebViewScreen> {
             duration: Duration(seconds: 2),
           ),
         );
-      } else {
-        debugPrint("not arrivedInFiftyReached");
       }
     });
   }
