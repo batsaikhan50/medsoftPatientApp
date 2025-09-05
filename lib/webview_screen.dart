@@ -1,8 +1,10 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
+import 'package:medsoft_patient/constants.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 
@@ -27,6 +29,7 @@ class WebViewScreen extends StatefulWidget {
 class _WebViewScreenState extends State<WebViewScreen> {
   late final WebViewController _controller;
   bool arrivedInFifty = false;
+  Timer? _pollingTimer;
 
   static const platform = MethodChannel('com.example.medsoft_patient/location');
   @override
@@ -104,59 +107,112 @@ class _WebViewScreenState extends State<WebViewScreen> {
     }
   }
 
-  Future<void> _markArrived(String id) async {
+  // Future<void> _markArrived(String id) async {
+  //   try {
+  //     final prefs = await SharedPreferences.getInstance();
+  //     final token = prefs.getString('X-Medsoft-Token') ?? '';
+
+  //     final uri = Uri.parse('${Constants.appUrl}/room/arrived?id=$id');
+
+  //     final response = await http.get(
+  //       uri,
+  //       headers: {'Authorization': 'Bearer $token', 'X-Medsoft-Token': token},
+  //     );
+
+  //     if (response.statusCode == 200) {
+  //       final json = jsonDecode(response.body);
+  //       if (json['success'] == true) {
+  //         ScaffoldMessenger.of(context).showSnackBar(
+  //           const SnackBar(
+  //             content: Text('Амжилттай бүртгэгдлээ'),
+  //             backgroundColor: Colors.green,
+  //             duration: Duration(seconds: 1),
+  //           ),
+  //         );
+  //         Navigator.of(context).pop();
+  //       } else {
+  //         ScaffoldMessenger.of(context).showSnackBar(
+  //           SnackBar(
+  //             content: Text(json['message'] ?? 'Амжилтгүй'),
+  //             backgroundColor: Colors.red,
+  //             duration: const Duration(seconds: 1),
+  //           ),
+  //         );
+  //       }
+  //     } else {
+  //       final Map<String, dynamic> data = json.decode(response.body);
+  //       ScaffoldMessenger.of(context).showSnackBar(
+  //         SnackBar(
+  //           content: Text('HTTP алдаа: ${data.toString()}'),
+  //           backgroundColor: Colors.red,
+  //           duration: const Duration(seconds: 1),
+  //         ),
+  //       );
+  //     }
+  //   } catch (e) {
+  //     debugPrint("Failed to mark arrived: $e");
+  //     ScaffoldMessenger.of(context).showSnackBar(
+  //       SnackBar(
+  //         content: Text('Сүлжээний алдаа: $e'),
+  //         backgroundColor: Colors.red,
+  //         duration: const Duration(seconds: 1),
+  //       ),
+  //     );
+  //   }
+  // }
+
+  void _startPolling() {
+    _pollingTimer?.cancel(); // avoid multiple timers
+
+    _pollingTimer = Timer.periodic(const Duration(minutes: 1), (timer) async {
+      if (widget.roomIdNum != null && arrivedInFifty) {
+        await _checkDoneStatus();
+      } else {
+        timer.cancel();
+      }
+    });
+  }
+
+  Future<void> _checkDoneStatus() async {
     try {
       final prefs = await SharedPreferences.getInstance();
       final token = prefs.getString('X-Medsoft-Token') ?? '';
 
-      final uri = Uri.parse('https://app.medsoft.care/api/room/arrived?id=$id');
+      final uri = Uri.parse("https://app.medsoft.care/api/room/done_request");
 
       final response = await http.get(
         uri,
-        headers: {'Authorization': 'Bearer $token', 'X-Medsoft-Token': token},
+        headers: {'Authorization': 'Bearer $token'},
       );
 
       if (response.statusCode == 200) {
-        final json = jsonDecode(response.body);
-        if (json['success'] == true) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Амжилттай бүртгэгдлээ'),
-              backgroundColor: Colors.green,
-              duration: Duration(seconds: 1),
-            ),
-          );
-          Navigator.of(context).pop();
-        } else {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(json['message'] ?? 'Амжилтгүй'),
-              backgroundColor: Colors.red,
-              duration: const Duration(seconds: 1),
-            ),
-          );
+        final data = jsonDecode(response.body);
+
+        if (data['success'] == true) {
+          final done = data['data']?['done'] ?? false;
+          final doneAt = data['data']?['doneAt'];
+
+          if (done == true && doneAt != null) {
+            debugPrint("Done request completed at: $doneAt");
+            // you can stop polling if you don’t need further checks
+            _pollingTimer?.cancel();
+          }
         }
       } else {
-        final Map<String, dynamic> data = json.decode(response.body);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('HTTP алдаа: ${data.toString()}'),
-            backgroundColor: Colors.red,
-            duration: const Duration(seconds: 1),
-          ),
-        );
+        debugPrint("Failed: HTTP ${response.statusCode}");
       }
     } catch (e) {
-      debugPrint("Failed to mark arrived: $e");
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Сүлжээний алдаа: $e'),
-          backgroundColor: Colors.red,
-          duration: const Duration(seconds: 1),
-        ),
-      );
+      debugPrint("Error checking done_request: $e");
     }
   }
+
+
+  @override
+  void dispose() {
+    _pollingTimer?.cancel();
+    super.dispose();
+  }
+  
 
   Widget _buildActionButton({
     required IconData icon,
@@ -240,18 +296,18 @@ class _WebViewScreenState extends State<WebViewScreen> {
                     ),
                   ),
 
-                  if (widget.roomIdNum != null && arrivedInFifty)
-                    Positioned(
-                      top: 72,
-                      right: 16,
-                      child: _buildActionButton(
-                        icon: Icons.check_circle,
-                        label: 'Ирсэн',
-                        onPressed: () {
-                          _markArrived(widget.roomIdNum!);
-                        },
-                      ),
-                    ),
+                  // if (widget.roomIdNum != null && arrivedInFifty)
+                  //   Positioned(
+                  //     top: 72,
+                  //     right: 16,
+                  //     child: _buildActionButton(
+                  //       icon: Icons.check_circle,
+                  //       label: 'Ирсэн',
+                  //       onPressed: () {
+                  //         _markArrived(widget.roomIdNum!);
+                  //       },
+                  //     ),
+                  //   ),
 
                   Positioned(
                     bottom: 24,

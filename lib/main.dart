@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:http/http.dart' as http;
+import 'package:medsoft_patient/constants.dart';
 import 'package:medsoft_patient/guide.dart';
 import 'package:medsoft_patient/login.dart';
 import 'package:medsoft_patient/profile_screen.dart';
@@ -129,7 +130,7 @@ class _MainHomeScreenState extends State<MainHomeScreen> {
         return;
       }
 
-      final uri = Uri.parse('https://app.medsoft.care/api/room/get/patient');
+      final uri = Uri.parse('${Constants.appUrl}/room/get/patient');
       final response = await http.get(
         uri,
         headers: {'Authorization': 'Bearer $token'},
@@ -258,7 +259,7 @@ class _MainHomeScreenState extends State<MainHomeScreen> {
     debugPrint("prefs: $prefsMap");
     Map<String, dynamic> data = {};
     for (String key in prefs.getKeys()) {
-      if (key == 'isLoggedIn' || key == 'arrivedInFifty') {
+      if (key == 'isLoggedIn') {
         data[key] = prefs.getBool(key);
       } else {
         data[key] = prefs.getString(key) ?? 'null';
