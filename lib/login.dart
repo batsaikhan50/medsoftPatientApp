@@ -1015,23 +1015,23 @@ class _LoginScreenState extends State<LoginScreen> with WidgetsBindingObserver {
                     ),
                   ),
 
-                if (_selectedToggleIndex == 1)
+                if (_selectedToggleIndex == 0)
                   Align(
                     alignment: Alignment.centerRight,
                     child: GestureDetector(
                       onTap: () async {
                         SharedPreferences prefs =
                             await SharedPreferences.getInstance();
-                        String? baseUrl = prefs.getString('forgetUrl');
+                        String? forgetUrl = prefs.getString('forgetUrl');
 
-                        if (baseUrl != null && baseUrl.isNotEmpty) {
+                        if (forgetUrl != null && forgetUrl.isNotEmpty) {
                           Navigator.push(
                             context,
                             MaterialPageRoute(
                               builder:
                                   (context) => WebViewScreen(
                                     url:
-                                        '$baseUrl/forget?callback=medsoftpatient://callback',
+                                        '$forgetUrl/forget?callback=medsoftpatient://callback',
                                     title: '',
                                   ),
                             ),

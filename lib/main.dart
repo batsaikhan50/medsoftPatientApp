@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
@@ -11,6 +12,8 @@ import 'package:medsoft_patient/profile_screen.dart';
 import 'package:medsoft_patient/webview_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
+
 void main() {
   runApp(const MyApp());
 }
@@ -21,6 +24,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      navigatorKey: navigatorKey,
       title: 'Patient App',
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
@@ -79,7 +83,8 @@ class MainHomeScreen extends StatefulWidget {
   State<MainHomeScreen> createState() => _MainHomeScreenState();
 }
 
-class _MainHomeScreenState extends State<MainHomeScreen> {
+class _MainHomeScreenState extends State<MainHomeScreen>
+    with WidgetsBindingObserver {
   final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
       FlutterLocalNotificationsPlugin();
   static const platform = MethodChannel('com.example.medsoft_patient/location');
@@ -91,6 +96,8 @@ class _MainHomeScreenState extends State<MainHomeScreen> {
   Map<String, dynamic>? roomInfo;
   String? _errorMessage;
   Widget _currentBody = Container();
+  Timer? _timer;
+  bool _isDialogShowing = false;
 
   @override
   void initState() {
@@ -100,6 +107,167 @@ class _MainHomeScreenState extends State<MainHomeScreen> {
     _sendXMedsoftTokenToAppDelegate();
     _currentBody = _buildLocationBody();
     platform.setMethodCallHandler(_methodCallHandler);
+    WidgetsBinding.instance.addObserver(this);
+    _startApiPolling(); // start immediately when app launches
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _stopApiPolling();
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      // app in foreground
+      _startApiPolling();
+    } else if (state == AppLifecycleState.paused ||
+        state == AppLifecycleState.inactive) {
+      // app in background
+      _stopApiPolling();
+    }
+  }
+
+  void _startApiPolling() {
+    _stopApiPolling(); // prevent duplicate timers
+    _timer = Timer.periodic(const Duration(seconds: 10), (_) async {
+      await _callApi();
+    });
+
+    // 👇 also trigger immediately on start
+    _callApi();
+  }
+
+  void _stopApiPolling() {
+    _timer?.cancel();
+    _timer = null;
+  }
+
+  Future<void> _callApi() async {
+    if (_isDialogShowing) {
+      debugPrint("⏸ Skipping API call because dialog is showing.");
+      return;
+    }
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('X-Medsoft-Token') ?? '';
+
+      if (token.isEmpty) {
+        debugPrint("⚠️ No token found, skipping API call.");
+        return;
+      }
+
+      final response = await http.get(
+        Uri.parse("${Constants.appUrl}/room/done_request"),
+        headers: {"Authorization": "Bearer $token"},
+      );
+
+      debugPrint("✅ API response: ${response.statusCode} ${response.body}");
+
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> jsonBody = json.decode(response.body);
+
+        // check if data.done is true
+        if (jsonBody['success'] == true &&
+            jsonBody['data']?['doneRequested'] == true) {
+          if (!_isDialogShowing) {
+            _showDoneDialog();
+          }
+        }
+      }
+    } catch (e) {
+      debugPrint("❌ API error: $e");
+    }
+  }
+
+  void _showDoneDialog() {
+    _isDialogShowing = true;
+    final context = navigatorKey.currentState?.overlay?.context;
+    if (context == null) return;
+
+    showDialog(
+      context: context,
+      barrierDismissible: false, // force user to pick an option
+      builder:
+          (_) => AlertDialog(
+            title: const Text("Үзлэг дууссан"),
+            content: const Text("Үзсэн дууссан эсэхийг баталгаажуулна уу?"),
+            actions: [
+              // Decline Button (Red)
+              TextButton(
+                style: TextButton.styleFrom(foregroundColor: Colors.red),
+                onPressed: () {
+                  Navigator.of(context).pop();
+                  _isDialogShowing = false;
+
+                  debugPrint("❌ User declined the request.");
+                  // TODO: call API for decline if needed
+                },
+                child: const Text("Татгалзах"),
+              ),
+
+              // Accept Button (Green)
+              TextButton(
+                style: TextButton.styleFrom(foregroundColor: Colors.green),
+                onPressed: () async {
+                  Navigator.of(context).pop();
+                  _isDialogShowing = false;
+
+                  debugPrint("✅ User accepted the request.");
+
+                  final prefs = await SharedPreferences.getInstance();
+                  final token = prefs.getString('X-Medsoft-Token') ?? '';
+                  final currentRoomId = prefs.getString('currentRoomId') ?? '';
+
+                  if (token.isEmpty) {
+                    debugPrint("⚠️ No token found, cannot call done API.");
+                    return;
+                  }
+
+                  try {
+                    if (currentRoomId.isEmpty) {
+                      debugPrint("⚠️ No roomId found, cannot call done API.");
+                      return;
+                    }
+                    debugPrint(
+                      "currentRoomId: ${prefs.getString('currentRoomId')}",
+                    );
+
+                    debugPrint(
+                      "URL: ${Uri.parse("${Constants.appUrl}/room/done")}",
+                    );
+                    final response = await http.post(
+                      Uri.parse("${Constants.appUrl}/room/done"),
+                      headers: {
+                        'Authorization': 'Bearer $token',
+                        'Content-Type': 'application/json',
+                      },
+                      body: json.encode({'roomId': currentRoomId}),
+                    );
+
+                    debugPrint(
+                      "📡 Done API response: ${response.statusCode} ${response.body}",
+                    );
+
+                    if (response.statusCode == 200) {
+                      debugPrint("✅ Done confirmed, stopping timer.");
+                      _stopApiPolling(); // stop polling until app restarts
+                    } else {
+                      debugPrint(
+                        "❌ Done API failed with status: ${response.statusCode}",
+                      );
+                    }
+                  } catch (e) {
+                    debugPrint("❌ Done API error: $e");
+                  }
+                },
+                child: const Text("Зөвшөөрөх"),
+              ),
+            ],
+          ),
+    );
   }
 
   Future<void> fetchRoom() async {
@@ -149,6 +317,7 @@ class _MainHomeScreenState extends State<MainHomeScreen> {
             final title = "Байршил";
             final roomId = roomInfo!['roomId'] as String;
 
+            await prefs.setString('currentRoomId', roomId);
             final roomIdNum = roomInfo!['_id'];
 
             debugPrint('roomIdNum: ' + roomIdNum);
@@ -259,7 +428,7 @@ class _MainHomeScreenState extends State<MainHomeScreen> {
     debugPrint("prefs: $prefsMap");
     Map<String, dynamic> data = {};
     for (String key in prefs.getKeys()) {
-      if (key == 'isLoggedIn') {
+      if (key == 'isLoggedIn' || key == 'arrivedInFifty') {
         data[key] = prefs.getBool(key);
       } else {
         data[key] = prefs.getString(key) ?? 'null';
