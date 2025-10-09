@@ -8,7 +8,6 @@ import 'package:http/http.dart' as http;
 import 'package:medsoft_patient/claim_qr.dart';
 import 'package:medsoft_patient/constants.dart';
 import 'package:medsoft_patient/guide.dart';
-import 'package:medsoft_patient/home_screen.dart'; // This is the main UI
 import 'package:medsoft_patient/login.dart';
 import 'package:medsoft_patient/profile_screen.dart';
 import 'package:medsoft_patient/qr_scan_screen.dart';

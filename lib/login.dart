@@ -9,8 +9,8 @@ import 'package:http/http.dart' as http;
 import 'package:keyboard_actions/keyboard_actions.dart';
 import 'package:medsoft_patient/claim_qr.dart';
 import 'package:medsoft_patient/constants.dart';
-import 'package:medsoft_patient/home_screen.dart';
 import 'package:medsoft_patient/main.dart';
+import 'package:medsoft_patient/reset_password.dart';
 
 import 'package:medsoft_patient/webview_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -1135,24 +1135,31 @@ class _LoginScreenState extends State<LoginScreen> with WidgetsBindingObserver {
                             await SharedPreferences.getInstance();
                         String? forgetUrl = prefs.getString('forgetUrl');
 
-                        if (forgetUrl != null && forgetUrl.isNotEmpty) {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder:
-                                  (context) => WebViewScreen(
-                                    url:
-                                        '$forgetUrl/forget?callback=medsoftpatient://callback',
-                                    title: '',
-                                  ),
-                            ),
-                          );
-                        } else {
-                          setState(() {
-                            _errorMessage =
-                                'Нууц үг солихын тулд эмнэлэг сонгоно уу.';
-                          });
-                        }
+                        // if (forgetUrl != null && forgetUrl.isNotEmpty) {
+                        // Navigator.push(
+                        //   context,
+                        //   MaterialPageRoute(
+                        //     builder:
+                        //         (context) => WebViewScreen(
+                        //           url:
+                        //               '$forgetUrl/forget?callback=medsoftpatient://callback',
+                        //           title: '',
+                        //         ),
+                        //   ),
+                        // );
+
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const ResetPasswordScreen(),
+                          ),
+                        );
+                        // } else {
+                        //   setState(() {
+                        //     _errorMessage =
+                        //         'Нууц үг солихын тулд эмнэлэг сонгоно уу.';
+                        //   });
+                        // }
                       },
                       child: const Text(
                         'Нууц үг мартсан?',
