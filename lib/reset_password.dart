@@ -294,7 +294,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
                 child:
                     _isLoading
                         ? const CircularProgressIndicator(color: Colors.white)
-                        : const Text('Сэргээх'),
+                        : const Text('Болсон'),
               ),
             ),
           ],
