@@ -333,6 +333,8 @@ class _LoginScreenState extends State<LoginScreen> with WidgetsBindingObserver {
           await prefs.remove('X-Tenant');
           await prefs.remove('X-Medsoft-Token');
           await prefs.remove('Username');
+          await prefs.remove('scannedToken');
+          await prefs.remove('tenantDomain');
 
           setState(() {
             _selectedToggleIndex = 0;
@@ -376,11 +378,7 @@ class _LoginScreenState extends State<LoginScreen> with WidgetsBindingObserver {
 
       final waitResponse = await http.get(
         Uri.parse('${Constants.appUrl}/qr/wait?id=$token'),
-        headers: {
-          'X-Medsoft-Token': tokenSaved,
-          'X-Tenant': server,
-          'X-Token': Constants.xToken,
-        },
+        headers: {"Authorization": "Bearer $tokenSaved"},
       );
 
       debugPrint('Login Wait API Response: ${waitResponse.body}');
@@ -453,7 +451,9 @@ class _LoginScreenState extends State<LoginScreen> with WidgetsBindingObserver {
 
           Navigator.pushReplacement(
             context,
-            MaterialPageRoute(builder: (context) => MyHomePage(title: 'Дуудлагын жагсаалт',)),
+            MaterialPageRoute(
+              builder: (context) => MyHomePage(title: 'Дуудлагын жагсаалт'),
+            ),
           );
         } else {
           setState(() {

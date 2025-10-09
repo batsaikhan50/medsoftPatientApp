@@ -238,7 +238,7 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
 
   void _startApiPolling() {
     _stopApiPolling(); // prevent duplicate timers
-    _timer = Timer.periodic(const Duration(minutes: 30), (_) async {
+    _timer = Timer.periodic(const Duration(minutes: 5), (_) async {
       await _callApi();
     });
 
@@ -582,10 +582,13 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
 
   void _logOut() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
-    await prefs.remove('isLoggedIn');
+
+    await prefs.setBool('isLoggedIn', false);
     await prefs.remove('X-Tenant');
     await prefs.remove('X-Medsoft-Token');
     await prefs.remove('Username');
+    await prefs.remove('scannedToken');
+    await prefs.remove('tenantDomain');
     try {
       await platform.invokeMethod('stopLocationUpdates');
     } on PlatformException catch (e) {
