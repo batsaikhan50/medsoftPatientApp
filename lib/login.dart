@@ -7,8 +7,11 @@ import 'package:flutter/services.dart';
 import 'package:flutter_app_badger/flutter_app_badger.dart';
 import 'package:http/http.dart' as http;
 import 'package:keyboard_actions/keyboard_actions.dart';
+import 'package:medsoft_patient/claim_qr.dart';
 import 'package:medsoft_patient/constants.dart';
+import 'package:medsoft_patient/home_screen.dart';
 import 'package:medsoft_patient/main.dart';
+
 import 'package:medsoft_patient/webview_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -358,6 +361,44 @@ class _LoginScreenState extends State<LoginScreen> with WidgetsBindingObserver {
     }
   }
 
+  /// Retrieve the saved scanned token from SharedPreferences
+  Future<String?> getSavedToken() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    return prefs.getString('scannedToken');
+  }
+
+  /// Call the /wait and /attend endpoints with the scanned token
+  Future<void> callWaitApi(BuildContext context, String token) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final tokenSaved = prefs.getString('X-Medsoft-Token') ?? '';
+      final server = prefs.getString('X-Tenant') ?? '';
+
+      final waitResponse = await http.get(
+        Uri.parse('${Constants.appUrl}/qr/wait?id=$token'),
+        headers: {
+          'X-Medsoft-Token': tokenSaved,
+          'X-Tenant': server,
+          'X-Token': Constants.xToken,
+        },
+      );
+
+      debugPrint('Login Wait API Response: ${waitResponse.body}');
+
+      if (waitResponse.statusCode == 200) {
+        // ✅ Success → go to ClaimQRScreen
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => ClaimQRScreen(token: token)),
+        );
+      } else {
+        debugPrint("Login Wait failed: ${waitResponse.statusCode}");
+      }
+    } catch (e) {
+      debugPrint('Error calling wait API: $e');
+    }
+  }
+
   Future<void> _login() async {
     setState(() {
       _isLoading = true;
@@ -401,11 +442,18 @@ class _LoginScreenState extends State<LoginScreen> with WidgetsBindingObserver {
 
           _loadSharedPreferencesData();
 
+          final savedToken = await getSavedToken();
+          if (savedToken != null) {
+            debugPrint("INMY LOGIN'S if savedToken: ${savedToken}");
+            await callWaitApi(context, savedToken);
+            return;
+          }
+
           _isLoading = false;
 
           Navigator.pushReplacement(
             context,
-            MaterialPageRoute(builder: (context) => MainHomeScreen()),
+            MaterialPageRoute(builder: (context) => MyHomePage(title: 'Дуудлагын жагсаалт',)),
           );
         } else {
           setState(() {
@@ -579,53 +627,116 @@ class _LoginScreenState extends State<LoginScreen> with WidgetsBindingObserver {
     );
   }
 
+  // KeyboardActionsConfig _buildKeyboardActionsConfig(BuildContext context) {
+  //   return KeyboardActionsConfig(
+  //     keyboardActionsPlatform: KeyboardActionsPlatform.ALL,
+  //     nextFocus: true,
+  //     keyboardBarColor: Colors.grey[200],
+  //     actions: [
+  //       if (_selectedToggleIndex == 0)
+  //         KeyboardActionsItem(
+  //           focusNode: _usernameLoginFocus,
+  //           displayArrows: true,
+  //           onTapAction: () => _scrollIntoView(_usernameLoginFocus),
+  //         ),
+  //       KeyboardActionsItem(
+  //         focusNode: _passwordLoginFocus,
+  //         displayArrows: true,
+  //         onTapAction: () => _scrollIntoView(_passwordLoginFocus),
+  //       ),
+  //       if (_selectedToggleIndex == 1) ...[
+  //         KeyboardActionsItem(
+  //           focusNode: _usernameFocus,
+  //           displayArrows: true,
+  //           onTapAction: () => _scrollIntoView(_usernameFocus),
+  //         ),
+  //         KeyboardActionsItem(
+  //           focusNode: _passwordFocus,
+  //           displayArrows: true,
+  //           onTapAction: () => _scrollIntoView(_passwordFocus),
+  //         ),
+  //         KeyboardActionsItem(
+  //           focusNode: _passwordCheckFocus,
+  //           displayArrows: true,
+  //           onTapAction: () => _scrollIntoView(_passwordCheckFocus),
+  //         ),
+  //         KeyboardActionsItem(
+  //           focusNode: _regNoFocus,
+  //           displayArrows: true,
+  //           onTapAction: () => _scrollIntoView(_regNoFocus),
+  //         ),
+  //         KeyboardActionsItem(
+  //           focusNode: _lastnameFocus,
+  //           displayArrows: true,
+  //           onTapAction: () => _scrollIntoView(_lastnameFocus),
+  //         ),
+  //         KeyboardActionsItem(
+  //           focusNode: _firstnameFocus,
+  //           displayArrows: true,
+  //           onTapAction: () => _scrollIntoView(_firstnameFocus),
+  //         ),
+  //       ],
+  //     ],
+  //   );
+  // }
+
   KeyboardActionsConfig _buildKeyboardActionsConfig(BuildContext context) {
+    const Color iosToolbarColor = Color(0x00D8D7DE);
+
     return KeyboardActionsConfig(
       keyboardActionsPlatform: KeyboardActionsPlatform.ALL,
       nextFocus: true,
-      keyboardBarColor: Colors.grey[200],
+      keyboardBarColor: iosToolbarColor,
       actions: [
         if (_selectedToggleIndex == 0)
           KeyboardActionsItem(
             focusNode: _usernameLoginFocus,
             displayArrows: true,
-            onTapAction: () => _scrollIntoView(_usernameLoginFocus),
+            displayDoneButton: false,
+            // onTapAction: () => _scrollIntoView(_usernameLoginFocus),
           ),
         KeyboardActionsItem(
           focusNode: _passwordLoginFocus,
           displayArrows: true,
-          onTapAction: () => _scrollIntoView(_passwordLoginFocus),
+          displayDoneButton: false,
+          // onTapAction: () => _scrollIntoView(_passwordLoginFocus),
         ),
         if (_selectedToggleIndex == 1) ...[
           KeyboardActionsItem(
             focusNode: _usernameFocus,
             displayArrows: true,
-            onTapAction: () => _scrollIntoView(_usernameFocus),
+            displayDoneButton: false,
+            // onTapAction: () => _scrollIntoView(_usernameFocus),
           ),
           KeyboardActionsItem(
             focusNode: _passwordFocus,
             displayArrows: true,
-            onTapAction: () => _scrollIntoView(_passwordFocus),
+            displayDoneButton: false,
+            // onTapAction: () => _scrollIntoView(_passwordFocus),
           ),
           KeyboardActionsItem(
             focusNode: _passwordCheckFocus,
             displayArrows: true,
-            onTapAction: () => _scrollIntoView(_passwordCheckFocus),
+            displayDoneButton: false,
+            // onTapAction: () => _scrollIntoView(_passwordCheckFocus),
           ),
           KeyboardActionsItem(
             focusNode: _regNoFocus,
             displayArrows: true,
-            onTapAction: () => _scrollIntoView(_regNoFocus),
+            displayDoneButton: false,
+            // onTapAction: () => _scrollIntoView(_regNoFocus),
           ),
           KeyboardActionsItem(
             focusNode: _lastnameFocus,
             displayArrows: true,
-            onTapAction: () => _scrollIntoView(_lastnameFocus),
+            displayDoneButton: false,
+            // onTapAction: () => _scrollIntoView(_lastnameFocus),
           ),
           KeyboardActionsItem(
             focusNode: _firstnameFocus,
             displayArrows: true,
-            onTapAction: () => _scrollIntoView(_firstnameFocus),
+            displayDoneButton: false,
+            // onTapAction: () => _scrollIntoView(_firstnameFocus),
           ),
         ],
       ],

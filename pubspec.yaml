@@ -41,6 +41,8 @@ dependencies:
   shared_preferences: ^2.5.3
   flutter_local_notifications: ^19.3.0
   flutter_launcher_icons: ^0.14.3
+  qr_code_scanner: ^1.0.1
+  uni_links: ^0.5.1
 
 flutter_launcher_icons:
   android: "launcher_icon"

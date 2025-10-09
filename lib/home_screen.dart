@@ -8,6 +8,7 @@ import 'package:medsoft_patient/constants.dart';
 import 'package:medsoft_patient/guide.dart';
 import 'package:medsoft_patient/login.dart';
 import 'package:medsoft_patient/profile_screen.dart';
+import 'package:medsoft_patient/qr_scan_screen.dart';
 import 'package:medsoft_patient/webview_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -174,7 +175,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
     Set<String> allKeys = prefs.getKeys();
     for (String key in allKeys) {
-      if (key == 'isLoggedIn') {
+      if (key == 'isLoggedIn' || key == 'arrivedInFifty') {
         data[key] = prefs.getBool(key);
       } else {
         data[key] = prefs.getString(key) ?? 'null';
@@ -290,64 +291,108 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
       drawer: Drawer(
         child: Column(
+          // The main container must be a Column
           children: <Widget>[
+            // 1. DrawerHeader (Fixed Height)
             DrawerHeader(
+              // ... (your existing decoration and child)
               decoration: const BoxDecoration(
                 color: Color.fromARGB(255, 236, 169, 175),
               ),
               child: Center(
                 child: Image.asset(
-                  'assets/icon/logo.png',
+                  'assets/icon/logoTransparent.png',
                   width: 150,
                   height: 150,
                 ),
               ),
             ),
-            ListTile(
-              title: Center(
-                child: Text(
-                  sharedPreferencesData['Username'] ?? 'Guest',
-                  style: const TextStyle(fontSize: 20),
-                ),
+
+            // 2. Scrollable Content Area (Uses Expanded to take up remaining space)
+            Expanded(
+              child: ListView(
+                // <--- Make the *middle* section scrollable
+                padding: EdgeInsets.zero,
+                children: <Widget>[
+                  ListTile(
+                    title: Center(
+                      child: Text(
+                        sharedPreferencesData['Username'] ?? 'Зочин',
+                        style: const TextStyle(fontSize: 20),
+                      ),
+                    ),
+                  ),
+                  const Divider(),
+                  ListTile(
+                    leading: const Icon(
+                      Icons.info_outline,
+                      color: Colors.blueAccent,
+                    ),
+                    title: const Text(
+                      'Хэрэглэх заавар',
+                      style: TextStyle(fontSize: 18),
+                    ),
+                    onTap: () {
+                      Navigator.pop(context);
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const GuideScreen(),
+                        ),
+                      );
+                    },
+                  ),
+                  ListTile(
+                    leading: const Icon(Icons.location_on, color: Colors.teal),
+                    title: const Text(
+                      'Байршил',
+                      style: TextStyle(fontSize: 18),
+                    ),
+                    onTap: () {
+                      Navigator.pop(context);
+                      setState(() {
+                        _currentBody = _buildLocationBody();
+                      });
+                    },
+                  ),
+                  ListTile(
+                    leading: const Icon(Icons.person, color: Colors.deepPurple),
+                    title: const Text(
+                      'Профайл',
+                      style: TextStyle(fontSize: 18),
+                    ),
+                    onTap: () {
+                      Navigator.pop(context);
+                      setState(() {
+                        _currentBody = const ProfileScreen();
+                      });
+                    },
+                  ),
+                  ListTile(
+                    leading: const Icon(
+                      Icons.qr_code_scanner,
+                      color: Colors.green,
+                    ),
+                    title: const Text(
+                      'QR код унших',
+                      style: TextStyle(fontSize: 18),
+                    ),
+                    onTap: () {
+                      Navigator.pop(context);
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const QrScanScreen(),
+                        ),
+                      );
+                    },
+                  ),
+                ],
               ),
-            ),
-            const Divider(),
-            ListTile(
-              leading: const Icon(Icons.info_outline, color: Colors.blueAccent),
-              title: const Text(
-                'Хэрэглэх заавар',
-                style: TextStyle(fontSize: 18),
-              ),
-              onTap: () {
-                Navigator.pop(context);
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => const GuideScreen()),
-                );
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.location_on, color: Colors.teal),
-              title: const Text('Байршил', style: TextStyle(fontSize: 18)),
-              onTap: () {
-                Navigator.pop(context);
-                setState(() {
-                  _currentBody = _buildLocationBody();
-                });
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.person, color: Colors.deepPurple),
-              title: const Text('Профайл', style: TextStyle(fontSize: 18)),
-              onTap: () {
-                Navigator.pop(context);
-                setState(() {
-                  _currentBody = const ProfileScreen();
-                });
-              },
             ),
 
-            const Spacer(),
+            // 3. Sticky Footer (Fixed Height)
+            // This part will be pushed to the very bottom.
             Container(
               margin: const EdgeInsets.all(10),
               decoration: BoxDecoration(
@@ -365,10 +410,14 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                   ),
                 ),
-                onTap: _logOut,
+                onTap: () {
+                  _logOut();
+                },
               ),
             ),
-            const SizedBox(height: 50),
+
+            // Remove the large SizedBox(height: 50) and use a smaller margin if needed.
+            const SizedBox(height: 10),
           ],
         ),
       ),

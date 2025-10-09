@@ -5,16 +5,27 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:http/http.dart' as http;
+import 'package:medsoft_patient/claim_qr.dart';
 import 'package:medsoft_patient/constants.dart';
 import 'package:medsoft_patient/guide.dart';
+import 'package:medsoft_patient/home_screen.dart'; // This is the main UI
 import 'package:medsoft_patient/login.dart';
 import 'package:medsoft_patient/profile_screen.dart';
+import 'package:medsoft_patient/qr_scan_screen.dart';
 import 'package:medsoft_patient/webview_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:uni_links/uni_links.dart';
+
+// The MainHomeScreen logic/polling should be merged into the existing HomeScreen class
+// to avoid having two different "home screens".
+// I will not include the full code for HomeScreen here as it is already defined
+// in home_screen.dart, but the logic previously in MainHomeScreen should be moved there.
 
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
 void main() {
+  // Ensure Flutter is initialized before accessing platform channels (like SharedPreferences)
+  WidgetsFlutterBinding.ensureInitialized();
   runApp(const MyApp());
 }
 
@@ -55,36 +66,66 @@ class MyApp extends StatelessWidget {
     );
   }
 
+  // Merged and corrected _getInitialScreen logic
   Future<Widget> _getInitialScreen() async {
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-    bool isLoggedIn = prefs.getBool('isLoggedIn') ?? false;
+    final prefs = await SharedPreferences.getInstance();
+
+    // --- 1. Deep Linking/QR Logic (from the second function) ---
+    // Use getInitialLink() from uni_links package
+    final initialLink = await getInitialLink();
+    debugPrint("IN MY MAIN'S _getInitialScreen initialLink: $initialLink");
+
+    if (initialLink != null) {
+      Uri uri = Uri.parse(initialLink);
+
+      // Check if the link path starts with 'qr' and has a token segment
+      if (uri.pathSegments.isNotEmpty &&
+          uri.pathSegments[0] == 'qr' &&
+          uri.pathSegments.length > 1) {
+        String token = uri.pathSegments[1];
+        await prefs.setString('scannedToken', token);
+        debugPrint('Scanned token stored: $token');
+
+        // After storing token, we still want to go to the login screen
+        // if not logged in, or home screen if logged in.
+      }
+    }
+
+    // --- 2. Shared Preferences Check (from both functions) ---
+    // Use the comprehensive check from the first original function (which was inside MyApp)
+    final bool isLoggedIn = prefs.getBool('isLoggedIn') ?? false;
     debugPrint('isLoggedIn: $isLoggedIn');
 
-    String? xMedsoftToken = prefs.getString('X-Medsoft-Token');
-    bool isGotMedsoftToken = xMedsoftToken != null && xMedsoftToken.isNotEmpty;
+    final String? xMedsoftToken = prefs.getString('X-Medsoft-Token');
+    final bool isGotMedsoftToken =
+        xMedsoftToken != null && xMedsoftToken.isNotEmpty;
     debugPrint('isGotMedsoftToken: $isGotMedsoftToken');
 
-    String? username = prefs.getString('Username');
-    bool isGotUsername = username != null && username.isNotEmpty;
+    final String? username = prefs.getString('Username');
+    final bool isGotUsername = username != null && username.isNotEmpty;
     debugPrint('isGotUsername: $isGotUsername');
 
+    // --- 3. Return Logic ---
+    // If all login credentials and tokens are present, show the home screen.
     if (isLoggedIn && isGotMedsoftToken && isGotUsername) {
-      return const MainHomeScreen();
+      // Use the imported HomeScreen
+      return const MyHomePage(title: 'Дуудлагын жагсаалт');
     } else {
       return const LoginScreen();
     }
   }
 }
 
-class MainHomeScreen extends StatefulWidget {
-  const MainHomeScreen({super.key});
+class MyHomePage extends StatefulWidget {
+  const MyHomePage({super.key, required this.title});
+
+  final String title;
 
   @override
-  State<MainHomeScreen> createState() => _MainHomeScreenState();
+  State<MyHomePage> createState() => _MyHomePageState();
 }
 
-class _MainHomeScreenState extends State<MainHomeScreen>
-    with WidgetsBindingObserver {
+class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
   final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
       FlutterLocalNotificationsPlugin();
   static const platform = MethodChannel('com.example.medsoft_patient/location');
@@ -102,13 +143,78 @@ class _MainHomeScreenState extends State<MainHomeScreen>
   @override
   void initState() {
     super.initState();
-    _initializeNotifications();
-    _loadSharedPreferencesData();
-    _sendXMedsoftTokenToAppDelegate();
-    _currentBody = _buildLocationBody();
-    platform.setMethodCallHandler(_methodCallHandler);
-    WidgetsBinding.instance.addObserver(this);
-    _startApiPolling(); // start immediately when app launches
+
+    Future<void> saveScannedToken(String token) async {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('scannedToken', token);
+    }
+
+    Future<String?> getSavedToken() async {
+      final prefs = await SharedPreferences.getInstance();
+      return prefs.getString('scannedToken');
+    }
+
+    Future<bool> callWaitApi(String token) async {
+      try {
+        final prefs = await SharedPreferences.getInstance();
+        final tokenSaved = prefs.getString('X-Medsoft-Token') ?? '';
+        final server = prefs.getString('X-Tenant') ?? '';
+
+        final waitResponse = await http.get(
+          Uri.parse('${Constants.appUrl}/qr/wait?id=$token'),
+          headers: {"Authorization": "Bearer $tokenSaved"},
+        );
+
+        debugPrint('Main Wait API Response: ${waitResponse.body}');
+
+        if (waitResponse.statusCode == 200) {
+          return true;
+        } else {
+          return false;
+        }
+      } catch (e) {
+        debugPrint('Error calling MAIN wait API: $e');
+        return false;
+      }
+    }
+
+    linkStream.listen((link) async {
+      if (link != null) {
+        Uri uri = Uri.parse(link);
+        if (uri.pathSegments.isNotEmpty && uri.pathSegments[0] == 'qr') {
+          String token = uri.pathSegments[1];
+          debugPrint('Deep link token: $token');
+          await saveScannedToken(token);
+
+          bool waitSuccess = false;
+
+          final prefs = await SharedPreferences.getInstance();
+          if (prefs.getBool('isLoggedIn') == true) {
+            waitSuccess = await callWaitApi(token);
+          }
+
+          if (waitSuccess && mounted) {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => ClaimQRScreen(token: token)),
+            );
+          }
+        }
+      }
+    });
+
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      final prefs = await SharedPreferences.getInstance();
+      if (prefs.getBool('isLoggedIn') == true) {
+        _initializeNotifications();
+        _loadSharedPreferencesData();
+        _sendXMedsoftTokenToAppDelegate();
+        _currentBody = _buildLocationBody();
+        platform.setMethodCallHandler(_methodCallHandler);
+        WidgetsBinding.instance.addObserver(this);
+        _startApiPolling(); // start immediately when app launches
+      }
+    });
   }
 
   @override
@@ -132,7 +238,7 @@ class _MainHomeScreenState extends State<MainHomeScreen>
 
   void _startApiPolling() {
     _stopApiPolling(); // prevent duplicate timers
-    _timer = Timer.periodic(const Duration(seconds: 10), (_) async {
+    _timer = Timer.periodic(const Duration(minutes: 30), (_) async {
       await _callApi();
     });
 
@@ -519,62 +625,27 @@ class _MainHomeScreenState extends State<MainHomeScreen>
   }
 
   Widget _buildLocationBody() {
-    debugPrint(
-      'Building Location Body. Current _errorMessage: $_errorMessage, _isLoading: $_isLoading',
-    );
-
     return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          if (_errorMessage != null)
-            Container(
-              margin: const EdgeInsets.symmetric(
-                horizontal: 20.0,
-                vertical: 10.0,
-              ),
-              padding: const EdgeInsets.all(15.0),
-              decoration: BoxDecoration(
-                color: Colors.red.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(10.0),
-                border: Border.all(color: Colors.red, width: 1.5),
-              ),
-              child: Text(
-                _errorMessage!,
-                style: const TextStyle(
-                  color: Colors.red,
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                ),
-                textAlign: TextAlign.center,
-              ),
-            ),
-
-          if (_isLoading) const CircularProgressIndicator(),
-
-          Padding(
-            padding: const EdgeInsets.symmetric(vertical: 20.0),
-            child: ElevatedButton.icon(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF00CCCC),
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 24,
-                  vertical: 14,
-                ),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-              onPressed: _isLoading ? null : fetchRoom,
-              icon: const Icon(Icons.map),
-              label: Text(
-                _isLoading ? 'Түр хүлээнэ үү...' : 'Газрын зураг харах',
-                style: const TextStyle(fontSize: 18),
-              ),
-            ),
+      child: ElevatedButton.icon(
+        style: ElevatedButton.styleFrom(
+          backgroundColor: const Color(0xFF00CCCC),
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
           ),
-        ],
+        ),
+        onPressed:
+            _isLoading
+                ? null
+                : () async {
+                  setState(() => _isLoading = true);
+                  await fetchRoom();
+                },
+        icon: const Icon(Icons.map),
+        label: Text(
+          _isLoading ? 'Түр хүлээнэ үү...' : 'Газрын зураг харах',
+          style: const TextStyle(fontSize: 18),
+        ),
       ),
     );
   }
@@ -583,14 +654,16 @@ class _MainHomeScreenState extends State<MainHomeScreen>
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: const Color(0xFF00CCCC),
+        backgroundColor: Color(0xFF00CCCC),
         title: const Text('Байршил тогтоогч'),
-        foregroundColor: Colors.white,
       ),
       drawer: Drawer(
         child: Column(
+          // The main container must be a Column
           children: <Widget>[
+            // 1. DrawerHeader (Fixed Height)
             DrawerHeader(
+              // ... (your existing decoration and child)
               decoration: const BoxDecoration(
                 color: Color.fromARGB(255, 236, 169, 175),
               ),
@@ -602,50 +675,92 @@ class _MainHomeScreenState extends State<MainHomeScreen>
                 ),
               ),
             ),
-            ListTile(
-              title: Center(
-                child: Text(
-                  sharedPreferencesData['Username'] ?? 'Зочин',
-                  style: const TextStyle(fontSize: 20),
-                ),
+
+            // 2. Scrollable Content Area (Uses Expanded to take up remaining space)
+            Expanded(
+              child: ListView(
+                // <--- Make the *middle* section scrollable
+                padding: EdgeInsets.zero,
+                children: <Widget>[
+                  ListTile(
+                    title: Center(
+                      child: Text(
+                        sharedPreferencesData['Username'] ?? 'Зочин',
+                        style: const TextStyle(fontSize: 20),
+                      ),
+                    ),
+                  ),
+                  const Divider(),
+                  ListTile(
+                    leading: const Icon(
+                      Icons.info_outline,
+                      color: Colors.blueAccent,
+                    ),
+                    title: const Text(
+                      'Хэрэглэх заавар',
+                      style: TextStyle(fontSize: 18),
+                    ),
+                    onTap: () {
+                      Navigator.pop(context);
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const GuideScreen(),
+                        ),
+                      );
+                    },
+                  ),
+                  ListTile(
+                    leading: const Icon(Icons.location_on, color: Colors.teal),
+                    title: const Text(
+                      'Байршил',
+                      style: TextStyle(fontSize: 18),
+                    ),
+                    onTap: () {
+                      Navigator.pop(context);
+                      setState(() {
+                        _currentBody = _buildLocationBody();
+                      });
+                    },
+                  ),
+                  ListTile(
+                    leading: const Icon(Icons.person, color: Colors.deepPurple),
+                    title: const Text(
+                      'Профайл',
+                      style: TextStyle(fontSize: 18),
+                    ),
+                    onTap: () {
+                      Navigator.pop(context);
+                      setState(() {
+                        _currentBody = const ProfileScreen();
+                      });
+                    },
+                  ),
+                  ListTile(
+                    leading: const Icon(
+                      Icons.qr_code_scanner,
+                      color: Colors.green,
+                    ),
+                    title: const Text(
+                      'QR код унших',
+                      style: TextStyle(fontSize: 18),
+                    ),
+                    onTap: () {
+                      Navigator.pop(context);
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const QrScanScreen(),
+                        ),
+                      );
+                    },
+                  ),
+                ],
               ),
             ),
-            const Divider(),
-            ListTile(
-              leading: const Icon(Icons.info_outline, color: Colors.blueAccent),
-              title: const Text(
-                'Хэрэглэх заавар',
-                style: TextStyle(fontSize: 18),
-              ),
-              onTap: () {
-                Navigator.pop(context);
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => const GuideScreen()),
-                );
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.location_on, color: Colors.teal),
-              title: const Text('Байршил', style: TextStyle(fontSize: 18)),
-              onTap: () {
-                Navigator.pop(context);
-                setState(() {
-                  _currentBody = _buildLocationBody();
-                });
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.person, color: Colors.deepPurple),
-              title: const Text('Профайл', style: TextStyle(fontSize: 18)),
-              onTap: () {
-                Navigator.pop(context);
-                setState(() {
-                  _currentBody = const ProfileScreen();
-                });
-              },
-            ),
-            const Spacer(),
+
+            // 3. Sticky Footer (Fixed Height)
+            // This part will be pushed to the very bottom.
             Container(
               margin: const EdgeInsets.all(10),
               decoration: BoxDecoration(
@@ -663,10 +778,14 @@ class _MainHomeScreenState extends State<MainHomeScreen>
                     ),
                   ),
                 ),
-                onTap: _logOut,
+                onTap: () {
+                  _logOut();
+                },
               ),
             ),
-            const SizedBox(height: 50),
+
+            // Remove the large SizedBox(height: 50) and use a smaller margin if needed.
+            const SizedBox(height: 10),
           ],
         ),
       ),

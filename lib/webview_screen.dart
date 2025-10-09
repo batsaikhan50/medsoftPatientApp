@@ -164,7 +164,7 @@ class _WebViewScreenState extends State<WebViewScreen> {
   void _startPolling() {
     _pollingTimer?.cancel(); // avoid multiple timers
 
-    _pollingTimer = Timer.periodic(const Duration(minutes: 1), (timer) async {
+    _pollingTimer = Timer.periodic(const Duration(minutes:30), (timer) async {
       if (widget.roomIdNum != null && arrivedInFifty) {
         await _checkDoneStatus();
       } else {
@@ -178,7 +178,7 @@ class _WebViewScreenState extends State<WebViewScreen> {
       final prefs = await SharedPreferences.getInstance();
       final token = prefs.getString('X-Medsoft-Token') ?? '';
 
-      final uri = Uri.parse("https://app.medsoft.care/api/room/done_request");
+      final uri = Uri.parse("${Constants.appUrl}/room/done_request");
 
       final response = await http.get(
         uri,
