@@ -107,62 +107,8 @@ class _WebViewScreenState extends State<WebViewScreen> {
     }
   }
 
-  // Future<void> _markArrived(String id) async {
-  //   try {
-  //     final prefs = await SharedPreferences.getInstance();
-  //     final token = prefs.getString('X-Medsoft-Token') ?? '';
-
-  //     final uri = Uri.parse('${Constants.appUrl}/room/arrived?id=$id');
-
-  //     final response = await http.get(
-  //       uri,
-  //       headers: {'Authorization': 'Bearer $token', 'X-Medsoft-Token': token},
-  //     );
-
-  //     if (response.statusCode == 200) {
-  //       final json = jsonDecode(response.body);
-  //       if (json['success'] == true) {
-  //         ScaffoldMessenger.of(context).showSnackBar(
-  //           const SnackBar(
-  //             content: Text('Амжилттай бүртгэгдлээ'),
-  //             backgroundColor: Colors.green,
-  //             duration: Duration(seconds: 1),
-  //           ),
-  //         );
-  //         Navigator.of(context).pop();
-  //       } else {
-  //         ScaffoldMessenger.of(context).showSnackBar(
-  //           SnackBar(
-  //             content: Text(json['message'] ?? 'Амжилтгүй'),
-  //             backgroundColor: Colors.red,
-  //             duration: const Duration(seconds: 1),
-  //           ),
-  //         );
-  //       }
-  //     } else {
-  //       final Map<String, dynamic> data = json.decode(response.body);
-  //       ScaffoldMessenger.of(context).showSnackBar(
-  //         SnackBar(
-  //           content: Text('HTTP алдаа: ${data.toString()}'),
-  //           backgroundColor: Colors.red,
-  //           duration: const Duration(seconds: 1),
-  //         ),
-  //       );
-  //     }
-  //   } catch (e) {
-  //     debugPrint("Failed to mark arrived: $e");
-  //     ScaffoldMessenger.of(context).showSnackBar(
-  //       SnackBar(
-  //         content: Text('Сүлжээний алдаа: $e'),
-  //         backgroundColor: Colors.red,
-  //         duration: const Duration(seconds: 1),
-  //       ),
-  //     );
-  //   }
-  // }
-
   void _startPolling() {
-    _pollingTimer?.cancel(); // avoid multiple timers
+    _pollingTimer?.cancel();
 
     _pollingTimer = Timer.periodic(const Duration(minutes: 5), (timer) async {
       if (widget.roomIdNum != null && arrivedInFifty) {
@@ -194,7 +140,7 @@ class _WebViewScreenState extends State<WebViewScreen> {
 
           if (done == true && doneAt != null) {
             debugPrint("Done request completed at: $doneAt");
-            // you can stop polling if you don’t need further checks
+
             _pollingTimer?.cancel();
           }
         }
@@ -206,13 +152,11 @@ class _WebViewScreenState extends State<WebViewScreen> {
     }
   }
 
-
   @override
   void dispose() {
     _pollingTimer?.cancel();
     super.dispose();
   }
-  
 
   Widget _buildActionButton({
     required IconData icon,
@@ -295,19 +239,6 @@ class _WebViewScreenState extends State<WebViewScreen> {
                       },
                     ),
                   ),
-
-                  // if (widget.roomIdNum != null && arrivedInFifty)
-                  //   Positioned(
-                  //     top: 72,
-                  //     right: 16,
-                  //     child: _buildActionButton(
-                  //       icon: Icons.check_circle,
-                  //       label: 'Ирсэн',
-                  //       onPressed: () {
-                  //         _markArrived(widget.roomIdNum!);
-                  //       },
-                  //     ),
-                  //   ),
 
                   Positioned(
                     bottom: 24,

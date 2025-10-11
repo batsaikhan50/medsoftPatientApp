@@ -23,11 +23,6 @@ class _ClaimQRScreenState extends State<ClaimQRScreen> {
       final prefs = await SharedPreferences.getInstance();
       final tokenSaved = prefs.getString('X-Medsoft-Token') ?? '';
       final server = prefs.getString('X-Tenant') ?? '';
-      // final headers = {
-      //   'X-Medsoft-Token': tokenSaved,
-      //   'X-Tenant': server,
-      //   'X-Token': Constants.xToken,
-      // };
 
       final headers = {"Authorization": "Bearer $tokenSaved"};
       debugPrint('widget.token: ${widget.token}');

@@ -11,8 +11,6 @@ import 'package:medsoft_patient/claim_qr.dart';
 import 'package:medsoft_patient/constants.dart';
 import 'package:medsoft_patient/main.dart';
 import 'package:medsoft_patient/reset_password.dart';
-
-import 'package:medsoft_patient/webview_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -363,13 +361,11 @@ class _LoginScreenState extends State<LoginScreen> with WidgetsBindingObserver {
     }
   }
 
-  /// Retrieve the saved scanned token from SharedPreferences
   Future<String?> getSavedToken() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     return prefs.getString('scannedToken');
   }
 
-  /// Call the /wait and /attend endpoints with the scanned token
   Future<void> callWaitApi(BuildContext context, String token) async {
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -384,7 +380,6 @@ class _LoginScreenState extends State<LoginScreen> with WidgetsBindingObserver {
       debugPrint('Login Wait API Response: ${waitResponse.body}');
 
       if (waitResponse.statusCode == 200) {
-        // ✅ Success → go to ClaimQRScreen
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(builder: (_) => ClaimQRScreen(token: token)),
@@ -627,59 +622,6 @@ class _LoginScreenState extends State<LoginScreen> with WidgetsBindingObserver {
     );
   }
 
-  // KeyboardActionsConfig _buildKeyboardActionsConfig(BuildContext context) {
-  //   return KeyboardActionsConfig(
-  //     keyboardActionsPlatform: KeyboardActionsPlatform.ALL,
-  //     nextFocus: true,
-  //     keyboardBarColor: Colors.grey[200],
-  //     actions: [
-  //       if (_selectedToggleIndex == 0)
-  //         KeyboardActionsItem(
-  //           focusNode: _usernameLoginFocus,
-  //           displayArrows: true,
-  //           onTapAction: () => _scrollIntoView(_usernameLoginFocus),
-  //         ),
-  //       KeyboardActionsItem(
-  //         focusNode: _passwordLoginFocus,
-  //         displayArrows: true,
-  //         onTapAction: () => _scrollIntoView(_passwordLoginFocus),
-  //       ),
-  //       if (_selectedToggleIndex == 1) ...[
-  //         KeyboardActionsItem(
-  //           focusNode: _usernameFocus,
-  //           displayArrows: true,
-  //           onTapAction: () => _scrollIntoView(_usernameFocus),
-  //         ),
-  //         KeyboardActionsItem(
-  //           focusNode: _passwordFocus,
-  //           displayArrows: true,
-  //           onTapAction: () => _scrollIntoView(_passwordFocus),
-  //         ),
-  //         KeyboardActionsItem(
-  //           focusNode: _passwordCheckFocus,
-  //           displayArrows: true,
-  //           onTapAction: () => _scrollIntoView(_passwordCheckFocus),
-  //         ),
-  //         KeyboardActionsItem(
-  //           focusNode: _regNoFocus,
-  //           displayArrows: true,
-  //           onTapAction: () => _scrollIntoView(_regNoFocus),
-  //         ),
-  //         KeyboardActionsItem(
-  //           focusNode: _lastnameFocus,
-  //           displayArrows: true,
-  //           onTapAction: () => _scrollIntoView(_lastnameFocus),
-  //         ),
-  //         KeyboardActionsItem(
-  //           focusNode: _firstnameFocus,
-  //           displayArrows: true,
-  //           onTapAction: () => _scrollIntoView(_firstnameFocus),
-  //         ),
-  //       ],
-  //     ],
-  //   );
-  // }
-
   KeyboardActionsConfig _buildKeyboardActionsConfig(BuildContext context) {
     const Color iosToolbarColor = Color(0x00D8D7DE);
 
@@ -693,50 +635,42 @@ class _LoginScreenState extends State<LoginScreen> with WidgetsBindingObserver {
             focusNode: _usernameLoginFocus,
             displayArrows: true,
             displayDoneButton: false,
-            // onTapAction: () => _scrollIntoView(_usernameLoginFocus),
           ),
         KeyboardActionsItem(
           focusNode: _passwordLoginFocus,
           displayArrows: true,
           displayDoneButton: false,
-          // onTapAction: () => _scrollIntoView(_passwordLoginFocus),
         ),
         if (_selectedToggleIndex == 1) ...[
           KeyboardActionsItem(
             focusNode: _usernameFocus,
             displayArrows: true,
             displayDoneButton: false,
-            // onTapAction: () => _scrollIntoView(_usernameFocus),
           ),
           KeyboardActionsItem(
             focusNode: _passwordFocus,
             displayArrows: true,
             displayDoneButton: false,
-            // onTapAction: () => _scrollIntoView(_passwordFocus),
           ),
           KeyboardActionsItem(
             focusNode: _passwordCheckFocus,
             displayArrows: true,
             displayDoneButton: false,
-            // onTapAction: () => _scrollIntoView(_passwordCheckFocus),
           ),
           KeyboardActionsItem(
             focusNode: _regNoFocus,
             displayArrows: true,
             displayDoneButton: false,
-            // onTapAction: () => _scrollIntoView(_regNoFocus),
           ),
           KeyboardActionsItem(
             focusNode: _lastnameFocus,
             displayArrows: true,
             displayDoneButton: false,
-            // onTapAction: () => _scrollIntoView(_lastnameFocus),
           ),
           KeyboardActionsItem(
             focusNode: _firstnameFocus,
             displayArrows: true,
             displayDoneButton: false,
-            // onTapAction: () => _scrollIntoView(_firstnameFocus),
           ),
         ],
       ],
@@ -1131,35 +1065,12 @@ class _LoginScreenState extends State<LoginScreen> with WidgetsBindingObserver {
                     alignment: Alignment.centerRight,
                     child: GestureDetector(
                       onTap: () async {
-                        SharedPreferences prefs =
-                            await SharedPreferences.getInstance();
-                        String? forgetUrl = prefs.getString('forgetUrl');
-
-                        // if (forgetUrl != null && forgetUrl.isNotEmpty) {
-                        // Navigator.push(
-                        //   context,
-                        //   MaterialPageRoute(
-                        //     builder:
-                        //         (context) => WebViewScreen(
-                        //           url:
-                        //               '$forgetUrl/forget?callback=medsoftpatient://callback',
-                        //           title: '',
-                        //         ),
-                        //   ),
-                        // );
-
                         Navigator.push(
                           context,
                           MaterialPageRoute(
                             builder: (context) => const ResetPasswordScreen(),
                           ),
                         );
-                        // } else {
-                        //   setState(() {
-                        //     _errorMessage =
-                        //         'Нууц үг солихын тулд эмнэлэг сонгоно уу.';
-                        //   });
-                        // }
                       },
                       child: const Text(
                         'Нууц үг мартсан?',
@@ -1172,6 +1083,7 @@ class _LoginScreenState extends State<LoginScreen> with WidgetsBindingObserver {
                     ),
                   ),
 
+                if (_selectedToggleIndex == 0) const SizedBox(height: 20),
                 if (_selectedToggleIndex == 1) const SizedBox(height: 10),
 
                 ElevatedButton(

@@ -35,7 +35,7 @@ class GuideScreen extends StatelessWidget {
         itemBuilder: (context, index) {
           final step = guideSteps[index];
           return _buildGuideAccordion(
-            context: context, // ✅ Add this line
+            context: context,
             caption: step['caption']!,
             assetPath: step['asset']!,
           );

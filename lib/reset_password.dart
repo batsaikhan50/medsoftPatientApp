@@ -1,11 +1,12 @@
 import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 import 'package:medsoft_patient/constants.dart';
 
 class ResetPasswordScreen extends StatefulWidget {
-  const ResetPasswordScreen({Key? key}) : super(key: key);
+  const ResetPasswordScreen({super.key});
 
   @override
   State<ResetPasswordScreen> createState() => _ResetPasswordScreenState();
@@ -21,11 +22,11 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
   bool _isLoading = false;
   bool _isSendingOtp = false;
   bool _otpSent = false;
-  bool _showPhoneError = false; // ✅ Show red pill if invalid
+  bool _showPhoneError = false;
 
   bool get _isPhoneValid {
     final phone = _usernameController.text.trim();
-    final regex = RegExp(r'^\d{8}$'); // ✅ 8 digits for Mongolia
+    final regex = RegExp(r'^\d{8}$');
     return regex.hasMatch(phone);
   }
 
@@ -139,7 +140,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
       if (_showPhoneError && _isPhoneValid) {
         setState(() => _showPhoneError = false);
       } else {
-        setState(() {}); // update send button enabled state
+        setState(() {});
       }
     });
   }
@@ -158,15 +159,14 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
             TextField(
               controller: _usernameController,
               keyboardType: TextInputType.phone,
-              maxLength: 8, // ✅ Limit to 8 digits
+              maxLength: 8,
               inputFormatters: [
-                FilteringTextInputFormatter
-                    .digitsOnly, // ✅ Only numbers allowed
+                FilteringTextInputFormatter.digitsOnly,
                 LengthLimitingTextInputFormatter(8),
               ],
               decoration: const InputDecoration(
                 labelText: 'Утасны дугаар (8 оронтой)',
-                counterText: '', // ✅ Hides the length counter below the field
+                counterText: '',
               ),
               onChanged: (value) {
                 setState(() {

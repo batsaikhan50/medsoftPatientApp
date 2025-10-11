@@ -15,15 +15,9 @@ import 'package:medsoft_patient/webview_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uni_links/uni_links.dart';
 
-// The MainHomeScreen logic/polling should be merged into the existing HomeScreen class
-// to avoid having two different "home screens".
-// I will not include the full code for HomeScreen here as it is already defined
-// in home_screen.dart, but the logic previously in MainHomeScreen should be moved there.
-
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
 void main() {
-  // Ensure Flutter is initialized before accessing platform channels (like SharedPreferences)
   WidgetsFlutterBinding.ensureInitialized();
   runApp(const MyApp());
 }
@@ -65,33 +59,24 @@ class MyApp extends StatelessWidget {
     );
   }
 
-  // Merged and corrected _getInitialScreen logic
   Future<Widget> _getInitialScreen() async {
     final prefs = await SharedPreferences.getInstance();
 
-    // --- 1. Deep Linking/QR Logic (from the second function) ---
-    // Use getInitialLink() from uni_links package
     final initialLink = await getInitialLink();
     debugPrint("IN MY MAIN'S _getInitialScreen initialLink: $initialLink");
 
     if (initialLink != null) {
       Uri uri = Uri.parse(initialLink);
 
-      // Check if the link path starts with 'qr' and has a token segment
       if (uri.pathSegments.isNotEmpty &&
           uri.pathSegments[0] == 'qr' &&
           uri.pathSegments.length > 1) {
         String token = uri.pathSegments[1];
         await prefs.setString('scannedToken', token);
         debugPrint('Scanned token stored: $token');
-
-        // After storing token, we still want to go to the login screen
-        // if not logged in, or home screen if logged in.
       }
     }
 
-    // --- 2. Shared Preferences Check (from both functions) ---
-    // Use the comprehensive check from the first original function (which was inside MyApp)
     final bool isLoggedIn = prefs.getBool('isLoggedIn') ?? false;
     debugPrint('isLoggedIn: $isLoggedIn');
 
@@ -104,10 +89,7 @@ class MyApp extends StatelessWidget {
     final bool isGotUsername = username != null && username.isNotEmpty;
     debugPrint('isGotUsername: $isGotUsername');
 
-    // --- 3. Return Logic ---
-    // If all login credentials and tokens are present, show the home screen.
     if (isLoggedIn && isGotMedsoftToken && isGotUsername) {
-      // Use the imported HomeScreen
       return const MyHomePage(title: 'Дуудлагын жагсаалт');
     } else {
       return const LoginScreen();
@@ -211,7 +193,7 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
         _currentBody = _buildLocationBody();
         platform.setMethodCallHandler(_methodCallHandler);
         WidgetsBinding.instance.addObserver(this);
-        _startApiPolling(); // start immediately when app launches
+        _startApiPolling();
       }
     });
   }
@@ -226,22 +208,19 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
-      // app in foreground
       _startApiPolling();
     } else if (state == AppLifecycleState.paused ||
         state == AppLifecycleState.inactive) {
-      // app in background
       _stopApiPolling();
     }
   }
 
   void _startApiPolling() {
-    _stopApiPolling(); // prevent duplicate timers
+    _stopApiPolling();
     _timer = Timer.periodic(const Duration(minutes: 5), (_) async {
       await _callApi();
     });
 
-    // 👇 also trigger immediately on start
     _callApi();
   }
 
@@ -274,7 +253,6 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
       if (response.statusCode == 200) {
         final Map<String, dynamic> jsonBody = json.decode(response.body);
 
-        // check if data.done is true
         if (jsonBody['success'] == true &&
             jsonBody['data']?['doneRequested'] == true) {
           if (!_isDialogShowing) {
@@ -294,13 +272,12 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
 
     showDialog(
       context: context,
-      barrierDismissible: false, // force user to pick an option
+      barrierDismissible: false,
       builder:
           (_) => AlertDialog(
             title: const Text("Үзлэг дууссан"),
             content: const Text("Үзсэн дууссан эсэхийг баталгаажуулна уу?"),
             actions: [
-              // Decline Button (Red)
               TextButton(
                 style: TextButton.styleFrom(foregroundColor: Colors.red),
                 onPressed: () {
@@ -308,12 +285,10 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
                   _isDialogShowing = false;
 
                   debugPrint("❌ User declined the request.");
-                  // TODO: call API for decline if needed
                 },
                 child: const Text("Татгалзах"),
               ),
 
-              // Accept Button (Green)
               TextButton(
                 style: TextButton.styleFrom(foregroundColor: Colors.green),
                 onPressed: () async {
@@ -358,7 +333,7 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
 
                     if (response.statusCode == 200) {
                       debugPrint("✅ Done confirmed, stopping timer.");
-                      _stopApiPolling(); // stop polling until app restarts
+                      _stopApiPolling();
                     } else {
                       debugPrint(
                         "❌ Done API failed with status: ${response.statusCode}",
@@ -661,11 +636,8 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
       ),
       drawer: Drawer(
         child: Column(
-          // The main container must be a Column
           children: <Widget>[
-            // 1. DrawerHeader (Fixed Height)
             DrawerHeader(
-              // ... (your existing decoration and child)
               decoration: const BoxDecoration(
                 color: Color.fromARGB(255, 236, 169, 175),
               ),
@@ -678,10 +650,8 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
               ),
             ),
 
-            // 2. Scrollable Content Area (Uses Expanded to take up remaining space)
             Expanded(
               child: ListView(
-                // <--- Make the *middle* section scrollable
                 padding: EdgeInsets.zero,
                 children: <Widget>[
                   ListTile(
@@ -761,8 +731,6 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
               ),
             ),
 
-            // 3. Sticky Footer (Fixed Height)
-            // This part will be pushed to the very bottom.
             Container(
               margin: const EdgeInsets.all(10),
               decoration: BoxDecoration(
@@ -786,7 +754,6 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
               ),
             ),
 
-            // Remove the large SizedBox(height: 50) and use a smaller margin if needed.
             const SizedBox(height: 10),
           ],
         ),
