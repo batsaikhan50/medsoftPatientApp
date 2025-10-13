@@ -460,7 +460,7 @@ class _LoginScreenState extends State<LoginScreen> with WidgetsBindingObserver {
         SharedPreferences prefs = await SharedPreferences.getInstance();
         await prefs.setBool('isLoggedIn', false);
         setState(() {
-          _errorMessage = 'Нэвтрэх үед алдаа гарлаа. Дахин оролдоно уу.';
+          _errorMessage = 'Нэвтрэх нэр эсвэл нууц үг буруу байна. Дахин оролдоно уу.';
           _isLoading = false;
         });
       }
@@ -714,7 +714,7 @@ class _LoginScreenState extends State<LoginScreen> with WidgetsBindingObserver {
       padding: EdgeInsets.only(
         left: 16,
         right: 16,
-        top: 20,
+        top: MediaQuery.of(context).size.shortestSide >= 600 ? 200 : 20,
         bottom: MediaQuery.of(context).viewInsets.bottom + 32,
       ),
       keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,

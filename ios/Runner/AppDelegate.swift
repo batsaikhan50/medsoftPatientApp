@@ -172,8 +172,15 @@ import UserNotifications
     case .authorizedAlways:
       NSLog("Authorized Always")
       manager.startUpdatingLocation()
-      requestNotificationPermission()
-      didRequestAlwaysPermission = false  // Reset flag
+
+      let isLoggedIn = UserDefaults.standard.bool(forKey: "isLoggedIn")
+      if isLoggedIn {
+        requestNotificationPermission()
+      } else {
+        NSLog("User not logged in, skipping notification permission request")
+      }
+
+      didRequestAlwaysPermission = false
 
     case .authorizedWhenInUse:
       Timer.scheduledTimer(withTimeInterval: 5.0, repeats: false) { _ in
@@ -207,7 +214,12 @@ import UserNotifications
       DispatchQueue.main.async {
         switch settings.authorizationStatus {
         case .notDetermined:
-          self.requestNotificationPermission()
+          let isLoggedIn = UserDefaults.standard.bool(forKey: "isLoggedIn")
+          if isLoggedIn {
+            self.requestNotificationPermission()
+          } else {
+            NSLog("User not logged in, skipping notification permission prompt")
+          }
 
         case .denied:
           self.showNotificationPermissionDialog()
