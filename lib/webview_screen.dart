@@ -110,7 +110,7 @@ class _WebViewScreenState extends State<WebViewScreen> {
   void _startPolling() {
     _pollingTimer?.cancel();
 
-    _pollingTimer = Timer.periodic(const Duration(minutes: 5), (timer) async {
+    _pollingTimer = Timer.periodic(const Duration(minutes: 60), (timer) async {
       if (widget.roomIdNum != null && arrivedInFifty) {
         await _checkDoneStatus();
       } else {

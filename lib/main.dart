@@ -218,7 +218,7 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
 
   void _startApiPolling() {
     _stopApiPolling();
-    _timer = Timer.periodic(const Duration(minutes: 5), (_) async {
+    _timer = Timer.periodic(const Duration(minutes: 60), (_) async {
       await _callApi();
     });
 
