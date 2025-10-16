@@ -8,17 +8,31 @@ import 'package:http/http.dart' as http;
 import 'package:medsoft_patient/claim_qr.dart';
 import 'package:medsoft_patient/constants.dart';
 import 'package:medsoft_patient/guide.dart';
+import 'package:medsoft_patient/history_screen.dart';
 import 'package:medsoft_patient/login.dart';
+import 'package:medsoft_patient/notification_screen.dart';
 import 'package:medsoft_patient/profile_screen.dart';
 import 'package:medsoft_patient/qr_scan_screen.dart';
+import 'package:medsoft_patient/time_order_screen.dart';
 import 'package:medsoft_patient/webview_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uni_links/uni_links.dart';
+import 'package:flutter_apns/flutter_apns.dart';
 
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
+PushConnector? _connector;
+
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
+
+  _connector = createPushConnector();
+  _connector!.configure(
+    onLaunch: (msg) async => debugPrint('onLaunch: $msg'),
+    onResume: (msg) async => debugPrint('onResume: $msg'),
+    onMessage: (msg) async => debugPrint('onMessage: $msg'),
+  );
+
   runApp(const MyApp());
 }
 
@@ -100,7 +114,6 @@ class MyApp extends StatelessWidget {
 
 class MyHomePage extends StatefulWidget {
   const MyHomePage({super.key, required this.title});
-
   final String title;
 
   @override
@@ -112,19 +125,31 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
       FlutterLocalNotificationsPlugin();
   static const platform = MethodChannel('com.example.medsoft_patient/location');
 
+  int _selectedIndex = 0; // 👈 track current tab index
+
   String _liveLocation = "Fetching live location...";
   final List<String> _locationHistory = [];
   Map<String, dynamic> sharedPreferencesData = {};
   bool _isLoading = false;
   Map<String, dynamic>? roomInfo;
   String? _errorMessage;
-  Widget _currentBody = Container();
   Timer? _timer;
   bool _isDialogShowing = false;
+  String appBarCaption = 'Медсофт';
+
+  String? _token;
 
   @override
   void initState() {
     super.initState();
+    _connector!.token.addListener(() {
+      final token = _connector!.token.value;
+      if (token != null) {
+        print('📲 APNs device token: $token');
+        setState(() => _token = token);
+        // TODO: send this token to your Node.js backend via your API
+      }
+    });
 
     Future<void> saveScannedToken(String token) async {
       final prefs = await SharedPreferences.getInstance();
@@ -191,7 +216,6 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
         _initializeNotifications();
         _loadSharedPreferencesData();
         _sendXMedsoftTokenToAppDelegate();
-        _currentBody = _buildLocationBody();
         platform.setMethodCallHandler(_methodCallHandler);
         WidgetsBinding.instance.addObserver(this);
         _startApiPolling();
@@ -204,6 +228,46 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
     WidgetsBinding.instance.removeObserver(this);
     _stopApiPolling();
     super.dispose();
+  }
+
+  void _onItemTapped(int index) {
+    setState(() {
+      _selectedIndex = index;
+      switch (index) {
+        case 0:
+          appBarCaption = 'Медсофт';
+          break;
+        case 1:
+          appBarCaption = 'Цаг захиалга';
+          break;
+        case 2:
+          appBarCaption = 'QR сканнер';
+          break;
+        case 3:
+          appBarCaption = 'Өвчний түүх';
+          break;
+        case 4:
+          appBarCaption = 'Профайл';
+          break;
+      }
+    });
+  }
+
+  Widget _buildSelectedBody() {
+    switch (_selectedIndex) {
+      case 0:
+        return _buildLocationBody();
+      case 1:
+        return const TimeOrderScreen();
+      case 2:
+        return const QrScanScreen();
+      case 3:
+        return const HistoryScreen();
+      case 4:
+        return const ProfileScreen();
+      default:
+        return _buildLocationBody();
+    }
   }
 
   @override
@@ -257,7 +321,7 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
         if (jsonBody['success'] == true &&
             jsonBody['data']?['doneRequested'] == true) {
           if (!_isDialogShowing) {
-            _showDoneDialog();
+            // _showDoneDialog(); //Түр хасав
           }
         }
       }
@@ -355,7 +419,7 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
     setState(() {
       _isLoading = true;
       _errorMessage = null;
-      _currentBody = _buildLocationBody();
+      // _currentBody = _buildLocationBody();
     });
 
     debugPrint(
@@ -370,7 +434,7 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
           _isLoading = false;
           _errorMessage =
               'Алдаа: Нэвтрэх эрх байхгүй байна. Дахин нэвтэрнэ үү.';
-          _currentBody = _buildLocationBody();
+          // _currentBody = _buildLocationBody();
         });
         debugPrint('Error: Token is empty, setting error and logging out.');
         if (mounted) {
@@ -428,7 +492,7 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
             setState(() {
               _isLoading = false;
               _errorMessage = null;
-              _currentBody = _buildLocationBody();
+              // _currentBody = _buildLocationBody();
             });
             debugPrint('Room fetch success! Navigating...');
           } else {
@@ -436,7 +500,7 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
               _isLoading = false;
               _errorMessage =
                   'Алдаа: Серверээс ирсэн мэдээлэл дутуу байна (url эсвэл roomId байхгүй).';
-              _currentBody = _buildLocationBody();
+              // _currentBody = _buildLocationBody();
             });
             debugPrint(
               'Error: roomInfo is null or missing "url"/"roomId" keys after successful API call. roomInfo: $roomInfo',
@@ -448,7 +512,7 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
             _errorMessage =
                 json['message'] ??
                 'Өрөөний мэдээлэл татахад алдаа гарлаа: Амжилтгүй хүсэлт.';
-            _currentBody = _buildLocationBody();
+            // _currentBody = _buildLocationBody();
           });
           debugPrint('API success false: ${json['message']}');
         }
@@ -457,7 +521,7 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
           _isLoading = false;
           _errorMessage =
               'Серверийн алдаа: ${response.statusCode}. Дахин оролдоно уу.';
-          _currentBody = _buildLocationBody();
+          // _currentBody = _buildLocationBody();
         });
         debugPrint(
           'Failed to fetch patients with status code: ${response.statusCode}. Body: ${response.body}',
@@ -468,7 +532,7 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
         _isLoading = false;
         _errorMessage =
             'Учирсан алдаа: ${e.toString()}. Интернет холболтоо шалгана уу.';
-        _currentBody = _buildLocationBody();
+        // _currentBody = _buildLocationBody();
       });
       debugPrint('Exception during fetchRoom: $e');
     }
@@ -603,28 +667,33 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
   }
 
   Widget _buildLocationBody() {
-    return Center(
-      child: ElevatedButton.icon(
-        style: ElevatedButton.styleFrom(
-          backgroundColor: const Color(0xFF00CCCC),
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
+    return Column(
+      children: [
+        Center(
+          child: ElevatedButton.icon(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF00CCCC),
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+            onPressed:
+                _isLoading
+                    ? null
+                    : () async {
+                      setState(() => _isLoading = true);
+                      await fetchRoom();
+                    },
+            icon: const Icon(Icons.map),
+            label: Text(
+              _isLoading ? 'Түр хүлээнэ үү...' : 'Газрын зураг харах',
+              style: const TextStyle(fontSize: 18),
+            ),
           ),
         ),
-        onPressed:
-            _isLoading
-                ? null
-                : () async {
-                  setState(() => _isLoading = true);
-                  await fetchRoom();
-                },
-        icon: const Icon(Icons.map),
-        label: Text(
-          _isLoading ? 'Түр хүлээнэ үү...' : 'Газрын зураг харах',
-          style: const TextStyle(fontSize: 18),
-        ),
-      ),
+        Center(child: Text(_token ?? 'Waiting for APNs token...')),
+      ],
     );
   }
 
@@ -632,134 +701,141 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: Color(0xFF00CCCC),
-        title: const Text('Байршил тогтоогч'),
-      ),
-      drawer: Drawer(
-        child: Column(
-          children: <Widget>[
-            DrawerHeader(
-              decoration: const BoxDecoration(
-                color: Color.fromARGB(255, 236, 169, 175),
-              ),
-              child: Center(
-                child: Image.asset(
-                  'assets/icon/logoTransparent.png',
-                  width: 150,
-                  height: 150,
+        leading: Padding(
+          padding: const EdgeInsets.only(left: 15.0),
+          child: Builder(
+            builder:
+                (context) => IconButton(
+                  icon: const Icon(Icons.menu),
+                  onPressed: () {
+                    Scaffold.of(context).openDrawer();
+                  },
                 ),
-              ),
-            ),
-
-            Expanded(
-              child: ListView(
-                padding: EdgeInsets.zero,
-                children: <Widget>[
-                  ListTile(
-                    title: Center(
-                      child: Text(
-                        sharedPreferencesData['Username'] ?? 'Зочин',
-                        style: const TextStyle(fontSize: 20),
-                      ),
-                    ),
-                  ),
-                  const Divider(),
-                  ListTile(
-                    leading: const Icon(
-                      Icons.info_outline,
-                      color: Colors.blueAccent,
-                    ),
-                    title: const Text(
-                      'Хэрэглэх заавар',
-                      style: TextStyle(fontSize: 18),
-                    ),
-                    onTap: () {
-                      Navigator.pop(context);
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const GuideScreen(),
-                        ),
-                      );
-                    },
-                  ),
-                  ListTile(
-                    leading: const Icon(Icons.location_on, color: Colors.teal),
-                    title: const Text(
-                      'Байршил',
-                      style: TextStyle(fontSize: 18),
-                    ),
-                    onTap: () {
-                      Navigator.pop(context);
-                      setState(() {
-                        _currentBody = _buildLocationBody();
-                      });
-                    },
-                  ),
-                  ListTile(
-                    leading: const Icon(Icons.person, color: Colors.deepPurple),
-                    title: const Text(
-                      'Профайл',
-                      style: TextStyle(fontSize: 18),
-                    ),
-                    onTap: () {
-                      Navigator.pop(context);
-                      setState(() {
-                        _currentBody = const ProfileScreen();
-                      });
-                    },
-                  ),
-                  ListTile(
-                    leading: const Icon(
-                      Icons.qr_code_scanner,
-                      color: Colors.green,
-                    ),
-                    title: const Text(
-                      'QR код унших',
-                      style: TextStyle(fontSize: 18),
-                    ),
-                    onTap: () {
-                      Navigator.pop(context);
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const QrScanScreen(),
-                        ),
-                      );
-                    },
-                  ),
-                ],
-              ),
-            ),
-
-            Container(
-              margin: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: const Color.fromARGB(255, 217, 83, 96),
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: ListTile(
-                title: const Center(
-                  child: Text(
-                    'Гарах',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-                onTap: () {
-                  _logOut();
-                },
-              ),
-            ),
-
-            const SizedBox(height: 10),
-          ],
+          ),
         ),
+        backgroundColor: const Color(0xFF00CCCC),
+        title: Text(appBarCaption),
+        actions: [
+          // Wrap the IconButton in Padding to control its spacing
+          Padding(
+            padding: const EdgeInsets.only(right: 15.0), // Adjust 8.0 as needed
+            child: IconButton(
+              icon: const Icon(Icons.notifications),
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const NotificationScreen(),
+                  ),
+                );
+              },
+            ),
+          ),
+        ],
       ),
-      body: _currentBody,
+      drawer: _buildDrawer(),
+      body: _buildSelectedBody(),
+
+      // ✅ Bottom Navigation Bar
+      bottomNavigationBar: BottomNavigationBar(
+        type: BottomNavigationBarType.fixed,
+        currentIndex: _selectedIndex,
+        onTap: _onItemTapped,
+        selectedItemColor: const Color(0xFF00CCCC),
+        unselectedItemColor: Colors.grey,
+        items: const [
+          BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Нүүр'),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.schedule),
+            label: 'Цаг авах',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.qr_code_scanner),
+            label: 'QR',
+          ),
+          BottomNavigationBarItem(icon: Icon(Icons.history), label: 'Түүх'),
+          BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Профайл'),
+        ],
+      ),
+    );
+  }
+
+  Drawer _buildDrawer() {
+    return Drawer(
+      child: Column(
+        children: <Widget>[
+          DrawerHeader(
+            decoration: const BoxDecoration(
+              color: Color.fromARGB(255, 236, 169, 175),
+            ),
+            child: Center(
+              child: Image.asset(
+                'assets/icon/logoTransparent.png',
+                width: 150,
+                height: 150,
+              ),
+            ),
+          ),
+          Expanded(
+            child: ListView(
+              padding: EdgeInsets.zero,
+              children: <Widget>[
+                ListTile(
+                  title: Center(
+                    child: Text(
+                      sharedPreferencesData['Username'] ?? 'Зочин',
+                      style: const TextStyle(fontSize: 20),
+                    ),
+                  ),
+                ),
+                const Divider(),
+                ListTile(
+                  leading: const Icon(
+                    Icons.info_outline,
+                    color: Colors.blueAccent,
+                  ),
+                  title: const Text(
+                    'Хэрэглэх заавар',
+                    style: TextStyle(fontSize: 18),
+                  ),
+                  onTap: () {
+                    Navigator.pop(context);
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const GuideScreen(),
+                      ),
+                    );
+                  },
+                ),
+              ],
+            ),
+          ),
+          Container(
+            margin: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: const Color.fromARGB(255, 217, 83, 96),
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: ListTile(
+              title: const Center(
+                child: Text(
+                  'Гарах',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+              onTap: () {
+                _logOut();
+              },
+            ),
+          ),
+          const SizedBox(height: 10),
+        ],
+      ),
     );
   }
 }

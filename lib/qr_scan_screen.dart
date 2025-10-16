@@ -83,7 +83,6 @@ class _QrScanScreenState extends State<QrScanScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text("QR код унших")),
       body: Column(
         children: [
           Expanded(

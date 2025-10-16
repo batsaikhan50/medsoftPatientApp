@@ -12,7 +12,6 @@ class ProfileScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Профайл')),
       body: FutureBuilder<String>(
         future: _getUsername(),
         builder: (context, snapshot) {
