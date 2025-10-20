@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -7,6 +6,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_app_badger/flutter_app_badger.dart';
 import 'package:http/http.dart' as http;
 import 'package:keyboard_actions/keyboard_actions.dart';
+import 'package:medsoft_patient/api/auth_dao.dart';
 import 'package:medsoft_patient/claim_qr.dart';
 import 'package:medsoft_patient/constants.dart';
 import 'package:medsoft_patient/main.dart';
@@ -21,14 +21,13 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> with WidgetsBindingObserver {
-  final TextEditingController _usernameLoginController =
-      TextEditingController();
-  final TextEditingController _passwordLoginController =
-      TextEditingController();
+  final _authDAO = AuthDAO();
+
+  final TextEditingController _usernameLoginController = TextEditingController();
+  final TextEditingController _passwordLoginController = TextEditingController();
   final TextEditingController _usernameController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
-  final TextEditingController _passwordCheckController =
-      TextEditingController();
+  final TextEditingController _passwordCheckController = TextEditingController();
   final TextEditingController _regNoController = TextEditingController();
   final TextEditingController _firstnameController = TextEditingController();
   final TextEditingController _lastnameController = TextEditingController();
@@ -75,7 +74,7 @@ class _LoginScreenState extends State<LoginScreen> with WidgetsBindingObserver {
   bool _isPasswordLoginVisible = false;
   bool _isPasswordVisible = false;
   bool _isPasswordCheckVisible = false;
-  int _selectedToggleIndex = 0; //0-Иргэн, 1-103
+  int _selectedToggleIndex = 0;
   double _dragPosition = 0.0;
 
   bool _isKeyboardVisible = false;
@@ -115,53 +114,15 @@ class _LoginScreenState extends State<LoginScreen> with WidgetsBindingObserver {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     bool isLoggedIn = prefs.getBool('isLoggedIn') ?? false;
     String? xMedsoftServer = prefs.getString('X-Medsoft-Token');
-    bool isGotMedsoftToken =
-        xMedsoftServer != null && xMedsoftServer.isNotEmpty;
+    bool isGotMedsoftToken = xMedsoftServer != null && xMedsoftServer.isNotEmpty;
 
     String? username = prefs.getString('Username');
     bool isGotUsername = username != null && username.isNotEmpty;
 
     if (isLoggedIn && isGotMedsoftToken && isGotUsername) {
-      debugPrint(
-        'isLoggedIn: $isLoggedIn, isGotMedsoftToken: $isGotMedsoftToken, isGotUsername: $isGotUsername',
-      );
+      debugPrint('isLoggedIn: $isLoggedIn, isGotMedsoftToken: $isGotMedsoftToken, isGotUsername: $isGotUsername');
     } else {
       return debugPrint("empty shared");
-    }
-  }
-
-  Future<void> _fetchServerData() async {
-    const url = '${Constants.runnerUrl}/gateway/servers';
-    final headers = {'X-Token': Constants.xToken};
-
-    try {
-      final response = await http.get(Uri.parse(url), headers: headers);
-      if (response.statusCode == 200) {
-        final Map<String, dynamic> data = json.decode(response.body);
-        if (data['success'] == true) {
-          final List<Map<String, String>> serverNames =
-              List<Map<String, String>>.from(
-                data['data'].map<Map<String, String>>((server) {
-                  return {
-                    'name': server['name'].toString(),
-                    'url': server['url'].toString(),
-                  };
-                }),
-              );
-        } else {
-          setState(() {
-            _errorMessage = 'Серверүүдийг ачааллахад амжилтгүй боллоо.';
-          });
-        }
-      } else {
-        setState(() {
-          _errorMessage = 'Серверийн мэдээлэл авахад алдаа гарлаа.';
-        });
-      }
-    } catch (e) {
-      setState(() {
-        _errorMessage = 'Алдаа гарлаа: $e';
-      });
     }
   }
 
@@ -171,10 +132,7 @@ class _LoginScreenState extends State<LoginScreen> with WidgetsBindingObserver {
 
     setState(() {
       _passwordRulesStatus = rules;
-      _passwordCheckValidationError = _validatePasswordMatch(
-        password,
-        _passwordCheckController.text,
-      );
+      _passwordCheckValidationError = _validatePasswordMatch(password, _passwordCheckController.text);
     });
   }
 
@@ -220,12 +178,8 @@ class _LoginScreenState extends State<LoginScreen> with WidgetsBindingObserver {
     });
 
     _dragPosition =
-        _selectedToggleIndex *
-        ((MediaQueryData.fromView(WidgetsBinding.instance.window).size.width -
-                32 -
-                8) /
-            2);
-    _fetchServerData();
+        _selectedToggleIndex * ((MediaQueryData.fromView(WidgetsBinding.instance.window).size.width - 32 - 8) / 2);
+
     _getInitialScreenString();
   }
 
@@ -268,10 +222,7 @@ class _LoginScreenState extends State<LoginScreen> with WidgetsBindingObserver {
 
   bool _validateRegisterInputs() {
     final password = _passwordController.text;
-    final passwordMatchError = _validatePasswordMatch(
-      password,
-      _passwordCheckController.text,
-    );
+    final passwordMatchError = _validatePasswordMatch(password, _passwordCheckController.text);
     final rules = _validatePasswordRules(password);
 
     final regNo = _regNoController.text.trim().toUpperCase();
@@ -287,15 +238,11 @@ class _LoginScreenState extends State<LoginScreen> with WidgetsBindingObserver {
     });
 
     final allPassed = rules.values.every((passed) => passed == true);
-    return allPassed &&
-        passwordMatchError == null &&
-        _regNoValidationError == null;
+    return allPassed && passwordMatchError == null && _regNoValidationError == null;
   }
 
   Future<void> _register() async {
-    setState(() {
-      _isLoading = true;
-    });
+    setState(() => _isLoading = true);
 
     final body = {
       'username': _usernameController.text,
@@ -307,55 +254,25 @@ class _LoginScreenState extends State<LoginScreen> with WidgetsBindingObserver {
       'type': 'patient',
     };
 
-    final headers = {'Content-Type': 'application/json'};
+    final response = await _authDAO.register(body);
 
-    debugPrint('Request Headers: $headers');
-    debugPrint('Request Body: ${json.encode(body)}');
+    if (response.success) {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool('isLoggedIn', false);
+      await prefs.remove('X-Tenant');
+      await prefs.remove('X-Medsoft-Token');
+      await prefs.remove('Username');
+      await prefs.remove('scannedToken');
+      await prefs.remove('tenantDomain');
 
-    try {
-      final response = await http.post(
-        Uri.parse('${Constants.appUrl}/auth/signup'),
-        headers: headers,
-        body: json.encode(body),
-      );
-
-      debugPrint('Register response Status: ${response.statusCode}');
-      debugPrint('Register response Body: ${response.body}');
-
-      if (response.statusCode == 200) {
-        final Map<String, dynamic> data = json.decode(response.body);
-        if (data['success'] == true) {
-          SharedPreferences prefs = await SharedPreferences.getInstance();
-
-          await prefs.setBool('isLoggedIn', false);
-          await prefs.remove('X-Tenant');
-          await prefs.remove('X-Medsoft-Token');
-          await prefs.remove('Username');
-          await prefs.remove('scannedToken');
-          await prefs.remove('tenantDomain');
-
-          setState(() {
-            _selectedToggleIndex = 0;
-            _dragPosition = 0.0;
-            _isLoading = false;
-          });
-        } else {
-          setState(() {
-            _errorMessage = 'Бүртгэл амжилтгүй боллоо: ${data['message']}';
-            _isLoading = false;
-          });
-        }
-      } else {
-        SharedPreferences prefs = await SharedPreferences.getInstance();
-        await prefs.setBool('isLoggedIn', false);
-        setState(() {
-          _errorMessage = 'Бүртгэх үед алдаа гарлаа. Дахин оролдоно уу.';
-          _isLoading = false;
-        });
-      }
-    } catch (e) {
       setState(() {
-        _errorMessage = 'Гэнэтийн алдаа: $e';
+        _selectedToggleIndex = 0;
+        _dragPosition = 0.0;
+        _isLoading = false;
+      });
+    } else {
+      setState(() {
+        _errorMessage = 'Бүртгэл амжилтгүй боллоо: ${response.message ?? "Тодорхойгүй алдаа"}';
         _isLoading = false;
       });
     }
@@ -367,25 +284,18 @@ class _LoginScreenState extends State<LoginScreen> with WidgetsBindingObserver {
   }
 
   Future<void> callWaitApi(BuildContext context, String token) async {
+    final AuthDAO authDAO = AuthDAO();
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final tokenSaved = prefs.getString('X-Medsoft-Token') ?? '';
-      final server = prefs.getString('X-Tenant') ?? '';
+      final waitResponse = await authDAO.waitQR(token);
 
-      final waitResponse = await http.get(
-        Uri.parse('${Constants.appUrl}/qr/wait?id=$token'),
-        headers: {"Authorization": "Bearer $tokenSaved"},
-      );
+      debugPrint('Login Wait API Success: ${waitResponse.success}');
+      debugPrint('Login Wait API Message: ${waitResponse.message}');
+      debugPrint('Login Wait API Status Code: ${waitResponse.statusCode}');
 
-      debugPrint('Login Wait API Response: ${waitResponse.body}');
-
-      if (waitResponse.statusCode == 200) {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (_) => ClaimQRScreen(token: token)),
-        );
+      if (waitResponse.success) {
+        Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => ClaimQRScreen(token: token)));
       } else {
-        debugPrint("Login Wait failed: ${waitResponse.statusCode}");
+        debugPrint("Login Wait failed (DAO): ${waitResponse.message ?? 'Unknown error'}");
       }
     } catch (e) {
       debugPrint('Error calling wait API: $e');
@@ -393,80 +303,51 @@ class _LoginScreenState extends State<LoginScreen> with WidgetsBindingObserver {
   }
 
   Future<void> _login() async {
-    setState(() {
-      _isLoading = true;
-    });
+    setState(() => _isLoading = true);
 
     final body = {
       'username': _usernameLoginController.text,
       'password': _passwordLoginController.text,
       'type': 'driver',
     };
-    final headers = {'Content-Type': 'application/json'};
 
-    debugPrint('Request Headers: $headers');
-    debugPrint('Request Body: ${json.encode(body)}');
+    final response = await _authDAO.login(body);
 
-    try {
-      final response = await http.post(
-        Uri.parse('${Constants.appUrl}/auth/login'),
-        headers: headers,
-        body: json.encode(body),
-      );
-
-      debugPrint('Response Status: ${response.statusCode}');
-      debugPrint('Response Body: ${response.body}');
-
-      if (response.statusCode == 200) {
-        if (!(Platform.environment['SIMULATOR_DEVICE_NAME'] ==
-            'iPhone SE (3rd generation)')) {
-          FlutterAppBadger.removeBadge();
-        } else {}
-
-        final Map<String, dynamic> data = json.decode(response.body);
-        if (data['success'] == true) {
-          SharedPreferences prefs = await SharedPreferences.getInstance();
-          await prefs.setBool('isLoggedIn', true);
-
-          final String token = data['data']['token'];
-
-          await prefs.setString('X-Medsoft-Token', token);
-          await prefs.setString('Username', _usernameLoginController.text);
-
-          _loadSharedPreferencesData();
-
-          final savedToken = await getSavedToken();
-          if (savedToken != null) {
-            debugPrint("INMY LOGIN'S if savedToken: ${savedToken}");
-            await callWaitApi(context, savedToken);
-            return;
-          }
-
-          _isLoading = false;
-
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(
-              builder: (context) => MyHomePage(title: 'Дуудлагын жагсаалт'),
-            ),
-          );
-        } else {
-          setState(() {
-            _errorMessage = 'Нэвтрэхэд амжилтгүй боллоо: ${data['message']}';
-            _isLoading = false;
-          });
-        }
-      } else {
-        SharedPreferences prefs = await SharedPreferences.getInstance();
-        await prefs.setBool('isLoggedIn', false);
-        setState(() {
-          _errorMessage = 'Нэвтрэх нэр эсвэл нууц үг буруу байна. Дахин оролдоно уу.';
-          _isLoading = false;
-        });
+    if (response.success && response.data != null) {
+      if (!(Platform.environment['SIMULATOR_DEVICE_NAME'] == 'iPhone SE (3rd generation)')) {
+        FlutterAppBadger.removeBadge();
       }
-    } catch (e) {
+
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool('isLoggedIn', true);
+
+      final token = response.data!['token'];
+      await prefs.setString('X-Medsoft-Token', token);
+      await prefs.setString('Username', _usernameLoginController.text);
+
+      _loadSharedPreferencesData();
+
+      final savedToken = await getSavedToken();
+      if (savedToken != null) {
+        debugPrint("Login successful — calling wait API with savedToken: $savedToken");
+        await _authDAO.waitQR(savedToken);
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => MyHomePage(title: 'Дуудлагын жагсаалт')),
+        );
+        return;
+      }
+
+      setState(() => _isLoading = false);
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) => MyHomePage(title: 'Дуудлагын жагсаалт')),
+      );
+    } else {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool('isLoggedIn', false);
       setState(() {
-        _errorMessage = 'Алдаа гарлаа: $e';
+        _errorMessage = response.message ?? 'Нэвтрэх нэр эсвэл нууц үг буруу байна. Дахин оролдоно уу.';
         _isLoading = false;
       });
     }
@@ -494,20 +375,11 @@ class _LoginScreenState extends State<LoginScreen> with WidgetsBindingObserver {
 
   Map<String, bool> _validatePasswordRules(String password) {
     return {
-      'Нууц үгэнд дор хаяж нэг тоо байх ёстой': password.contains(
-        RegExp(r'\d'),
-      ),
-      'Нууц үгэнд дор хаяж нэг жижиг үсэг байх ёстой': password.contains(
-        RegExp(r'[a-z]'),
-      ),
-      'Нууц үгэнд дор хаяж нэг том үсэг байх ёстой': password.contains(
-        RegExp(r'[A-Z]'),
-      ),
-      'Нууц үгэнд дор хаяж нэг тусгай тэмдэгт байх ёстой': password.contains(
-        RegExp(r"[!@#&()\[\]{}:;',?/*~$^+=<>]"),
-      ),
-      'Нууц үгийн урт 10-35 тэмдэгт байх ёстой':
-          password.length >= 10 && password.length <= 35,
+      'Нууц үгэнд дор хаяж нэг тоо байх ёстой': password.contains(RegExp(r'\d')),
+      'Нууц үгэнд дор хаяж нэг жижиг үсэг байх ёстой': password.contains(RegExp(r'[a-z]')),
+      'Нууц үгэнд дор хаяж нэг том үсэг байх ёстой': password.contains(RegExp(r'[A-Z]')),
+      'Нууц үгэнд дор хаяж нэг тусгай тэмдэгт байх ёстой': password.contains(RegExp(r"[!@#&()\[\]{}:;',?/*~$^+=<>]")),
+      'Нууц үгийн урт 10-35 тэмдэгт байх ёстой': password.length >= 10 && password.length <= 35,
     };
   }
 
@@ -560,10 +432,7 @@ class _LoginScreenState extends State<LoginScreen> with WidgetsBindingObserver {
           child: Container(
             height: 56,
             padding: const EdgeInsets.all(4),
-            decoration: BoxDecoration(
-              color: Colors.grey[300],
-              borderRadius: BorderRadius.circular(30),
-            ),
+            decoration: BoxDecoration(color: Colors.grey[300], borderRadius: BorderRadius.circular(30)),
             child: Stack(
               children: [
                 AnimatedPositioned(
@@ -576,10 +445,7 @@ class _LoginScreenState extends State<LoginScreen> with WidgetsBindingObserver {
                   child: AnimatedContainer(
                     duration: const Duration(milliseconds: 300),
                     decoration: BoxDecoration(
-                      color:
-                          _selectedToggleIndex == 0
-                              ? const Color(0xFF009688)
-                              : const Color(0xFF0077b3),
+                      color: _selectedToggleIndex == 0 ? const Color(0xFF009688) : const Color(0xFF0077b3),
                       borderRadius: BorderRadius.circular(25),
                     ),
                   ),
@@ -603,8 +469,7 @@ class _LoginScreenState extends State<LoginScreen> with WidgetsBindingObserver {
                             Text(
                               label,
                               style: TextStyle(
-                                color:
-                                    isSelected ? Colors.white : Colors.black87,
+                                color: isSelected ? Colors.white : Colors.black87,
                                 fontWeight: FontWeight.w600,
                               ),
                             ),
@@ -631,47 +496,15 @@ class _LoginScreenState extends State<LoginScreen> with WidgetsBindingObserver {
       keyboardBarColor: iosToolbarColor,
       actions: [
         if (_selectedToggleIndex == 0)
-          KeyboardActionsItem(
-            focusNode: _usernameLoginFocus,
-            displayArrows: true,
-            displayDoneButton: false,
-          ),
-        KeyboardActionsItem(
-          focusNode: _passwordLoginFocus,
-          displayArrows: true,
-          displayDoneButton: false,
-        ),
+          KeyboardActionsItem(focusNode: _usernameLoginFocus, displayArrows: true, displayDoneButton: false),
+        KeyboardActionsItem(focusNode: _passwordLoginFocus, displayArrows: true, displayDoneButton: false),
         if (_selectedToggleIndex == 1) ...[
-          KeyboardActionsItem(
-            focusNode: _usernameFocus,
-            displayArrows: true,
-            displayDoneButton: false,
-          ),
-          KeyboardActionsItem(
-            focusNode: _passwordFocus,
-            displayArrows: true,
-            displayDoneButton: false,
-          ),
-          KeyboardActionsItem(
-            focusNode: _passwordCheckFocus,
-            displayArrows: true,
-            displayDoneButton: false,
-          ),
-          KeyboardActionsItem(
-            focusNode: _regNoFocus,
-            displayArrows: true,
-            displayDoneButton: false,
-          ),
-          KeyboardActionsItem(
-            focusNode: _lastnameFocus,
-            displayArrows: true,
-            displayDoneButton: false,
-          ),
-          KeyboardActionsItem(
-            focusNode: _firstnameFocus,
-            displayArrows: true,
-            displayDoneButton: false,
-          ),
+          KeyboardActionsItem(focusNode: _usernameFocus, displayArrows: true, displayDoneButton: false),
+          KeyboardActionsItem(focusNode: _passwordFocus, displayArrows: true, displayDoneButton: false),
+          KeyboardActionsItem(focusNode: _passwordCheckFocus, displayArrows: true, displayDoneButton: false),
+          KeyboardActionsItem(focusNode: _regNoFocus, displayArrows: true, displayDoneButton: false),
+          KeyboardActionsItem(focusNode: _lastnameFocus, displayArrows: true, displayDoneButton: false),
+          KeyboardActionsItem(focusNode: _firstnameFocus, displayArrows: true, displayDoneButton: false),
         ],
       ],
     );
@@ -680,11 +513,7 @@ class _LoginScreenState extends State<LoginScreen> with WidgetsBindingObserver {
   void _scrollIntoView(FocusNode focusNode) {
     final context = focusNode.context;
     if (context != null) {
-      Scrollable.ensureVisible(
-        context,
-        duration: const Duration(milliseconds: 300),
-        curve: Curves.easeInOut,
-      );
+      Scrollable.ensureVisible(context, duration: const Duration(milliseconds: 300), curve: Curves.easeInOut);
     }
   }
 
@@ -694,12 +523,7 @@ class _LoginScreenState extends State<LoginScreen> with WidgetsBindingObserver {
       resizeToAvoidBottomInset: true,
       body: GestureDetector(
         onTap: () => FocusScope.of(context).unfocus(),
-        child: SafeArea(
-          child: KeyboardActions(
-            config: _buildKeyboardActionsConfig(context),
-            child: _buildLoginForm(),
-          ),
-        ),
+        child: SafeArea(child: KeyboardActions(config: _buildKeyboardActionsConfig(context), child: _buildLoginForm())),
       ),
     );
   }
@@ -728,11 +552,7 @@ class _LoginScreenState extends State<LoginScreen> with WidgetsBindingObserver {
                 Image.asset('assets/icon/logoTransparent.png', height: 150),
                 const Text(
                   'Тавтай морил',
-                  style: TextStyle(
-                    fontSize: 22.4,
-                    color: Color(0xFF009688),
-                    fontWeight: FontWeight.bold,
-                  ),
+                  style: TextStyle(fontSize: 22.4, color: Color(0xFF009688), fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(height: 20),
                 buildAnimatedToggle(),
@@ -757,9 +577,7 @@ class _LoginScreenState extends State<LoginScreen> with WidgetsBindingObserver {
                                 },
                               )
                               : null,
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                     ),
                   ),
                 if (_selectedToggleIndex == 1)
@@ -781,9 +599,7 @@ class _LoginScreenState extends State<LoginScreen> with WidgetsBindingObserver {
                                 },
                               )
                               : null,
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                     ),
                   ),
                 const SizedBox(height: 20),
@@ -809,23 +625,16 @@ class _LoginScreenState extends State<LoginScreen> with WidgetsBindingObserver {
                               },
                             ),
                           IconButton(
-                            icon: Icon(
-                              _isPasswordLoginVisible
-                                  ? Icons.visibility
-                                  : Icons.visibility_off,
-                            ),
+                            icon: Icon(_isPasswordLoginVisible ? Icons.visibility : Icons.visibility_off),
                             onPressed: () {
                               setState(() {
-                                _isPasswordLoginVisible =
-                                    !_isPasswordLoginVisible;
+                                _isPasswordLoginVisible = !_isPasswordLoginVisible;
                               });
                             },
                           ),
                         ],
                       ),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                     ),
                   ),
 
@@ -852,11 +661,7 @@ class _LoginScreenState extends State<LoginScreen> with WidgetsBindingObserver {
                               },
                             ),
                           IconButton(
-                            icon: Icon(
-                              _isPasswordVisible
-                                  ? Icons.visibility
-                                  : Icons.visibility_off,
-                            ),
+                            icon: Icon(_isPasswordVisible ? Icons.visibility : Icons.visibility_off),
                             onPressed: () {
                               setState(() {
                                 _isPasswordVisible = !_isPasswordVisible;
@@ -865,15 +670,11 @@ class _LoginScreenState extends State<LoginScreen> with WidgetsBindingObserver {
                           ),
                         ],
                       ),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                     ),
                   ),
 
-                if (_selectedToggleIndex == 1 &&
-                    _passwordController.text.isNotEmpty &&
-                    _passwordRulesStatus.isNotEmpty)
+                if (_selectedToggleIndex == 1 && _passwordController.text.isNotEmpty && _passwordRulesStatus.isNotEmpty)
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children:
@@ -889,11 +690,7 @@ class _LoginScreenState extends State<LoginScreen> with WidgetsBindingObserver {
                               Expanded(
                                 child: Text(
                                   entry.key,
-                                  style: TextStyle(
-                                    fontSize: 13,
-                                    color:
-                                        entry.value ? Colors.green : Colors.red,
-                                  ),
+                                  style: TextStyle(fontSize: 13, color: entry.value ? Colors.green : Colors.red),
                                 ),
                               ),
                             ],
@@ -924,23 +721,16 @@ class _LoginScreenState extends State<LoginScreen> with WidgetsBindingObserver {
                               },
                             ),
                           IconButton(
-                            icon: Icon(
-                              _isPasswordCheckVisible
-                                  ? Icons.visibility
-                                  : Icons.visibility_off,
-                            ),
+                            icon: Icon(_isPasswordCheckVisible ? Icons.visibility : Icons.visibility_off),
                             onPressed: () {
                               setState(() {
-                                _isPasswordCheckVisible =
-                                    !_isPasswordCheckVisible;
+                                _isPasswordCheckVisible = !_isPasswordCheckVisible;
                               });
                             },
                           ),
                         ],
                       ),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                       errorText: _passwordCheckValidationError,
                     ),
                   ),
@@ -964,17 +754,13 @@ class _LoginScreenState extends State<LoginScreen> with WidgetsBindingObserver {
                                 },
                               )
                               : null,
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                       errorText: _regNoValidationError,
                     ),
                     onChanged: (value) {
                       _regNoController.value = _regNoController.value.copyWith(
                         text: value.toUpperCase(),
-                        selection: TextSelection.collapsed(
-                          offset: value.length,
-                        ),
+                        selection: TextSelection.collapsed(offset: value.length),
                       );
                     },
                   ),
@@ -998,19 +784,14 @@ class _LoginScreenState extends State<LoginScreen> with WidgetsBindingObserver {
                                 },
                               )
                               : null,
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                       errorText: _lastnameValidationError,
                     ),
                     onChanged: (value) {
-                      _lastnameController.value = _lastnameController.value
-                          .copyWith(
-                            text: value,
-                            selection: TextSelection.collapsed(
-                              offset: value.length,
-                            ),
-                          );
+                      _lastnameController.value = _lastnameController.value.copyWith(
+                        text: value,
+                        selection: TextSelection.collapsed(offset: value.length),
+                      );
                     },
                   ),
 
@@ -1033,19 +814,14 @@ class _LoginScreenState extends State<LoginScreen> with WidgetsBindingObserver {
                                 },
                               )
                               : null,
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                       errorText: _firstnameValidationError,
                     ),
                     onChanged: (value) {
-                      _firstnameController.value = _firstnameController.value
-                          .copyWith(
-                            text: value,
-                            selection: TextSelection.collapsed(
-                              offset: value.length,
-                            ),
-                          );
+                      _firstnameController.value = _firstnameController.value.copyWith(
+                        text: value,
+                        selection: TextSelection.collapsed(offset: value.length),
+                      );
                     },
                   ),
 
@@ -1054,10 +830,7 @@ class _LoginScreenState extends State<LoginScreen> with WidgetsBindingObserver {
                 if (_errorMessage.isNotEmpty)
                   Padding(
                     padding: const EdgeInsets.symmetric(vertical: 10),
-                    child: Text(
-                      _errorMessage,
-                      style: const TextStyle(color: Colors.red),
-                    ),
+                    child: Text(_errorMessage, style: const TextStyle(color: Colors.red)),
                   ),
 
                 if (_selectedToggleIndex == 0)
@@ -1065,20 +838,11 @@ class _LoginScreenState extends State<LoginScreen> with WidgetsBindingObserver {
                     alignment: Alignment.centerRight,
                     child: GestureDetector(
                       onTap: () async {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => const ResetPasswordScreen(),
-                          ),
-                        );
+                        Navigator.push(context, MaterialPageRoute(builder: (context) => const ResetPasswordScreen()));
                       },
                       child: const Text(
                         'Нууц үг мартсан?',
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 14,
-                          color: Color(0xFF009688),
-                        ),
+                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Color(0xFF009688)),
                       ),
                     ),
                   ),
@@ -1088,14 +852,9 @@ class _LoginScreenState extends State<LoginScreen> with WidgetsBindingObserver {
 
                 ElevatedButton(
                   style: ElevatedButton.styleFrom(
-                    backgroundColor:
-                        _selectedToggleIndex == 0
-                            ? const Color(0xFF009688)
-                            : const Color(0xFF0077b3),
+                    backgroundColor: _selectedToggleIndex == 0 ? const Color(0xFF009688) : const Color(0xFF0077b3),
                     padding: const EdgeInsets.symmetric(vertical: 10),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                     minimumSize: const Size(double.infinity, 40),
                   ),
                   onPressed:
@@ -1114,13 +873,8 @@ class _LoginScreenState extends State<LoginScreen> with WidgetsBindingObserver {
                       _isLoading
                           ? const CircularProgressIndicator(color: Colors.white)
                           : Text(
-                            _selectedToggleIndex == 0
-                                ? 'НЭВТРЭХ'
-                                : 'БҮРТГҮҮЛЭХ',
-                            style: const TextStyle(
-                              fontSize: 15,
-                              color: Colors.white,
-                            ),
+                            _selectedToggleIndex == 0 ? 'НЭВТРЭХ' : 'БҮРТГҮҮЛЭХ',
+                            style: const TextStyle(fontSize: 15, color: Colors.white),
                           ),
                 ),
               ],

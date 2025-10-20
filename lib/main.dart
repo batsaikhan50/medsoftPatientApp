@@ -17,22 +17,12 @@ import 'package:medsoft_patient/time_order_screen.dart';
 import 'package:medsoft_patient/webview_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uni_links/uni_links.dart';
-import 'package:flutter_apns/flutter_apns.dart';
 
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
-PushConnector? _connector;
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
-
-  _connector = createPushConnector();
-  _connector!.configure(
-    onLaunch: (msg) async => debugPrint('onLaunch: $msg'),
-    onResume: (msg) async => debugPrint('onResume: $msg'),
-    onMessage: (msg) async => debugPrint('onMessage: $msg'),
-  );
-
   runApp(const MyApp());
 }
 
@@ -142,14 +132,6 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
   @override
   void initState() {
     super.initState();
-    _connector!.token.addListener(() {
-      final token = _connector!.token.value;
-      if (token != null) {
-        print('📲 APNs device token: $token');
-        setState(() => _token = token);
-        // TODO: send this token to your Node.js backend via your API
-      }
-    });
 
     Future<void> saveScannedToken(String token) async {
       final prefs = await SharedPreferences.getInstance();
@@ -667,8 +649,9 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
   }
 
   Widget _buildLocationBody() {
-    return Column(
-      children: [
+    return 
+    // Column(
+    //   children: [
         Center(
           child: ElevatedButton.icon(
             style: ElevatedButton.styleFrom(
@@ -691,10 +674,10 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
               style: const TextStyle(fontSize: 18),
             ),
           ),
-        ),
-        Center(child: Text(_token ?? 'Waiting for APNs token...')),
-      ],
-    );
+        );
+      //   Center(child: Text(_token ?? 'Waiting for APNs token...')),
+      // ],
+    // );
   }
 
   @override

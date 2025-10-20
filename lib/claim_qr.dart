@@ -26,10 +26,7 @@ class _ClaimQRScreenState extends State<ClaimQRScreen> {
 
       final headers = {"Authorization": "Bearer $tokenSaved"};
       debugPrint('widget.token: ${widget.token}');
-      final response = await http.get(
-        Uri.parse("${Constants.appUrl}/qr/claim?id=${widget.token}"),
-        headers: headers,
-      );
+      final response = await http.get(Uri.parse("${Constants.appUrl}/qr/claim?id=${widget.token}"), headers: headers);
 
       if (response.statusCode == 200) {
         log("Claim success: ${response.body}");
@@ -46,9 +43,7 @@ class _ClaimQRScreenState extends State<ClaimQRScreen> {
     if (claimSuccessful) {
       Navigator.pushAndRemoveUntil(
         context,
-        MaterialPageRoute(
-          builder: (_) => const MyHomePage(title: 'Дуудлагын жагсаалт'),
-        ),
+        MaterialPageRoute(builder: (_) => const MyHomePage(title: 'Дуудлагын жагсаалт')),
         (route) => false,
       );
     } else {
@@ -56,12 +51,9 @@ class _ClaimQRScreenState extends State<ClaimQRScreen> {
         _isLoading = false;
       });
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text("Баталгаажуулалт амжилтгүй боллоо."),
-          backgroundColor: Colors.red,
-        ),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text("Баталгаажуулалт амжилтгүй боллоо."), backgroundColor: Colors.red));
     }
   }
 
@@ -90,16 +82,11 @@ class _ClaimQRScreenState extends State<ClaimQRScreen> {
                       },
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.green,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 40,
-                  vertical: 15,
-                ),
+                padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 15),
               ),
               child: AnimatedSwitcher(
                 duration: const Duration(milliseconds: 200),
-                transitionBuilder:
-                    (child, anim) =>
-                        FadeTransition(opacity: anim, child: child),
+                transitionBuilder: (child, anim) => FadeTransition(opacity: anim, child: child),
                 child:
                     _isLoading
                         ? Row(
@@ -109,23 +96,13 @@ class _ClaimQRScreenState extends State<ClaimQRScreen> {
                             SizedBox(
                               width: 20,
                               height: 20,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                color: Colors.white,
-                              ),
+                              child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
                             ),
                             SizedBox(width: 12),
-                            Text(
-                              "Уншиж байна...",
-                              style: TextStyle(fontSize: 18),
-                            ),
+                            Text("Уншиж байна...", style: TextStyle(fontSize: 18)),
                           ],
                         )
-                        : const Text(
-                          "Зөвшөөрөх",
-                          key: ValueKey('text'),
-                          style: TextStyle(fontSize: 18),
-                        ),
+                        : const Text("Зөвшөөрөх", key: ValueKey('text'), style: TextStyle(fontSize: 18)),
               ),
             ),
 
@@ -138,20 +115,12 @@ class _ClaimQRScreenState extends State<ClaimQRScreen> {
                       : () {
                         Navigator.pushReplacement(
                           context,
-                          MaterialPageRoute(
-                            builder:
-                                (_) => const MyHomePage(
-                                  title: 'Дуудлагын жагсаалт',
-                                ),
-                          ),
+                          MaterialPageRoute(builder: (_) => const MyHomePage(title: 'Дуудлагын жагсаалт')),
                         );
                       },
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.red,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 40,
-                  vertical: 15,
-                ),
+                padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 15),
               ),
               child: const Text("Татгалзах", style: TextStyle(fontSize: 18)),
             ),
