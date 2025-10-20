@@ -1,10 +1,8 @@
 import 'dart:developer';
 
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
-import 'package:medsoft_patient/constants.dart';
+import 'package:medsoft_patient/api/auth_dao.dart';
 import 'package:medsoft_patient/main.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 class ClaimQRScreen extends StatefulWidget {
   final String token;
@@ -15,45 +13,34 @@ class ClaimQRScreen extends StatefulWidget {
 }
 
 class _ClaimQRScreenState extends State<ClaimQRScreen> {
+  final _authDAO = AuthDAO();
   bool _isLoading = false;
 
   Future<void> _claim() async {
-    bool claimSuccessful = false;
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final tokenSaved = prefs.getString('X-Medsoft-Token') ?? '';
-      final server = prefs.getString('X-Tenant') ?? '';
+    setState(() => _isLoading = true);
 
-      final headers = {"Authorization": "Bearer $tokenSaved"};
-      debugPrint('widget.token: ${widget.token}');
-      final response = await http.get(Uri.parse("${Constants.appUrl}/qr/claim?id=${widget.token}"), headers: headers);
-
-      if (response.statusCode == 200) {
-        log("Claim success: ${response.body}");
-        claimSuccessful = true;
-      } else {
-        log("Claim failed: ${response.statusCode}");
-      }
-    } catch (e) {
-      log("Error calling claim API: $e");
-    }
+    final response = await _authDAO.claimQR(widget.token);
 
     if (!mounted) return;
 
-    if (claimSuccessful) {
+    if (response.success) {
+      log("Claim success: ${response.data}");
+
       Navigator.pushAndRemoveUntil(
         context,
         MaterialPageRoute(builder: (_) => const MyHomePage(title: 'Дуудлагын жагсаалт')),
         (route) => false,
       );
     } else {
+      log("Claim failed: ${response.statusCode} - ${response.message}");
+
       setState(() {
         _isLoading = false;
       });
 
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text("Баталгаажуулалт амжилтгүй боллоо."), backgroundColor: Colors.red));
+      final errorMessage = response.message ?? "Баталгаажуулалт амжилтгүй боллоо.";
+
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(errorMessage), backgroundColor: Colors.red));
     }
   }
 
