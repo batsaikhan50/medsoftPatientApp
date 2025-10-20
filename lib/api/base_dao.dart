@@ -1,9 +1,12 @@
 import 'dart:convert';
+
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
+
 import '../constants.dart';
 
+// API хандалтын үндсэн DAO
 class ApiResponse<T> {
   final bool success;
   final T? data;
@@ -12,7 +15,11 @@ class ApiResponse<T> {
 
   ApiResponse({required this.success, this.data, this.message, this.statusCode});
 
-  factory ApiResponse.fromJson(Map<String, dynamic> json, {T Function(dynamic)? parse, int? statusCode}) {
+  factory ApiResponse.fromJson(
+    Map<String, dynamic> json, {
+    T Function(dynamic)? parse,
+    int? statusCode,
+  }) {
     return ApiResponse<T>(
       success: json['success'] == true,
       data: parse != null ? parse(json['data']) : json['data'],
@@ -35,7 +42,11 @@ class RequestConfig {
   final Map<String, String>? customHeaders;
   final bool excludeToken;
 
-  const RequestConfig({this.headerType = HeaderType.jsonOnly, this.customHeaders, this.excludeToken = false});
+  const RequestConfig({
+    this.headerType = HeaderType.jsonOnly,
+    this.customHeaders,
+    this.excludeToken = false,
+  });
 }
 
 abstract class BaseDAO {
@@ -51,7 +62,11 @@ abstract class BaseDAO {
       debugPrint('Headers: $headers');
       debugPrint('Body: ${jsonEncode(body)}');
 
-      final response = await http.post(Uri.parse(url), headers: headers, body: body != null ? jsonEncode(body) : null);
+      final response = await http.post(
+        Uri.parse(url),
+        headers: headers,
+        body: body != null ? jsonEncode(body) : null,
+      );
       return _handleResponse<T>(response, parse: parse);
     } catch (e) {
       debugPrint('POST error: $e');
@@ -120,7 +135,11 @@ abstract class BaseDAO {
       final jsonBody = jsonDecode(response.body);
       return ApiResponse.fromJson(jsonBody, parse: parse, statusCode: response.statusCode);
     } catch (e) {
-      return ApiResponse<T>(success: false, message: 'Invalid response format: $e', statusCode: response.statusCode);
+      return ApiResponse<T>(
+        success: false,
+        message: 'Invalid response format: $e',
+        statusCode: response.statusCode,
+      );
     }
   }
 }

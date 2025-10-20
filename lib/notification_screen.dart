@@ -6,13 +6,8 @@ class NotificationScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        backgroundColor: const Color(0xFF00CCCC),
-        title: const Text('Мэдэгдэл'),
-      ),
-      body: const Center(
-        child: Text('Мэдэгдэл байхгүй байна'),
-      ),
+      appBar: AppBar(backgroundColor: const Color(0xFF00CCCC), title: const Text('Мэдэгдэл')),
+      body: const Center(child: Text('Мэдэгдэл байхгүй байна')),
     );
   }
 }

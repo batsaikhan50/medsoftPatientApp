@@ -7,10 +7,7 @@ class TimeOrderScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       body: const Center(
-        child: Text(
-          'TIME ORDER SCREEN',
-          style: TextStyle(fontSize: 18, color: Colors.grey),
-        ),
+        child: Text('TIME ORDER SCREEN', style: TextStyle(fontSize: 18, color: Colors.grey)),
       ),
     );
   }

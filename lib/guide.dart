@@ -25,10 +25,7 @@ class GuideScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Хэрэглэх заавар'),
-        backgroundColor: Color(0xFF00CCCC),
-      ),
+      appBar: AppBar(title: const Text('Хэрэглэх заавар'), backgroundColor: Color(0xFF00CCCC)),
       body: ListView.builder(
         padding: const EdgeInsets.all(16),
         itemCount: guideSteps.length,
@@ -86,22 +83,13 @@ class GuideScreen extends StatelessWidget {
                                 panEnabled: true,
                                 minScale: 1.0,
                                 maxScale: 4.0,
-                                child: Center(
-                                  child: Image.asset(
-                                    assetPath,
-                                    fit: BoxFit.contain,
-                                  ),
-                                ),
+                                child: Center(child: Image.asset(assetPath, fit: BoxFit.contain)),
                               ),
                               Positioned(
                                 top: 32,
                                 right: 16,
                                 child: IconButton(
-                                  icon: const Icon(
-                                    Icons.close,
-                                    color: Colors.white,
-                                    size: 30,
-                                  ),
+                                  icon: const Icon(Icons.close, color: Colors.white, size: 30),
                                   onPressed: () => Navigator.of(context).pop(),
                                 ),
                               ),
@@ -114,11 +102,7 @@ class GuideScreen extends StatelessWidget {
                 },
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(12),
-                  child: Image.asset(
-                    assetPath,
-                    fit: BoxFit.fitWidth,
-                    width: double.infinity,
-                  ),
+                  child: Image.asset(assetPath, fit: BoxFit.fitWidth, width: double.infinity),
                 ),
               ),
             ),

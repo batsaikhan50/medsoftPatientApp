@@ -1,12 +1,11 @@
 import 'dart:async';
-import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
-import 'package:http/http.dart' as http;
+import 'package:medsoft_patient/api/auth_dao.dart';
+import 'package:medsoft_patient/api/map_dao.dart';
 import 'package:medsoft_patient/claim_qr.dart';
-import 'package:medsoft_patient/constants.dart';
 import 'package:medsoft_patient/guide.dart';
 import 'package:medsoft_patient/history_screen.dart';
 import 'package:medsoft_patient/login.dart';
@@ -19,7 +18,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uni_links/uni_links.dart';
 
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
-
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -43,16 +41,10 @@ class MyApp extends StatelessWidget {
         future: _getInitialScreen(),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Scaffold(
-              body: Center(child: CircularProgressIndicator()),
-            );
+            return const Scaffold(body: Center(child: CircularProgressIndicator()));
           } else if (snapshot.hasError) {
             return Scaffold(
-              body: Center(
-                child: Text(
-                  "Нэвтрэх төлөв шалгах үед алдаа гарлаа: ${snapshot.error}",
-                ),
-              ),
+              body: Center(child: Text("Нэвтрэх төлөв шалгах үед алдаа гарлаа: ${snapshot.error}")),
             );
           } else if (snapshot.hasData) {
             return snapshot.data!;
@@ -86,8 +78,7 @@ class MyApp extends StatelessWidget {
     debugPrint('isLoggedIn: $isLoggedIn');
 
     final String? xMedsoftToken = prefs.getString('X-Medsoft-Token');
-    final bool isGotMedsoftToken =
-        xMedsoftToken != null && xMedsoftToken.isNotEmpty;
+    final bool isGotMedsoftToken = xMedsoftToken != null && xMedsoftToken.isNotEmpty;
     debugPrint('isGotMedsoftToken: $isGotMedsoftToken');
 
     final String? username = prefs.getString('Username');
@@ -115,19 +106,19 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
       FlutterLocalNotificationsPlugin();
   static const platform = MethodChannel('com.example.medsoft_patient/location');
 
-  int _selectedIndex = 0; // 👈 track current tab index
+  final _authDAO = AuthDAO();
+  final _mapDAO = MapDAO();
 
-  String _liveLocation = "Fetching live location...";
+  int _selectedIndex = 0;
+
   final List<String> _locationHistory = [];
   Map<String, dynamic> sharedPreferencesData = {};
   bool _isLoading = false;
   Map<String, dynamic>? roomInfo;
   String? _errorMessage;
   Timer? _timer;
-  bool _isDialogShowing = false;
+  final bool _isDialogShowing = false;
   String appBarCaption = 'Медсофт';
-
-  String? _token;
 
   @override
   void initState() {
@@ -138,31 +129,18 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
       await prefs.setString('scannedToken', token);
     }
 
-    Future<String?> getSavedToken() async {
-      final prefs = await SharedPreferences.getInstance();
-      return prefs.getString('scannedToken');
-    }
-
     Future<bool> callWaitApi(String token) async {
       try {
-        final prefs = await SharedPreferences.getInstance();
-        final tokenSaved = prefs.getString('X-Medsoft-Token') ?? '';
-        final server = prefs.getString('X-Tenant') ?? '';
+        final apiResponse = await _authDAO.claimQR(token);
 
-        final waitResponse = await http.get(
-          Uri.parse('${Constants.appUrl}/qr/wait?id=$token'),
-          headers: {"Authorization": "Bearer $tokenSaved"},
-        );
-
-        debugPrint('Main Wait API Response: ${waitResponse.body}');
-
-        if (waitResponse.statusCode == 200) {
+        if (apiResponse.statusCode == 200) {
           return true;
         } else {
           return false;
         }
       } catch (e) {
         debugPrint('Error calling MAIN wait API: $e');
+
         return false;
       }
     }
@@ -183,10 +161,7 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
           }
 
           if (waitSuccess && mounted) {
-            Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => ClaimQRScreen(token: token)),
-            );
+            Navigator.push(context, MaterialPageRoute(builder: (_) => ClaimQRScreen(token: token)));
           }
         }
       }
@@ -256,8 +231,7 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
       _startApiPolling();
-    } else if (state == AppLifecycleState.paused ||
-        state == AppLifecycleState.inactive) {
+    } else if (state == AppLifecycleState.paused || state == AppLifecycleState.inactive) {
       _stopApiPolling();
     }
   }
@@ -290,21 +264,13 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
         return;
       }
 
-      final response = await http.get(
-        Uri.parse("${Constants.appUrl}/room/done_request"),
-        headers: {"Authorization": "Bearer $token"},
-      );
+      final response = await _mapDAO.checkDoneRequest();
 
-      debugPrint("✅ API response: ${response.statusCode} ${response.body}");
+      debugPrint("✅ API response: ${response.statusCode} ${response.data}");
 
       if (response.statusCode == 200) {
-        final Map<String, dynamic> jsonBody = json.decode(response.body);
-
-        if (jsonBody['success'] == true &&
-            jsonBody['data']?['doneRequested'] == true) {
-          if (!_isDialogShowing) {
-            // _showDoneDialog(); //Түр хасав
-          }
+        if (response.data!['success'] == true && response.data!['data']?['doneRequested'] == true) {
+          if (!_isDialogShowing) {}
         }
       }
     } catch (e) {
@@ -312,101 +278,13 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
     }
   }
 
-  void _showDoneDialog() {
-    _isDialogShowing = true;
-    final context = navigatorKey.currentState?.overlay?.context;
-    if (context == null) return;
-
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder:
-          (_) => AlertDialog(
-            title: const Text("Үзлэг дууссан"),
-            content: const Text("Үзсэн дууссан эсэхийг баталгаажуулна уу?"),
-            actions: [
-              TextButton(
-                style: TextButton.styleFrom(foregroundColor: Colors.red),
-                onPressed: () {
-                  Navigator.of(context).pop();
-                  _isDialogShowing = false;
-
-                  debugPrint("❌ User declined the request.");
-                },
-                child: const Text("Татгалзах"),
-              ),
-
-              TextButton(
-                style: TextButton.styleFrom(foregroundColor: Colors.green),
-                onPressed: () async {
-                  Navigator.of(context).pop();
-                  _isDialogShowing = false;
-
-                  debugPrint("✅ User accepted the request.");
-
-                  final prefs = await SharedPreferences.getInstance();
-                  final token = prefs.getString('X-Medsoft-Token') ?? '';
-                  final currentRoomId = prefs.getString('currentRoomId') ?? '';
-
-                  if (token.isEmpty) {
-                    debugPrint("⚠️ No token found, cannot call done API.");
-                    return;
-                  }
-
-                  try {
-                    if (currentRoomId.isEmpty) {
-                      debugPrint("⚠️ No roomId found, cannot call done API.");
-                      return;
-                    }
-                    debugPrint(
-                      "currentRoomId: ${prefs.getString('currentRoomId')}",
-                    );
-
-                    debugPrint(
-                      "URL: ${Uri.parse("${Constants.appUrl}/room/done")}",
-                    );
-                    final response = await http.post(
-                      Uri.parse("${Constants.appUrl}/room/done"),
-                      headers: {
-                        'Authorization': 'Bearer $token',
-                        'Content-Type': 'application/json',
-                      },
-                      body: json.encode({'roomId': currentRoomId}),
-                    );
-
-                    debugPrint(
-                      "📡 Done API response: ${response.statusCode} ${response.body}",
-                    );
-
-                    if (response.statusCode == 200) {
-                      debugPrint("✅ Done confirmed, stopping timer.");
-                      _stopApiPolling();
-                    } else {
-                      debugPrint(
-                        "❌ Done API failed with status: ${response.statusCode}",
-                      );
-                    }
-                  } catch (e) {
-                    debugPrint("❌ Done API error: $e");
-                  }
-                },
-                child: const Text("Зөвшөөрөх"),
-              ),
-            ],
-          ),
-    );
-  }
-
   Future<void> fetchRoom() async {
     setState(() {
       _isLoading = true;
       _errorMessage = null;
-      // _currentBody = _buildLocationBody();
     });
 
-    debugPrint(
-      'Fetching room... _isLoading: $_isLoading, _errorMessage: $_errorMessage',
-    );
+    debugPrint('Fetching room... _isLoading: $_isLoading, _errorMessage: $_errorMessage');
 
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -414,9 +292,7 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
       if (token.isEmpty) {
         setState(() {
           _isLoading = false;
-          _errorMessage =
-              'Алдаа: Нэвтрэх эрх байхгүй байна. Дахин нэвтэрнэ үү.';
-          // _currentBody = _buildLocationBody();
+          _errorMessage = 'Алдаа: Нэвтрэх эрх байхгүй байна. Дахин нэвтэрнэ үү.';
         });
         debugPrint('Error: Token is empty, setting error and logging out.');
         if (mounted) {
@@ -425,17 +301,12 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
         return;
       }
 
-      final uri = Uri.parse('${Constants.appUrl}/room/get/patient');
-      final response = await http.get(
-        uri,
-        headers: {'Authorization': 'Bearer $token'},
-      );
+      final response = await _mapDAO.getRoomInfo();
 
       if (response.statusCode == 200) {
-        final json = jsonDecode(response.body);
-        debugPrint('API Response Body: ${response.body}');
-        if (json['success'] == true) {
-          roomInfo = json['data'];
+        debugPrint('API Response data: ${response.data}');
+        if (response.statusCode == 200 && response.data!['success'] == true) {
+          roomInfo = response.data;
 
           if (roomInfo is Map<String, dynamic> &&
               roomInfo!.containsKey('url') &&
@@ -447,10 +318,8 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
             await prefs.setString('currentRoomId', roomId);
             final roomIdNum = roomInfo!['_id'];
 
-            debugPrint('roomIdNum: ' + roomIdNum);
-            await platform.invokeMethod('sendRoomIdToAppDelegate', {
-              'roomId': roomId,
-            });
+            debugPrint('roomIdNum: ${roomIdNum.toString()}');
+            await platform.invokeMethod('sendRoomIdToAppDelegate', {'roomId': roomId});
 
             await platform.invokeMethod('startLocationManagerAfterLogin');
 
@@ -458,23 +327,19 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
             debugPrint("WebView loading roomId: $roomId");
             debugPrint("WebView loading roomIdNum: $roomIdNum");
 
+            if (!mounted) return;
             Navigator.push(
               context,
               MaterialPageRoute(
                 builder:
-                    (context) => WebViewScreen(
-                      url: url,
-                      title: title,
-                      roomId: roomId,
-                      roomIdNum: roomIdNum,
-                    ),
+                    (context) =>
+                        WebViewScreen(url: url, title: title, roomId: roomId, roomIdNum: roomIdNum),
               ),
             );
 
             setState(() {
               _isLoading = false;
               _errorMessage = null;
-              // _currentBody = _buildLocationBody();
             });
             debugPrint('Room fetch success! Navigating...');
           } else {
@@ -482,7 +347,6 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
               _isLoading = false;
               _errorMessage =
                   'Алдаа: Серверээс ирсэн мэдээлэл дутуу байна (url эсвэл roomId байхгүй).';
-              // _currentBody = _buildLocationBody();
             });
             debugPrint(
               'Error: roomInfo is null or missing "url"/"roomId" keys after successful API call. roomInfo: $roomInfo',
@@ -492,35 +356,28 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
           setState(() {
             _isLoading = false;
             _errorMessage =
-                json['message'] ??
+                response.data!['message'] ??
                 'Өрөөний мэдээлэл татахад алдаа гарлаа: Амжилтгүй хүсэлт.';
-            // _currentBody = _buildLocationBody();
           });
-          debugPrint('API success false: ${json['message']}');
+          debugPrint('API success false: ${response.data!['message']}');
         }
       } else {
         setState(() {
           _isLoading = false;
-          _errorMessage =
-              'Серверийн алдаа: ${response.statusCode}. Дахин оролдоно уу.';
-          // _currentBody = _buildLocationBody();
+          _errorMessage = 'Серверийн алдаа: ${response.statusCode}. Дахин оролдоно уу.';
         });
         debugPrint(
-          'Failed to fetch patients with status code: ${response.statusCode}. Body: ${response.body}',
+          'Failed to fetch patients with status code: ${response.statusCode}. Body: ${response.data}',
         );
       }
     } catch (e) {
       setState(() {
         _isLoading = false;
-        _errorMessage =
-            'Учирсан алдаа: ${e.toString()}. Интернет холболтоо шалгана уу.';
-        // _currentBody = _buildLocationBody();
+        _errorMessage = 'Учирсан алдаа: ${e.toString()}. Интернет холболтоо шалгана уу.';
       });
       debugPrint('Exception during fetchRoom: $e');
     }
-    debugPrint(
-      'fetchRoom finished. _isLoading: $_isLoading, _errorMessage: $_errorMessage',
-    );
+    debugPrint('fetchRoom finished. _isLoading: $_isLoading, _errorMessage: $_errorMessage');
   }
 
   Future<void> _methodCallHandler(MethodCall call) async {
@@ -529,8 +386,6 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
       final latitude = locationData['latitude'];
       final longitude = locationData['longitude'];
       setState(() {
-        _liveLocation =
-            "Сүүлд илгээсэн байршил\nУртраг: $longitude\nӨргөрөг: $latitude";
         _addLocationToHistory(latitude, longitude);
       });
     } else if (call.method == 'navigateToLogin') {
@@ -567,14 +422,12 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
   }
 
   void _initializeNotifications() async {
-    const AndroidInitializationSettings androidSettings =
-        AndroidInitializationSettings('app_icon');
-    const DarwinInitializationSettings iOSSettings =
-        DarwinInitializationSettings(
-          requestAlertPermission: true,
-          requestBadgePermission: true,
-          requestSoundPermission: true,
-        );
+    const AndroidInitializationSettings androidSettings = AndroidInitializationSettings('app_icon');
+    const DarwinInitializationSettings iOSSettings = DarwinInitializationSettings(
+      requestAlertPermission: true,
+      requestBadgePermission: true,
+      requestSoundPermission: true,
+    );
     final InitializationSettings settings = InitializationSettings(
       android: androidSettings,
       iOS: iOSSettings,
@@ -590,14 +443,6 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
       });
     } on PlatformException catch (e) {
       debugPrint("Failed to send xToken to AppDelegate: '${e.message}'.");
-    }
-  }
-
-  Future<void> _startLocationTracking() async {
-    try {
-      await platform.invokeMethod('startLocationManagerAfterLogin');
-    } on PlatformException catch (e) {
-      debugPrint("Error starting location manager: $e");
     }
   }
 
@@ -624,18 +469,15 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
   }
 
   Future<void> _showNotification() async {
-    const AndroidNotificationDetails androidDetails =
-        AndroidNotificationDetails(
-          'medsoft_channel_id',
-          'Медсофт Мэдэгдэл',
-          channelDescription: 'Системээс гарах болон бусад чухал мэдэгдлүүд',
-          importance: Importance.max,
-          priority: Priority.high,
-          showWhen: false,
-        );
-    const DarwinNotificationDetails iOSDetails = DarwinNotificationDetails(
-      badgeNumber: 1,
+    const AndroidNotificationDetails androidDetails = AndroidNotificationDetails(
+      'medsoft_channel_id',
+      'Медсофт Мэдэгдэл',
+      channelDescription: 'Системээс гарах болон бусад чухал мэдэгдлүүд',
+      importance: Importance.max,
+      priority: Priority.high,
+      showWhen: false,
     );
+    const DarwinNotificationDetails iOSDetails = DarwinNotificationDetails(badgeNumber: 1);
     const NotificationDetails notificationDetails = NotificationDetails(
       android: androidDetails,
       iOS: iOSDetails,
@@ -649,35 +491,27 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
   }
 
   Widget _buildLocationBody() {
-    return 
-    // Column(
-    //   children: [
-        Center(
-          child: ElevatedButton.icon(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF00CCCC),
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-            ),
-            onPressed:
-                _isLoading
-                    ? null
-                    : () async {
-                      setState(() => _isLoading = true);
-                      await fetchRoom();
-                    },
-            icon: const Icon(Icons.map),
-            label: Text(
-              _isLoading ? 'Түр хүлээнэ үү...' : 'Газрын зураг харах',
-              style: const TextStyle(fontSize: 18),
-            ),
-          ),
-        );
-      //   Center(child: Text(_token ?? 'Waiting for APNs token...')),
-      // ],
-    // );
+    return Center(
+      child: ElevatedButton.icon(
+        style: ElevatedButton.styleFrom(
+          backgroundColor: const Color(0xFF00CCCC),
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        ),
+        onPressed:
+            _isLoading
+                ? null
+                : () async {
+                  setState(() => _isLoading = true);
+                  await fetchRoom();
+                },
+        icon: const Icon(Icons.map),
+        label: Text(
+          _isLoading ? 'Түр хүлээнэ үү...' : 'Газрын зураг харах',
+          style: const TextStyle(fontSize: 18),
+        ),
+      ),
+    );
   }
 
   @override
@@ -699,17 +533,14 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
         backgroundColor: const Color(0xFF00CCCC),
         title: Text(appBarCaption),
         actions: [
-          // Wrap the IconButton in Padding to control its spacing
           Padding(
-            padding: const EdgeInsets.only(right: 15.0), // Adjust 8.0 as needed
+            padding: const EdgeInsets.only(right: 15.0),
             child: IconButton(
               icon: const Icon(Icons.notifications),
               onPressed: () {
                 Navigator.push(
                   context,
-                  MaterialPageRoute(
-                    builder: (context) => const NotificationScreen(),
-                  ),
+                  MaterialPageRoute(builder: (context) => const NotificationScreen()),
                 );
               },
             ),
@@ -719,7 +550,6 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
       drawer: _buildDrawer(),
       body: _buildSelectedBody(),
 
-      // ✅ Bottom Navigation Bar
       bottomNavigationBar: BottomNavigationBar(
         type: BottomNavigationBarType.fixed,
         currentIndex: _selectedIndex,
@@ -728,14 +558,8 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
         unselectedItemColor: Colors.grey,
         items: const [
           BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Нүүр'),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.schedule),
-            label: 'Цаг авах',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.qr_code_scanner),
-            label: 'QR',
-          ),
+          BottomNavigationBarItem(icon: Icon(Icons.schedule), label: 'Цаг авах'),
+          BottomNavigationBarItem(icon: Icon(Icons.qr_code_scanner), label: 'QR'),
           BottomNavigationBarItem(icon: Icon(Icons.history), label: 'Түүх'),
           BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Профайл'),
         ],
@@ -748,15 +572,9 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
       child: Column(
         children: <Widget>[
           DrawerHeader(
-            decoration: const BoxDecoration(
-              color: Color.fromARGB(255, 236, 169, 175),
-            ),
+            decoration: const BoxDecoration(color: Color.fromARGB(255, 236, 169, 175)),
             child: Center(
-              child: Image.asset(
-                'assets/icon/logoTransparent.png',
-                width: 150,
-                height: 150,
-              ),
+              child: Image.asset('assets/icon/logoTransparent.png', width: 150, height: 150),
             ),
           ),
           Expanded(
@@ -773,21 +591,13 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
                 ),
                 const Divider(),
                 ListTile(
-                  leading: const Icon(
-                    Icons.info_outline,
-                    color: Colors.blueAccent,
-                  ),
-                  title: const Text(
-                    'Хэрэглэх заавар',
-                    style: TextStyle(fontSize: 18),
-                  ),
+                  leading: const Icon(Icons.info_outline, color: Colors.blueAccent),
+                  title: const Text('Хэрэглэх заавар', style: TextStyle(fontSize: 18)),
                   onTap: () {
                     Navigator.pop(context);
                     Navigator.push(
                       context,
-                      MaterialPageRoute(
-                        builder: (context) => const GuideScreen(),
-                      ),
+                      MaterialPageRoute(builder: (context) => const GuideScreen()),
                     );
                   },
                 ),
@@ -804,11 +614,7 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
               title: const Center(
                 child: Text(
                   'Гарах',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                  ),
+                  style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
                 ),
               ),
               onTap: () {

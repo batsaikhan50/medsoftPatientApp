@@ -1,10 +1,7 @@
 import 'dart:async';
-import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:http/http.dart' as http;
-import 'package:medsoft_patient/constants.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 
@@ -28,6 +25,7 @@ class WebViewScreen extends StatefulWidget {
 
 class _WebViewScreenState extends State<WebViewScreen> {
   late final WebViewController _controller;
+
   bool arrivedInFifty = false;
   Timer? _pollingTimer;
 
@@ -57,9 +55,7 @@ class _WebViewScreenState extends State<WebViewScreen> {
     platform.setMethodCallHandler((call) async {
       if (call.method == 'arrivedInFiftyReached') {
         final bool arrived = call.arguments?['arrivedInFifty'] ?? false;
-        debugPrint(
-          "arrivedInFiftyReached received in Dart: ${call.arguments?['arrivedInFifty']}",
-        );
+        debugPrint("arrivedInFiftyReached received in Dart: ${call.arguments?['arrivedInFifty']}");
 
         final prefs = await SharedPreferences.getInstance();
         await prefs.setBool('arrivedInFifty', arrived);
@@ -67,6 +63,8 @@ class _WebViewScreenState extends State<WebViewScreen> {
         setState(() {
           arrivedInFifty = arrived;
         });
+
+        if (!mounted) return;
 
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -82,7 +80,7 @@ class _WebViewScreenState extends State<WebViewScreen> {
   Future<void> _sendLocation() async {
     try {
       await platform.invokeMethod('sendLocationToAPIByButton');
-
+      if (!mounted) return;
       ScaffoldMessenger.of(context).hideCurrentSnackBar();
 
       ScaffoldMessenger.of(context).showSnackBar(
@@ -107,51 +105,6 @@ class _WebViewScreenState extends State<WebViewScreen> {
     }
   }
 
-  void _startPolling() {
-    _pollingTimer?.cancel();
-
-    _pollingTimer = Timer.periodic(const Duration(minutes: 60), (timer) async {
-      if (widget.roomIdNum != null && arrivedInFifty) {
-        await _checkDoneStatus();
-      } else {
-        timer.cancel();
-      }
-    });
-  }
-
-  Future<void> _checkDoneStatus() async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final token = prefs.getString('X-Medsoft-Token') ?? '';
-
-      final uri = Uri.parse("${Constants.appUrl}/room/done_request");
-
-      final response = await http.get(
-        uri,
-        headers: {'Authorization': 'Bearer $token'},
-      );
-
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-
-        if (data['success'] == true) {
-          final done = data['data']?['done'] ?? false;
-          final doneAt = data['data']?['doneAt'];
-
-          if (done == true && doneAt != null) {
-            debugPrint("Done request completed at: $doneAt");
-
-            _pollingTimer?.cancel();
-          }
-        }
-      } else {
-        debugPrint("Failed: HTTP ${response.statusCode}");
-      }
-    } catch (e) {
-      debugPrint("Error checking done_request: $e");
-    }
-  }
-
   @override
   void dispose() {
     _pollingTimer?.cancel();
@@ -172,9 +125,7 @@ class _WebViewScreenState extends State<WebViewScreen> {
         onPressed: onPressed,
         style: ElevatedButton.styleFrom(
           backgroundColor: Colors.white,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           elevation: 2,
           padding: const EdgeInsets.symmetric(horizontal: 12),
           alignment: Alignment.centerLeft,
@@ -194,12 +145,7 @@ class _WebViewScreenState extends State<WebViewScreen> {
           child: Row(
             children: [
               Container(
-                padding: const EdgeInsets.only(
-                  left: 12,
-                  right: 16,
-                  top: 1,
-                  bottom: 2,
-                ),
+                padding: const EdgeInsets.only(left: 12, right: 16, top: 1, bottom: 2),
                 decoration: const BoxDecoration(
                   color: Colors.white,
                   borderRadius: BorderRadius.all(Radius.circular(25)),
@@ -210,10 +156,7 @@ class _WebViewScreenState extends State<WebViewScreen> {
                     const SizedBox(width: 8),
                     Text(
                       widget.title,
-                      style: const TextStyle(
-                        color: Colors.black,
-                        fontWeight: FontWeight.bold,
-                      ),
+                      style: const TextStyle(color: Colors.black, fontWeight: FontWeight.bold),
                     ),
                   ],
                 ),

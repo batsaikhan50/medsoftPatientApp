@@ -40,7 +40,9 @@ class _ClaimQRScreenState extends State<ClaimQRScreen> {
 
       final errorMessage = response.message ?? "Баталгаажуулалт амжилтгүй боллоо.";
 
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(errorMessage), backgroundColor: Colors.red));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(errorMessage), backgroundColor: Colors.red));
     }
   }
 
@@ -89,7 +91,11 @@ class _ClaimQRScreenState extends State<ClaimQRScreen> {
                             Text("Уншиж байна...", style: TextStyle(fontSize: 18)),
                           ],
                         )
-                        : const Text("Зөвшөөрөх", key: ValueKey('text'), style: TextStyle(fontSize: 18)),
+                        : const Text(
+                          "Зөвшөөрөх",
+                          key: ValueKey('text'),
+                          style: TextStyle(fontSize: 18),
+                        ),
               ),
             ),
 
@@ -102,7 +108,9 @@ class _ClaimQRScreenState extends State<ClaimQRScreen> {
                       : () {
                         Navigator.pushReplacement(
                           context,
-                          MaterialPageRoute(builder: (_) => const MyHomePage(title: 'Дуудлагын жагсаалт')),
+                          MaterialPageRoute(
+                            builder: (_) => const MyHomePage(title: 'Дуудлагын жагсаалт'),
+                          ),
                         );
                       },
               style: ElevatedButton.styleFrom(

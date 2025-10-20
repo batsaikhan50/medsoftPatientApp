@@ -1,11 +1,9 @@
 import 'dart:developer';
 
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
+import 'package:medsoft_patient/api/auth_dao.dart';
 import 'package:medsoft_patient/claim_qr.dart';
-import 'package:medsoft_patient/constants.dart';
 import 'package:qr_code_scanner/qr_code_scanner.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 class QrScanScreen extends StatefulWidget {
   const QrScanScreen({super.key});
@@ -16,6 +14,7 @@ class QrScanScreen extends StatefulWidget {
 
 class _QrScanScreenState extends State<QrScanScreen> {
   final GlobalKey qrKey = GlobalKey(debugLabel: 'QR');
+  final _authDAO = AuthDAO();
   QRViewController? controller;
   bool isScanned = false;
 
@@ -40,16 +39,7 @@ class _QrScanScreenState extends State<QrScanScreen> {
 
       log("Extracted token: $token");
 
-      final prefs = await SharedPreferences.getInstance();
-      final tokenSaved = prefs.getString('X-Medsoft-Token') ?? '';
-      final server = prefs.getString('X-Tenant') ?? '';
-
-      final headers = {"Authorization": "Bearer $tokenSaved"};
-
-      final response = await http.get(
-        Uri.parse("${Constants.appUrl}/qr/wait?id=$token"),
-        headers: headers,
-      );
+      final response = await _authDAO.waitQR(token);
 
       if (response.statusCode == 200) {
         if (!mounted) return;
@@ -85,15 +75,10 @@ class _QrScanScreenState extends State<QrScanScreen> {
     return Scaffold(
       body: Column(
         children: [
-          Expanded(
-            flex: 5,
-            child: QRView(key: qrKey, onQRViewCreated: _onQRViewCreated),
-          ),
+          Expanded(flex: 5, child: QRView(key: qrKey, onQRViewCreated: _onQRViewCreated)),
           const Expanded(
             flex: 1,
-            child: Center(
-              child: Text("QR кодоо камерын хүрээнд байрлуулна уу."),
-            ),
+            child: Center(child: Text("QR кодоо камерын хүрээнд байрлуулна уу.")),
           ),
         ],
       ),
