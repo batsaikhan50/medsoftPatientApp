@@ -31,8 +31,17 @@ final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp();
-  // Use the moved background handler from fcm_service.dart
+  
+  // Use the moved background handler from fcm_token.dart (not fcm_service.dart)
   FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
+
+  // --- NEW FCM INITIALIZATION LOGIC ---
+  final fcmService = FCMService();
+  await fcmService.initFCM(); // This calls _localNotificationService.initializeNotifications() and sets globalFCMToken
+  // --- END NEW FCM INITIALIZATION LOGIC ---
+
+  // Since globalFCMToken is now set, we can rely on it being available
+  // when MyApp builds its initial screen.
 
   runApp(const MyApp());
 }
@@ -62,6 +71,7 @@ class MyApp extends StatelessWidget {
           } else if (snapshot.hasData) {
             return snapshot.data!;
           } else {
+            debugPrint('globalFCMToken in MyApp build: $globalFCMToken');
             return LoginScreen(fcmToken: globalFCMToken);
           }
         },
@@ -101,6 +111,7 @@ class MyApp extends StatelessWidget {
     if (isLoggedIn && isGotMedsoftToken && isGotUsername) {
       return const MyHomePage(title: 'Дуудлагын жагсаалт');
     } else {
+      debugPrint('globalFCMToken in _getInitialScreen: $globalFCMToken');
       return LoginScreen(fcmToken: globalFCMToken);
     }
   }
@@ -507,6 +518,7 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
       debugPrint("Failed to stop location updates: '${e.message}'.");
     }
     if (mounted) {
+      debugPrint('globalFCMToken at logout: $globalFCMToken');
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(builder: (context) => LoginScreen(fcmToken: globalFCMToken)),
