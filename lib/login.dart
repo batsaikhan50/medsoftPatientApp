@@ -10,7 +10,8 @@ import 'package:medsoft_patient/reset_password.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class LoginScreen extends StatefulWidget {
-  const LoginScreen({super.key});
+  final String? fcmToken; // 🔸 receive it here
+  const LoginScreen({super.key, this.fcmToken});
 
   @override
   State<LoginScreen> createState() => _LoginScreenState();
@@ -288,10 +289,13 @@ class _LoginScreenState extends State<LoginScreen> with WidgetsBindingObserver {
   Future<void> _login() async {
     setState(() => _isLoading = true);
 
+    debugPrint("FCM Token received in LoginScreen: ${widget.fcmToken}"); 
+
     final body = {
       'username': _usernameLoginController.text,
       'password': _passwordLoginController.text,
       'type': 'driver',
+      'deviceToken': widget.fcmToken,
     };
 
     final response = await _authDAO.login(body);

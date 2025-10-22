@@ -2,9 +2,11 @@ import AdSupport
 // import AppTrackingTransparency
 import BackgroundTasks
 import CoreLocation
+import FirebaseCore  // <-- ADDED: Necessary for FirebaseApp.configure()
 import Flutter
 import UIKit
 import UserNotifications
+import flutter_local_notifications  // <-- ADDED: Necessary for plugin methods
 
 @main
 @objc class AppDelegate: FlutterAppDelegate, CLLocationManagerDelegate {
@@ -19,9 +21,16 @@ import UserNotifications
     _ application: UIApplication,
     didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
   ) -> Bool {
-    // DispatchQueue.main.async() {
-    //   self.requestTrackingAuthorization()
-    // }
+
+    FlutterLocalNotificationsPlugin.setPluginRegistrantCallback { (registry) in
+      GeneratedPluginRegistrant.register(with: registry)
+    }
+
+    if #available(iOS 10.0, *) {
+      UNUserNotificationCenter.current().delegate = self
+    }
+    // UNUserNotificationCenter.current().delegate = self
+
 
     let controller = window?.rootViewController as! FlutterViewController
     flutterChannel = FlutterMethodChannel(

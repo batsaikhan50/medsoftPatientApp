@@ -1,14 +1,18 @@
 import 'dart:async';
 
+import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+// import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:medsoft_patient/api/auth_dao.dart';
 import 'package:medsoft_patient/api/map_dao.dart';
 import 'package:medsoft_patient/claim_qr.dart';
 import 'package:medsoft_patient/guide.dart';
 import 'package:medsoft_patient/history_screen.dart';
 import 'package:medsoft_patient/login.dart';
+import 'package:medsoft_patient/notification/fcm_service.dart';
+import 'package:medsoft_patient/notification/local_notification_service.dart';
 import 'package:medsoft_patient/notification_screen.dart';
 import 'package:medsoft_patient/profile_screen.dart';
 import 'package:medsoft_patient/qr_scan_screen.dart';
@@ -18,9 +22,18 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uni_links/uni_links.dart';
 
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
+// String? globalFCMToken;
+// Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
+//   await Firebase.initializeApp();
+//   debugPrint("🔔 Background message: ${message.messageId}");
+// }
 
-void main() {
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp();
+  // Use the moved background handler from fcm_service.dart
+  FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
+
   runApp(const MyApp());
 }
 
@@ -49,7 +62,7 @@ class MyApp extends StatelessWidget {
           } else if (snapshot.hasData) {
             return snapshot.data!;
           } else {
-            return const LoginScreen();
+            return LoginScreen(fcmToken: globalFCMToken);
           }
         },
       ),
@@ -88,7 +101,7 @@ class MyApp extends StatelessWidget {
     if (isLoggedIn && isGotMedsoftToken && isGotUsername) {
       return const MyHomePage(title: 'Дуудлагын жагсаалт');
     } else {
-      return const LoginScreen();
+      return LoginScreen(fcmToken: globalFCMToken);
     }
   }
 }
@@ -102,12 +115,14 @@ class MyHomePage extends StatefulWidget {
 }
 
 class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
-  final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
-      FlutterLocalNotificationsPlugin();
+  final LocalNotificationService _localNotificationService = LocalNotificationService();
+  late final FCMService _fcmService;
+
   static const platform = MethodChannel('com.example.medsoft_patient/location');
 
   final _authDAO = AuthDAO();
   final _mapDAO = MapDAO();
+  // String? _fcmToken;
 
   int _selectedIndex = 0;
 
@@ -123,7 +138,10 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
   @override
   void initState() {
     super.initState();
+    _fcmService = FCMService();
+    _initServices();
 
+    // _initFCM();
     Future<void> saveScannedToken(String token) async {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString('scannedToken', token);
@@ -170,7 +188,7 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       final prefs = await SharedPreferences.getInstance();
       if (prefs.getBool('isLoggedIn') == true) {
-        _initializeNotifications();
+        // _initializeNotifications();
         _loadSharedPreferencesData();
         _sendXMedsoftTokenToAppDelegate();
         platform.setMethodCallHandler(_methodCallHandler);
@@ -179,6 +197,34 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
       }
     });
   }
+
+  Future<void> _initServices() async {
+    // Initialize both FCM and Local Notifications
+    await _localNotificationService.initializeNotifications();
+    await _fcmService.initFCM();
+  }
+  // Future<void> _initFCM() async {
+  //   debugPrint("HERE------------------------------");
+  //   FirebaseMessaging messaging = FirebaseMessaging.instance;
+
+  //   // iOS permission
+  //   await messaging.requestPermission(alert: true, badge: true, sound: true);
+
+  //   // Get device token
+  //   // String? token = await messaging.getToken();
+  //   globalFCMToken = await messaging.getToken();
+  //   debugPrint("✅ FCM Token: $globalFCMToken");
+
+  //   // ✅ Subscribe to broadcast topic "all"
+  //   await messaging.subscribeToTopic('all');
+  //   await messaging.unsubscribeFromTopic('all');
+  //   debugPrint("📡 Subscribed to topic 'all'");
+
+  //   // Foreground listener
+  //   FirebaseMessaging.onMessage.listen((RemoteMessage message) {
+  //     debugPrint('📬 Foreground message: ${message.notification?.title}');
+  //   });
+  // }
 
   @override
   void dispose() {
@@ -390,7 +436,7 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
       });
     } else if (call.method == 'navigateToLogin') {
       _logOut();
-      _showNotification();
+      _localNotificationService.showLogoutNotification();
     }
   }
 
@@ -421,19 +467,19 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
     });
   }
 
-  void _initializeNotifications() async {
-    const AndroidInitializationSettings androidSettings = AndroidInitializationSettings('app_icon');
-    const DarwinInitializationSettings iOSSettings = DarwinInitializationSettings(
-      requestAlertPermission: true,
-      requestBadgePermission: true,
-      requestSoundPermission: true,
-    );
-    final InitializationSettings settings = InitializationSettings(
-      android: androidSettings,
-      iOS: iOSSettings,
-    );
-    await flutterLocalNotificationsPlugin.initialize(settings);
-  }
+  // void _initializeNotifications() async {
+  //   const AndroidInitializationSettings androidSettings = AndroidInitializationSettings('app_icon');
+  //   const DarwinInitializationSettings iOSSettings = DarwinInitializationSettings(
+  //     requestAlertPermission: true,
+  //     requestBadgePermission: true,
+  //     requestSoundPermission: true,
+  //   );
+  //   final InitializationSettings settings = InitializationSettings(
+  //     android: androidSettings,
+  //     iOS: iOSSettings,
+  //   );
+  //   await flutterLocalNotificationsPlugin.initialize(settings);
+  // }
 
   Future<void> _sendXMedsoftTokenToAppDelegate() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
@@ -463,32 +509,32 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
     if (mounted) {
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(builder: (context) => const LoginScreen()),
+        MaterialPageRoute(builder: (context) => LoginScreen(fcmToken: globalFCMToken)),
       );
     }
   }
 
-  Future<void> _showNotification() async {
-    const AndroidNotificationDetails androidDetails = AndroidNotificationDetails(
-      'medsoft_channel_id',
-      'Медсофт Мэдэгдэл',
-      channelDescription: 'Системээс гарах болон бусад чухал мэдэгдлүүд',
-      importance: Importance.max,
-      priority: Priority.high,
-      showWhen: false,
-    );
-    const DarwinNotificationDetails iOSDetails = DarwinNotificationDetails(badgeNumber: 1);
-    const NotificationDetails notificationDetails = NotificationDetails(
-      android: androidDetails,
-      iOS: iOSDetails,
-    );
-    await flutterLocalNotificationsPlugin.show(
-      0,
-      'Системээс гарсан байна.',
-      'Ахин нэвтэрнэ үү.',
-      notificationDetails,
-    );
-  }
+  // Future<void> _showNotification() async {
+  //   const AndroidNotificationDetails androidDetails = AndroidNotificationDetails(
+  //     'medsoft_channel_id',
+  //     'Медсофт Мэдэгдэл',
+  //     channelDescription: 'Системээс гарах болон бусад чухал мэдэгдлүүд',
+  //     importance: Importance.max,
+  //     priority: Priority.high,
+  //     showWhen: false,
+  //   );
+  //   const DarwinNotificationDetails iOSDetails = DarwinNotificationDetails(badgeNumber: 1);
+  //   const NotificationDetails notificationDetails = NotificationDetails(
+  //     android: androidDetails,
+  //     iOS: iOSDetails,
+  //   );
+  //   await flutterLocalNotificationsPlugin.show(
+  //     0,
+  //     'Системээс гарсан байна.',
+  //     'Ахин нэвтэрнэ үү.',
+  //     notificationDetails,
+  //   );
+  // }
 
   Widget _buildLocationBody() {
     return Center(

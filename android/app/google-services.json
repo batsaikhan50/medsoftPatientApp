@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "460803212457",
+    "project_id": "medsoft-patient-push-noti",
+    "storage_bucket": "medsoft-patient-push-noti.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:460803212457:android:bd37af72339e54e8bb15b8",
+        "android_client_info": {
+          "package_name": "com.example.medsoft_patient"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyC7RPZq8xAQ8VpEoQvux6NKQU_vaC6x4Dc"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
