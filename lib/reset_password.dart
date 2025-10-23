@@ -10,7 +10,7 @@ class ResetPasswordScreen extends StatefulWidget {
 }
 
 class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
-  final _authDAO = AuthDAO();
+  final _authDao = AuthDAO();
 
   final TextEditingController _usernameController = TextEditingController();
   final TextEditingController _otpController = TextEditingController();
@@ -40,7 +40,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
     });
 
     try {
-      final response = await _authDAO.sendResetPassOTP({
+      final response = await _authDao.sendResetPassOTP({
         "username": _usernameController.text.trim(),
       });
 
@@ -95,7 +95,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
     };
 
     try {
-      final response = await _authDAO.resetPassword(body);
+      final response = await _authDao.resetPassword(body);
 
       setState(() => _isLoading = false);
 

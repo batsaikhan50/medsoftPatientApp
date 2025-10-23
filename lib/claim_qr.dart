@@ -13,13 +13,13 @@ class ClaimQRScreen extends StatefulWidget {
 }
 
 class _ClaimQRScreenState extends State<ClaimQRScreen> {
-  final _authDAO = AuthDAO();
+  final _authDao = AuthDAO();
   bool _isLoading = false;
 
   Future<void> _claim() async {
     setState(() => _isLoading = true);
 
-    final response = await _authDAO.claimQR(widget.token);
+    final response = await _authDao.claimQR(widget.token);
 
     if (!mounted) return;
 

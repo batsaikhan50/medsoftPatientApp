@@ -131,8 +131,8 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
 
   static const platform = MethodChannel('com.example.medsoft_patient/location');
 
-  final _authDAO = AuthDAO();
-  final _mapDAO = MapDAO();
+  final _authDao = AuthDAO();
+  final _mapDao = MapDAO();
   // String? _fcmToken;
 
   int _selectedIndex = 0;
@@ -160,7 +160,7 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
 
     Future<bool> callWaitApi(String token) async {
       try {
-        final apiResponse = await _authDAO.claimQR(token);
+        final apiResponse = await _authDao.claimQR(token);
 
         if (apiResponse.statusCode == 200) {
           return true;
@@ -321,7 +321,7 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
         return;
       }
 
-      final response = await _mapDAO.checkDoneRequest();
+      final response = await _mapDao.checkDoneRequest();
 
       debugPrint("✅ API response: ${response.statusCode} ${response.data}");
 
@@ -358,7 +358,7 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
         return;
       }
 
-      final response = await _mapDAO.getRoomInfo();
+      final response = await _mapDao.getRoomInfo();
 
       if (response.statusCode == 200) {
         debugPrint('API Response data: ${response.data}');

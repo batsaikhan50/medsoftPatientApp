@@ -14,7 +14,7 @@ class QrScanScreen extends StatefulWidget {
 
 class _QrScanScreenState extends State<QrScanScreen> {
   final GlobalKey qrKey = GlobalKey(debugLabel: 'QR');
-  final _authDAO = AuthDAO();
+  final _authDao = AuthDAO();
   QRViewController? controller;
   bool isScanned = false;
 
@@ -39,7 +39,7 @@ class _QrScanScreenState extends State<QrScanScreen> {
 
       log("Extracted token: $token");
 
-      final response = await _authDAO.waitQR(token);
+      final response = await _authDao.waitQR(token);
 
       if (response.statusCode == 200) {
         if (!mounted) return;

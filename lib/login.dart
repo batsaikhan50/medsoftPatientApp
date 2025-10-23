@@ -18,7 +18,7 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> with WidgetsBindingObserver {
-  final _authDAO = AuthDAO();
+  final _authDao = AuthDAO();
 
   final TextEditingController _usernameLoginController = TextEditingController();
   final TextEditingController _passwordLoginController = TextEditingController();
@@ -239,7 +239,7 @@ class _LoginScreenState extends State<LoginScreen> with WidgetsBindingObserver {
       'type': 'patient',
     };
 
-    final response = await _authDAO.register(body);
+    final response = await _authDao.register(body);
 
     if (response.success) {
       final prefs = await SharedPreferences.getInstance();
@@ -270,7 +270,7 @@ class _LoginScreenState extends State<LoginScreen> with WidgetsBindingObserver {
 
   Future<void> callWaitApi(BuildContext context, String token) async {
     try {
-      final waitResponse = await _authDAO.waitQR(token);
+      final waitResponse = await _authDao.waitQR(token);
       if (waitResponse.success) {
         if (!context.mounted) return;
 
@@ -298,7 +298,7 @@ class _LoginScreenState extends State<LoginScreen> with WidgetsBindingObserver {
       'deviceToken': widget.fcmToken,
     };
 
-    final response = await _authDAO.login(body);
+    final response = await _authDao.login(body);
 
     if (response.success && response.data != null) {
       final prefs = await SharedPreferences.getInstance();
@@ -313,7 +313,7 @@ class _LoginScreenState extends State<LoginScreen> with WidgetsBindingObserver {
       final savedToken = await getSavedToken();
       if (savedToken != null) {
         debugPrint("Login successful — calling wait API with savedToken: $savedToken");
-        await _authDAO.waitQR(savedToken);
+        await _authDao.waitQR(savedToken);
         if (!mounted) return;
         Navigator.pushReplacement(
           context,
