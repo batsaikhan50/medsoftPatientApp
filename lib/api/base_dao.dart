@@ -78,6 +78,7 @@ abstract class BaseDAO {
     String url, {
     RequestConfig config = const RequestConfig(),
     T Function(dynamic)? parse,
+    // T Function(dynamic json)? transform,
   }) async {
     try {
       final headers = await _buildHeaders(config);
@@ -85,7 +86,17 @@ abstract class BaseDAO {
       debugPrint('Headers: $headers');
 
       final response = await http.get(Uri.parse(url), headers: headers);
-      return _handleResponse<T>(response, parse: parse);
+      final result = _handleResponse<dynamic>(response, parse: parse);
+
+      // if (result.success && transform != null && result.data != null) {
+      //   return ApiResponse<T>(success: true, data: transform(result.data), message: result.message);
+      // }
+
+      return ApiResponse<T>(
+        success: result.success,
+        data: result.data as T?,
+        message: result.message,
+      );
     } catch (e) {
       debugPrint('GET error: $e');
       return ApiResponse<T>(success: false, message: e.toString());
