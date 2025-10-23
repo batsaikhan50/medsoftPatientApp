@@ -1,5 +1,3 @@
-import 'dart:convert';
-
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
@@ -13,14 +11,14 @@ String? globalFCMToken;
 
 // Instance of the local notification service, now using the factory constructor
 // to get the singleton instance provided by local_notification_service.dart.
-final LocalNotificationService _localNotificationService = LocalNotificationService();
+// final LocalNotificationService _localNotificationService = LocalNotificationService();
 
 // Define iOS details for use in background handler
-const _iOSBackgroundDetails = DarwinNotificationDetails(
-  presentAlert: true, // CRITICAL: Forces the notification to be displayed
-  presentSound: true,
-  presentBadge: true,
-);
+// const _iOSBackgroundDetails = DarwinNotificationDetails(
+//   presentAlert: true, // CRITICAL: Forces the notification to be displayed
+//   presentSound: true,
+//   presentBadge: true,
+// );
 
 /// A handler for background messages (executed when the app is terminated or in the background).
 @pragma('vm:entry-point')
