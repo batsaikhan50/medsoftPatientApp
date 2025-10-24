@@ -16,7 +16,7 @@ import 'package:medsoft_patient/notification/local_notification_service.dart';
 import 'package:medsoft_patient/notification_screen.dart';
 import 'package:medsoft_patient/profile_screen.dart';
 import 'package:medsoft_patient/qr_scan_screen.dart';
-import 'package:medsoft_patient/time_order_screen.dart';
+import 'package:medsoft_patient/time_order/time_order_screen.dart';
 import 'package:medsoft_patient/webview_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uni_links/uni_links.dart';

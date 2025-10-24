@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:medsoft_patient/api/time_order_dao.dart'; // Assuming this is the correct path
+import 'package:medsoft_patient/api/time_order_dao.dart';
+import 'package:medsoft_patient/time_order/time_selection_screen.dart'; // Assuming this is the correct path
 
 // Data structure to hold the list item data (name and ID/tenant)
 class DropdownItem {
@@ -123,6 +124,7 @@ class _TimeOrderScreenState extends State<TimeOrderScreen> {
             response.data!
                 .map((json) => DropdownItem(id: json['id'] as String, name: json['name'] as String))
                 .toList();
+        debugPrint('Loaded tasags: $_tasags');
       } else {
         _error = response.message ?? 'Failed to load departments.';
       }
@@ -302,8 +304,26 @@ class _TimeOrderScreenState extends State<TimeOrderScreen> {
                   setState(() {
                     _selectedDoctor = newValue;
                   });
-                  // Here you would typically load times (getTimes)
-                  // but this is excluded as per the request.
+                  
+                  // NEW: Navigate to TimeSelectionScreen
+
+
+                  if (_selectedHospital?.tenant != null && 
+                      _selectedBranch != null && 
+                      _selectedTasag != null) {
+                    
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (context) => TimeSelectionScreen(
+                          tenant: _selectedHospital!.tenant!,
+                          branchId: _selectedBranch!.id,
+                          tasagId: _selectedTasag!.id,
+                          employeeId: newValue.id,
+                          doctorName: newValue.name, // Pass the name for display
+                        ),
+                      ),
+                    );
+                  }
                 }
               },
               enabled: _selectedTasag != null,
