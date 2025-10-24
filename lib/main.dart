@@ -4,6 +4,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 // import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:medsoft_patient/api/auth_dao.dart';
 import 'package:medsoft_patient/api/map_dao.dart';
@@ -52,6 +53,20 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      localizationsDelegates: const [
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+        // Add specific delegate for Mongolian if available, 
+        // but flutter_localizations should handle 'mn' for date/time.
+      ],
+      
+      // 2. DEFINE SUPPORTED LOCALES
+      supportedLocales: const [
+        Locale('en', ''), // English
+        Locale('mn', ''), // Mongolian (mn) <-- REQUIRED
+      ],
+      
       debugShowCheckedModeBanner: false,
       navigatorKey: navigatorKey,
       title: 'Patient App',

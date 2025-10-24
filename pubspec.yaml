@@ -46,6 +46,8 @@ dependencies:
   firebase_core: ^3.5.0
   firebase_messaging: ^15.1.0
   intl: ^0.20.2
+  flutter_localizations: # <-- ADD THIS LINE
+    sdk: flutter
 
 flutter_launcher_icons:
   android: "launcher_icon"
