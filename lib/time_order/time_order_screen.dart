@@ -71,18 +71,17 @@ class _TimeOrderScreenState extends State<TimeOrderScreen> {
     debugPrint('Attempting to launch URL/Phone: $url');
   }
 
-  void _showWarningDialog(String message) {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: const Text('Branch Unavailable'),
-          content: Text(message),
-          actions: <Widget>[
-            TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('OK')),
-          ],
-        );
-      },
+  // RENAMED and MODIFIED: Changed from AlertDialog to a SnackBar for the warning,
+  // which is a standard, less intrusive way to show temporary, immediate feedback
+  // near the top of the screen (as requested near "Appbar").
+  void _showWarningSnackbar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: Colors.red.shade700,
+        behavior: SnackBarBehavior.floating, // Floating behavior is less intrusive
+        duration: const Duration(seconds: 4), // Show for a few seconds
+      ),
     );
   }
 
@@ -108,7 +107,7 @@ class _TimeOrderScreenState extends State<TimeOrderScreen> {
                 )
                 .toList();
       } else {
-        _error = response.message ?? 'Failed to load hospitals.';
+        _error = response.message ?? 'Эмнэлгүүдийг татаж чадсангүй.';
       }
     });
   }
@@ -157,7 +156,7 @@ class _TimeOrderScreenState extends State<TimeOrderScreen> {
           return a.name.compareTo(b.name);
         });
       } else {
-        _error = response.message ?? 'Failed to load branches.';
+        _error = response.message ?? 'Салбаруудыг татаж чадсангүй.';
       }
     });
   }
@@ -183,7 +182,7 @@ class _TimeOrderScreenState extends State<TimeOrderScreen> {
                 .toList();
         debugPrint('Loaded tasags: $_tasags');
       } else {
-        _error = response.message ?? 'Failed to load departments.';
+        _error = response.message ?? 'Тасгуудыг татаж чадсангүй.';
       }
     });
   }
@@ -206,7 +205,7 @@ class _TimeOrderScreenState extends State<TimeOrderScreen> {
                 .map((json) => DropdownItem(id: json['id'] as String, name: json['name'] as String))
                 .toList();
       } else {
-        _error = response.message ?? 'Failed to load doctors.';
+        _error = response.message ?? 'Эмч нарыг татаж чадсангүй.';
       }
     });
   }
@@ -348,29 +347,27 @@ class _TimeOrderScreenState extends State<TimeOrderScreen> {
                                   crossAxisAlignment: WrapCrossAlignment.center,
                                   children: [
                                     const Icon(Icons.phone, color: Colors.white70, size: 14),
-                                    ...item.phones!
-                                        .map(
-                                          (phone) => InkWell(
-                                            // Disabled for unavailable branches
-                                            onTap:
+                                    ...item.phones!.map(
+                                      (phone) => InkWell(
+                                        // Disabled for unavailable branches
+                                        onTap:
+                                            isBranchUnavailable
+                                                ? null
+                                                : () => _launchUrl('tel:$phone'),
+                                        child: Text(
+                                          phone,
+                                          style: TextStyle(
+                                            color: Colors.white,
+                                            fontSize: 14,
+                                            decoration:
                                                 isBranchUnavailable
-                                                    ? null
-                                                    : () => _launchUrl('tel:$phone'),
-                                            child: Text(
-                                              phone,
-                                              style: TextStyle(
-                                                color: Colors.white,
-                                                fontSize: 14,
-                                                decoration:
-                                                    isBranchUnavailable
-                                                        ? TextDecoration.none
-                                                        : TextDecoration.underline,
-                                                decorationColor: Colors.white,
-                                              ),
-                                            ),
+                                                    ? TextDecoration.none
+                                                    : TextDecoration.underline,
+                                            decorationColor: Colors.white,
                                           ),
-                                        )
-                                        .toList(),
+                                        ),
+                                      ),
+                                    ),
                                   ],
                                 ),
 
@@ -389,18 +386,32 @@ class _TimeOrderScreenState extends State<TimeOrderScreen> {
                                           isBranchUnavailable
                                               ? null
                                               : () => _launchUrl(item.facebook!),
-                                      child: const Row(
+                                      child: Row(
                                         mainAxisSize: MainAxisSize.min,
                                         children: [
-                                          Icon(Icons.facebook, color: Colors.blueAccent, size: 14),
-                                          SizedBox(width: 4),
+                                          Icon(
+                                            Icons.facebook,
+                                            color:
+                                                isBranchAvailable
+                                                    ? Colors.blueAccent
+                                                    : Colors.white,
+                                            size: 14,
+                                          ),
+                                          const SizedBox(width: 4),
                                           Text(
+                                            // TRANSLATED
                                             'Facebook Page',
                                             style: TextStyle(
-                                              color: Colors.blueAccent,
+                                              color:
+                                                  isBranchAvailable
+                                                      ? Colors.blueAccent
+                                                      : Colors.white,
                                               fontSize: 14,
                                               decoration: TextDecoration.underline,
-                                              decorationColor: Colors.blueAccent,
+                                              decorationColor:
+                                                  isBranchAvailable
+                                                      ? Colors.blueAccent
+                                                      : Colors.white,
                                             ),
                                           ),
                                         ],
@@ -459,7 +470,7 @@ class _TimeOrderScreenState extends State<TimeOrderScreen> {
     required ValueChanged<DropdownItem?> onChanged,
     bool enabled = true,
   }) {
-    final bool isBranchDropdown = labelText == 'Branch';
+    final bool isBranchDropdown = labelText == 'Салбар'; // Check using Mongolian label
 
     return DropdownButtonFormField<DropdownItem>(
       decoration: InputDecoration(
@@ -477,13 +488,26 @@ class _TimeOrderScreenState extends State<TimeOrderScreen> {
                 )
                 : null,
       ),
-      value: selectedValue,
+      initialValue: selectedValue,
 
+      // FIX: Use selectedItemBuilder to ensure only the name is shown when the branch dropdown is closed.
       selectedItemBuilder:
           isBranchDropdown
               ? (context) {
+                // Ensure we return the name of the currently selected item in the dropdown field.
+                if (selectedValue != null) {
+                  return [
+                    Text(
+                      selectedValue.name,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.titleMedium,
+                    ),
+                  ];
+                }
                 return items.map((item) {
-                  // When selected, display only the name as simple text
+                  // This item builder handles the display of the selected item in the closed state.
+                  // We map through all items, but only the selected value is displayed in the field.
+                  // This default structure is necessary for DropdownButtonFormField's logic.
                   return Text(
                     item.name,
                     overflow: TextOverflow.ellipsis,
@@ -495,13 +519,13 @@ class _TimeOrderScreenState extends State<TimeOrderScreen> {
 
       items:
           items.map((item) {
-            final bool isUnavailableBranch = isBranchDropdown && !item.isAvailable; // NEW Check
+            // final bool isUnavailableBranch = isBranchDropdown && !item.isAvailable; // We keep this for visual indicator in _buildItemChild
 
             return DropdownMenuItem<DropdownItem>(
               value: item,
+              // FIX: Removed 'enabled: !isUnavailableBranch' so that the item is selectable.
+              // The 'onChanged' handler below will now fire and handle the warning and block the state update.
               child: _buildItemChild(item),
-              // NEW: We disable the item if it's an unavailable branch.
-              enabled: !isUnavailableBranch,
             );
           }).toList(),
 
@@ -509,11 +533,11 @@ class _TimeOrderScreenState extends State<TimeOrderScreen> {
           enabled && !isLoading
               ? (DropdownItem? newValue) {
                 if (isBranchDropdown && newValue != null && !newValue.isAvailable) {
-                  // NEW: Show warning for unavailable branch selection
-                  _showWarningDialog(
-                    'You cannot choose this branch (${newValue.name}) as it is currently unavailable. Please select another available branch.',
+                  // MODIFIED: Use SnackBar instead of Dialog for the warning, fulfilling the request for an "Appbar" warning.
+                  _showWarningSnackbar(
+                    '(${newValue.name}) салбарыг одоогоор сонгох боломжгүй байна. Та өөр салбар сонгоно уу.',
                   );
-                  // Do NOT call onChanged to keep the previous selection or null
+                  // Returning here prevents the state update, keeping the previous selection or null.
                   return;
                 }
                 // Proceed with normal selection for all other cases
@@ -521,19 +545,14 @@ class _TimeOrderScreenState extends State<TimeOrderScreen> {
               }
               : null,
       isExpanded: true,
-      hint: Text('Select $labelText'),
-      validator: (value) => value == null ? 'Please select a $labelText' : null,
+      hint: Text('$labelText сонгоно уу'), // TRANSLATED
+      validator: (value) => value == null ? '$labelText сонгоно уу' : null, // TRANSLATED
     );
   }
-  // NOTE: The _showBranchGridDialog function has been removed as requested.
 
   @override
   Widget build(BuildContext context) {
-    // Determine if the branch selection is enabled
-    final isBranchSelectorEnabled = _selectedHospital != null && !_isLoadingBranches;
-
     return Scaffold(
-      // appBar: AppBar(title: const Text('Time Order')),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),
         child: Column(
@@ -541,7 +560,7 @@ class _TimeOrderScreenState extends State<TimeOrderScreen> {
           children: <Widget>[
             // 1. Hospital Dropdown (getAllHospitals)
             _buildDropdown(
-              labelText: 'Hospital',
+              labelText: 'Эмнэлэг',
               selectedValue: _selectedHospital,
               items: _hospitals,
               isLoading: _isLoadingHospitals,
@@ -561,9 +580,9 @@ class _TimeOrderScreenState extends State<TimeOrderScreen> {
             ),
             const SizedBox(height: 20),
 
-            // 2. Branch Dropdown (getBranches) - Reverted to standard dropdown
+            // 2. Branch Dropdown (getBranches)
             _buildDropdown(
-              labelText: 'Branch',
+              labelText: 'Салбар',
               selectedValue: _selectedBranch,
               items: _branches,
               isLoading: _isLoadingBranches,
@@ -589,7 +608,7 @@ class _TimeOrderScreenState extends State<TimeOrderScreen> {
 
             // 3. Department (Tasag) Dropdown (getTasags)
             _buildDropdown(
-              labelText: 'Department (Tasag)',
+              labelText: 'Тасаг',
               selectedValue: _selectedTasag,
               items: _tasags,
               isLoading: _isLoadingTasags,
@@ -609,7 +628,7 @@ class _TimeOrderScreenState extends State<TimeOrderScreen> {
 
             // 4. Doctor Dropdown (getDoctors)
             _buildDropdown(
-              labelText: 'Doctor',
+              labelText: 'Эмч',
               selectedValue: _selectedDoctor,
               items: _doctors,
               isLoading: _isLoadingDoctors,
@@ -643,17 +662,20 @@ class _TimeOrderScreenState extends State<TimeOrderScreen> {
             ),
             const SizedBox(height: 30),
 
-            if (_error != null) Text('Error: $_error', style: const TextStyle(color: Colors.red)),
-
+            if (_error != null)
+              Text('Алдаа: $_error', style: const TextStyle(color: Colors.red)), // TRANSLATED
             // Example of usage: Display selected values
             const Divider(),
-            const Text('Selected Order Details:', style: TextStyle(fontWeight: FontWeight.bold)),
+            const Text(
+              'Сонгогдсон захиалгын мэдээлэл:',
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ), // TRANSLATED
             Text(
-              'Hospital: ${_selectedHospital?.name ?? 'N/A'} (Tenant: ${_selectedHospital?.tenant ?? 'N/A'})',
+              'Эмнэлэг: ${_selectedHospital?.name ?? 'Байхгүй'} (Tenant: ${_selectedHospital?.tenant ?? 'Байхгүй'})', // TRANSLATED
             ),
-            Text('Branch: ${_selectedBranch?.name ?? 'N/A'}'),
-            Text('Department (Tasag): ${_selectedTasag?.name ?? 'N/A'}'),
-            Text('Doctor: ${_selectedDoctor?.name ?? 'N/A'}'),
+            Text('Салбар: ${_selectedBranch?.name ?? 'Байхгүй'}'), // TRANSLATED
+            Text('Тасаг: ${_selectedTasag?.name ?? 'Байхгүй'}'), // TRANSLATED
+            Text('Эмч: ${_selectedDoctor?.name ?? 'Байхгүй'}'), // TRANSLATED
           ],
         ),
       ),
