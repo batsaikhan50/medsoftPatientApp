@@ -319,20 +319,23 @@ class _TimeSelectionScreenState extends State<TimeSelectionScreen> {
                 onPressed: _currentMonth.isSameMonth(now) ? null : _goToPrevMonth,
                 color: _currentMonth.isSameMonth(now) ? Colors.grey : Colors.blue,
               ),
-              
+
               Builder(
                 builder: (context) {
                   final formattedDate = DateFormat('MMMM yyyy', 'mn').format(_currentMonth);
                   // Inline capitalization of the first letter
-                  final capitalizedText = formattedDate.isNotEmpty 
-                    ? formattedDate.substring(0, 1).toUpperCase() + formattedDate.substring(1) 
-                    : formattedDate;
+                  final capitalizedText =
+                      formattedDate.isNotEmpty
+                          ? formattedDate.substring(0, 1).toUpperCase() + formattedDate.substring(1)
+                          : formattedDate;
 
                   return Text(
                     capitalizedText,
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.normal),
+                    style: Theme.of(
+                      context,
+                    ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.normal),
                   );
-                }
+                },
               ),
               IconButton(
                 icon: const Icon(Icons.arrow_forward_ios),
@@ -403,7 +406,10 @@ class _TimeSelectionScreenState extends State<TimeSelectionScreen> {
     final selectedSlots = _groupedTimeSlots[_formatDateToApi(_selectedDate)] ?? [];
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Select Appointment Time')),
+      appBar: AppBar(
+        title: const Text('Өдөр, цаг сонгох'),
+        backgroundColor: const Color(0xFF00CCCC),
+      ),
       body:
           _isLoading
               ? const Center(child: CircularProgressIndicator())
