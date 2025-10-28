@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:medsoft_patient/api/time_order_dao.dart';
+import 'package:medsoft_patient/time_order/branch_select_widget.dart';
 import 'package:medsoft_patient/time_order/time_selection_screen.dart'; // Assuming this is the correct path
 
 // Data structure to hold the list item data (name and ID/tenant)
@@ -461,6 +462,155 @@ class _TimeOrderScreenState extends State<TimeOrderScreen> {
     // 3. DEFAULT LAYOUT: Just the name (for Tasags, Doctors, and items without logo)
     return Text(item.name);
   }
+  // Inside _TimeOrderScreenState:
+  // Inside _TimeOrderScreenState:
+
+  Widget _buildBranchSelectionField() {
+    final bool enabled = _selectedHospital != null && !_isLoadingBranches;
+    const double modalHeightMultiplier = 0.70;
+
+    // This is the DropdownButtonFormField that provides the correct styling
+    final Widget fieldWidget = DropdownButtonFormField<DropdownItem>(
+      // Use the branch's current selected value
+      initialValue: _selectedBranch,
+
+      // Crucially, disable the button to prevent the built-in menu from showing
+      // If the widget is enabled, we use IgnorePointer below to intercept the tap.
+      // If it's disabled (e.g., _selectedHospital is null), we let the widget display its disabled state.
+      onChanged: (enabled && !_isLoadingBranches) ? (value) {} : null,
+
+      // Provide the correct styling
+      decoration: InputDecoration(
+        labelText: 'Салбар',
+        border: const OutlineInputBorder(),
+        suffixIcon:
+            _isLoadingBranches
+                ? const Padding(
+                  padding: EdgeInsets.all(8.0),
+                  child: SizedBox(
+                    height: 20,
+                    width: 20,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  ),
+                )
+                : const Icon(Icons.arrow_drop_down),
+      ),
+      isExpanded: true,
+      hint: const Text('Салбар сонгоно уу'),
+      validator: (value) => value == null ? 'Салбар сонгоно уу' : null,
+
+      // The items list doesn't matter much since we prevent the menu from showing,
+      // but it needs to be non-null for the field to work properly when a value is selected.
+      items:
+          _branches.map((item) {
+            return DropdownMenuItem<DropdownItem>(
+              value: item,
+              child: Text(item.name, overflow: TextOverflow.ellipsis),
+            );
+          }).toList(),
+    );
+
+    // We wrap the DropdownButtonFormField to intercept the tap and launch the modal
+    return InkWell(
+      onTap:
+          enabled
+              ? () async {
+                if (_branches.isEmpty) {
+                  _showWarningSnackbar('Салбарууд татагдаж дуусаагүй эсвэл байхгүй байна.');
+                  return;
+                }
+
+                // Launch the custom modal bottom sheet
+                final DropdownItem? selectedBranch = await showModalBottomSheet<DropdownItem>(
+                  context: context,
+                  isScrollControlled: true,
+                  shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero),
+                  backgroundColor: Colors.white,
+
+                  builder: (context) {
+                    const double listTopPadding = 55.0;
+
+                    return Container(
+                      height: MediaQuery.of(context).size.height * modalHeightMultiplier,
+                      color: Colors.white,
+                      child: Stack(
+                        children: [
+                          // 1. Branch List Content
+                          Padding(
+                            padding: const EdgeInsets.only(top: listTopPadding),
+                            child: BranchSelectionModal(
+                              branches: _branches,
+                              currentSelectedBranch: _selectedBranch,
+                              onBranchSelected: (branch) {
+                                Navigator.pop(context, branch);
+                              },
+                            ),
+                          ),
+
+                          // 2. Title (Centered)
+                          const Positioned(
+                            top: 10,
+                            left: 0,
+                            right: 0,
+                            child: Text(
+                              'Салбар сонгох',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(fontSize: 20, fontWeight: FontWeight.normal),
+                            ),
+                          ),
+
+                          // 3. Divider
+                          const Positioned(top: 45, left: 0, right: 0, child: Divider(height: 0)),
+
+                          // 4. The Close Button (Top Right)
+                          Positioned(
+                            top: 0,
+                            right: 0,
+                            child: IconButton(
+                              icon: const Icon(Icons.close, size: 30),
+                              color: Colors.black54,
+                              onPressed: () => Navigator.pop(context),
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                );
+
+                // Handle the result
+                if (selectedBranch != null && selectedBranch != _selectedBranch) {
+                  _handleBranchSelection(selectedBranch);
+                } else if (selectedBranch != null && !selectedBranch.isAvailable) {
+                  _showWarningSnackbar(
+                    '(${selectedBranch.name}) салбарыг одоогоор сонгох боломжгүй байна. Та өөр салбар сонгоно уу.',
+                  );
+                }
+              }
+              : null,
+      // The field widget is wrapped in IgnorePointer when enabled to prevent the built-in dropdown from opening
+      child: IgnorePointer(ignoring: enabled, child: fieldWidget),
+    );
+  }
+
+  // NEW: Extract the branch selection logic for reuse
+  void _handleBranchSelection(DropdownItem newValue) {
+    setState(() {
+      _selectedBranch = newValue;
+      // Reset dependents upon new branch selection
+      _tasags = [];
+      _selectedTasag = null;
+      _doctors = [];
+      _selectedDoctor = null;
+    });
+    if (_selectedHospital?.tenant != null) {
+      // Only load tasags if a hospital is selected
+      _loadTasags(_selectedHospital!.tenant!, newValue.id);
+    }
+  }
+  // Inside _TimeOrderScreenState:
+
+  // Cleaned up generic Dropdown Builder (REPLACE the existing _buildDropdown)
 
   Widget _buildDropdown({
     required String labelText,
@@ -470,7 +620,7 @@ class _TimeOrderScreenState extends State<TimeOrderScreen> {
     required ValueChanged<DropdownItem?> onChanged,
     bool enabled = true,
   }) {
-    final bool isBranchDropdown = labelText == 'Салбар'; // Check using Mongolian label
+    // IMPORTANT: The logic for isBranchDropdown and all its custom features have been removed.
 
     return DropdownButtonFormField<DropdownItem>(
       decoration: InputDecoration(
@@ -490,57 +640,21 @@ class _TimeOrderScreenState extends State<TimeOrderScreen> {
       ),
       initialValue: selectedValue,
 
-      // FIX: Use selectedItemBuilder to ensure only the name is shown when the branch dropdown is closed.
-      selectedItemBuilder:
-          isBranchDropdown
-              ? (context) {
-                // Ensure we return the name of the currently selected item in the dropdown field.
-                if (selectedValue != null) {
-                  return [
-                    Text(
-                      selectedValue.name,
-                      overflow: TextOverflow.ellipsis,
-                      style: Theme.of(context).textTheme.titleMedium,
-                    ),
-                  ];
-                }
-                return items.map((item) {
-                  // This item builder handles the display of the selected item in the closed state.
-                  // We map through all items, but only the selected value is displayed in the field.
-                  // This default structure is necessary for DropdownButtonFormField's logic.
-                  return Text(
-                    item.name,
-                    overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context).textTheme.titleMedium,
-                  );
-                }).toList();
-              }
-              : null,
-
+      // Note: menuMaxHeight, selectedItemBuilder are now removed.
       items:
           items.map((item) {
-            // final bool isUnavailableBranch = isBranchDropdown && !item.isAvailable; // We keep this for visual indicator in _buildItemChild
-
+            // Note: isUnavailableBranch, onTap, and custom enabled logic are now removed.
             return DropdownMenuItem<DropdownItem>(
               value: item,
-              // FIX: Removed 'enabled: !isUnavailableBranch' so that the item is selectable.
-              // The 'onChanged' handler below will now fire and handle the warning and block the state update.
-              child: _buildItemChild(item),
+              enabled: true, // All generic items are selectable
+              child: _buildItemChild(item), // Reusing your generic item builder
             );
           }).toList(),
 
       onChanged:
           enabled && !isLoading
               ? (DropdownItem? newValue) {
-                if (isBranchDropdown && newValue != null && !newValue.isAvailable) {
-                  // MODIFIED: Use SnackBar instead of Dialog for the warning, fulfilling the request for an "Appbar" warning.
-                  _showWarningSnackbar(
-                    '(${newValue.name}) салбарыг одоогоор сонгох боломжгүй байна. Та өөр салбар сонгоно уу.',
-                  );
-                  // Returning here prevents the state update, keeping the previous selection or null.
-                  return;
-                }
-                // Proceed with normal selection for all other cases
+                // Now just call the generic onChanged
                 onChanged(newValue);
               }
               : null,
@@ -581,29 +695,31 @@ class _TimeOrderScreenState extends State<TimeOrderScreen> {
             const SizedBox(height: 20),
 
             // 2. Branch Dropdown (getBranches)
-            _buildDropdown(
-              labelText: 'Салбар',
-              selectedValue: _selectedBranch,
-              items: _branches,
-              isLoading: _isLoadingBranches,
-              onChanged: (DropdownItem? newValue) {
-                if (newValue != null && newValue != _selectedBranch) {
-                  setState(() {
-                    _selectedBranch = newValue;
-                    // Reset dependents upon new branch selection
-                    _tasags = [];
-                    _selectedTasag = null;
-                    _doctors = [];
-                    _selectedDoctor = null;
-                  });
-                  if (_selectedHospital?.tenant != null) {
-                    // Only load tasags if a hospital is selected
-                    _loadTasags(_selectedHospital!.tenant!, newValue.id);
-                  }
-                }
-              },
-              enabled: _selectedHospital != null, // Enable only after hospital is selected
-            ),
+
+            // _buildDropdown(
+            //   labelText: 'Салбар',
+            //   selectedValue: _selectedBranch,
+            //   items: _branches,
+            //   isLoading: _isLoadingBranches,
+            //   onChanged: (DropdownItem? newValue) {
+            //     if (newValue != null && newValue != _selectedBranch) {
+            //       setState(() {
+            //         _selectedBranch = newValue;
+            //         // Reset dependents upon new branch selection
+            //         _tasags = [];
+            //         _selectedTasag = null;
+            //         _doctors = [];
+            //         _selectedDoctor = null;
+            //       });
+            //       if (_selectedHospital?.tenant != null) {
+            //         // Only load tasags if a hospital is selected
+            //         _loadTasags(_selectedHospital!.tenant!, newValue.id);
+            //       }
+            //     }
+            //   },
+            //   enabled: _selectedHospital != null, // Enable only after hospital is selected
+            // ),
+            _buildBranchSelectionField(),
             const SizedBox(height: 20),
 
             // 3. Department (Tasag) Dropdown (getTasags)
