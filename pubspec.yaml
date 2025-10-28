@@ -48,6 +48,7 @@ dependencies:
   intl: ^0.20.2
   flutter_localizations: # <-- ADD THIS LINE
     sdk: flutter
+  url_launcher: ^6.3.2
 
 flutter_launcher_icons:
   android: "launcher_icon"

@@ -40,7 +40,7 @@ Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   await flutterLocalNotificationsPlugin.initialize(initSettings);
 
   final notification = message.notification;
-  if (notification != null) {
+  if (notification != null && notification.title != null && notification.body != null) {
     final title = notification.title ?? 'No title';
     final body = notification.body ?? 'No body';
     debugPrint("🔔 Background TITLE: $title");
@@ -60,9 +60,7 @@ Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
       presentSound: true,
       presentBadge: true,
     );
-    final details = NotificationDetails(
-      android: androidDetails,
-      iOS: iOSDetails);
+    final details = NotificationDetails(android: androidDetails, iOS: iOSDetails);
 
     await flutterLocalNotificationsPlugin.show(
       0,

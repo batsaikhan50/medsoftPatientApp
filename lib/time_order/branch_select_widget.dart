@@ -7,17 +7,20 @@ class BranchSelectionModal extends StatelessWidget {
   final ValueChanged<DropdownItem> onBranchSelected;
   final DropdownItem? currentSelectedBranch;
 
+  final Future<void> Function(String url) launchUrlCallback;
+
   const BranchSelectionModal({
     super.key,
     required this.branches,
     required this.onBranchSelected,
     this.currentSelectedBranch,
+    required this.launchUrlCallback,
   });
 
   // Placeholder function for launching URLs
-  void _launchUrl(String url) {
-    debugPrint('Attempting to launch URL/Phone: $url');
-  }
+  // void _launchUrl(String url) {
+  //   debugPrint('Attempting to launch URL/Phone: $url');
+  // }
 
   Widget _buildItemChild(DropdownItem item) {
     final bool isBranchWithLogo = item.logoUrl != null && item.logoUrl!.isNotEmpty;
@@ -130,19 +133,13 @@ class BranchSelectionModal extends StatelessWidget {
                                     const Icon(Icons.phone, color: Colors.white70, size: 14),
                                     ...item.phones!.map(
                                       (phone) => InkWell(
-                                        onTap:
-                                            isBranchUnavailable
-                                                ? null
-                                                : () => _launchUrl('tel:$phone'),
+                                        onTap: () => launchUrlCallback('tel:$phone'),
                                         child: Text(
                                           phone,
                                           style: TextStyle(
                                             color: Colors.white,
                                             fontSize: 14,
-                                            decoration:
-                                                isBranchUnavailable
-                                                    ? TextDecoration.none
-                                                    : TextDecoration.underline,
+                                            decoration: TextDecoration.underline,
                                             decorationColor: Colors.white,
                                           ),
                                         ),
@@ -158,10 +155,7 @@ class BranchSelectionModal extends StatelessWidget {
                                   mainAxisAlignment: MainAxisAlignment.end,
                                   children: [
                                     InkWell(
-                                      onTap:
-                                          isBranchUnavailable
-                                              ? null
-                                              : () => _launchUrl(item.facebook!),
+                                      onTap: () => launchUrlCallback(item.facebook!),
                                       child: Row(
                                         mainAxisSize: MainAxisSize.min,
                                         children: [

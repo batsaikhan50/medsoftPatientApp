@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:medsoft_patient/api/time_order_dao.dart';
 import 'package:medsoft_patient/time_order/branch_select_widget.dart';
 import 'package:medsoft_patient/time_order/time_selection_screen.dart'; // Assuming this is the correct path
+import 'package:url_launcher/url_launcher.dart';
+import 'dart:io' show Platform;
 
 // Data structure to hold the list item data (name and ID/tenant)
 class DropdownItem {
@@ -66,10 +68,58 @@ class _TimeOrderScreenState extends State<TimeOrderScreen> {
   }
 
   // Placeholder function for launching URLs (e.g., phone calls or Facebook links)
-  void _launchUrl(String url) {
-    // NOTE: In a real Flutter application, you would use 'package:url_launcher'
-    // and call: await launchUrl(Uri.parse(url));
-    debugPrint('Attempting to launch URL/Phone: $url');
+  // Placeholder function for launching URLs (e.g., phone calls or Facebook links)
+  Future<void> _launchUrl(String url) async {
+    // 1. Handle Tel Links (and other non-HTTP schemes) immediately
+    if (url.startsWith('tel:')) {
+      final Uri telUri = Uri.parse(url);
+      if (await canLaunchUrl(telUri)) {
+        await launchUrl(telUri, mode: LaunchMode.platformDefault);
+      } else {
+        _showWarningSnackbar('Уучлаарай, утас руу залгах боломжгүй байна.');
+      }
+      return;
+    }
+
+    // 2. Handle Facebook Links with Deep Linking (using platform-specific schemes)
+    if (url.contains('facebook.com')) {
+      // Get the page name or ID from the URL (e.g., "mitpc.medsoft" from the example)
+      // This is a simple way, but assumes the URL format is clean: https://www.facebook.com/PAGE_ID_OR_NAME
+      final pageIdOrName = url.split('/').last.split('?').first;
+      // For "https://www.facebook.com/mitpc.medsoft", this should result in "mitpc.medsoft"
+
+      debugPrint('Extracted Facebook ID/Name: $pageIdOrName'); // NEW: Add this check
+
+      // Define the deep link schemes
+      Uri fbUri;
+      if (Platform.isIOS) {
+        // iOS scheme: fb://profile/<ID> or fb://page/<ID>
+        // We try the page scheme, which works for profiles/pages:
+        fbUri = Uri.parse('fb://page/$pageIdOrName'); // NOTE: Using fb://page/
+      } else if (Platform.isAndroid) {
+        // Android scheme
+        fbUri = Uri.parse('fb://page/$pageIdOrName');
+      } else {
+        // Use the standard web URL as a safe fallback for unsupported platforms
+        fbUri = Uri.parse(url);
+      }
+      debugPrint('fbUri: $fbUri');
+      // Try to launch the deep link first
+      if (await canLaunchUrl(fbUri)) {
+        await launchUrl(fbUri, mode: LaunchMode.externalApplication);
+        return; // Success, stop here
+      }
+      // If deep link failed (Facebook app not installed), fall through to web launch below
+    }
+
+    // 3. General Web Fallback (for failed deep links or other HTTP/HTTPS URLs)
+    final Uri webUri = Uri.parse(url);
+    if (await canLaunchUrl(webUri)) {
+      await launchUrl(webUri, mode: LaunchMode.externalApplication); // This opens Safari/Chrome
+    } else {
+      _showWarningSnackbar('Уучлаарай, холбоосыг нээх боломжгүй байна: $url');
+      debugPrint('Could not launch $url');
+    }
   }
 
   // RENAMED and MODIFIED: Changed from AlertDialog to a SnackBar for the warning,
@@ -114,6 +164,7 @@ class _TimeOrderScreenState extends State<TimeOrderScreen> {
   }
 
   Future<void> _loadBranches(String tenant) async {
+    // 1. Initial State Reset
     setState(() {
       _isLoadingBranches = true;
       _branches = [];
@@ -125,37 +176,58 @@ class _TimeOrderScreenState extends State<TimeOrderScreen> {
       _error = null;
     });
 
+    // 2. Fetch Data
     final response = await _dao.getBranches(tenant);
 
+    // 3. Process Data and Update State
     setState(() {
       _isLoadingBranches = false;
+
       if (response.success && response.data != null) {
-        _branches =
+        // Map JSON to DropdownItem list
+        final List<DropdownItem> loadedBranches =
             response.data!
                 .map(
                   (json) => DropdownItem(
                     id: json['id'] as String,
                     name: json['name'] as String,
+                    tenant: tenant, // Ensure tenant is carried over for subsequent calls
                     logoUrl: json['imgLink'] as String?,
                     phones:
                         (json['phone'] is List)
                             ? (json['phone'] as List).map((p) => p.toString()).toList()
                             : null,
                     facebook: json['facebook'] as String?,
-                    isAvailable: json['available'] as bool, // CHANGED: Map 'available'
+                    isAvailable: json['available'] as bool,
                   ),
                 )
                 .toList();
 
-        // NEW: Sort the branches to place available ones first
-        _branches.sort((a, b) {
-          // Sorting: True (available) comes before False (unavailable).
-          // We use -1 to put the available branches first in the list.
+        // Sort the branches to place available ones first
+        loadedBranches.sort((a, b) {
           if (a.isAvailable && !b.isAvailable) return -1;
           if (!a.isAvailable && b.isAvailable) return 1;
-          // If both are same availability, sort alphabetically by name
           return a.name.compareTo(b.name);
         });
+
+        _branches = loadedBranches;
+
+        // 4. --- AUTO-SELECTION LOGIC ---
+        final availableBranches = _branches.where((b) => b.isAvailable).toList();
+
+        if (availableBranches.length == 1) {
+          final singleBranch = availableBranches.first;
+          _selectedBranch = singleBranch;
+
+          debugPrint('Auto-selected single available branch: ${singleBranch.name}');
+
+          // CRITICAL: Load the next dependent data immediately
+          // Note: _selectedHospital is used here, assuming it's correctly set.
+          if (_selectedHospital?.tenant != null) {
+            _loadTasags(_selectedHospital!.tenant!, singleBranch.id);
+          }
+        }
+        // -------------------------------
       } else {
         _error = response.message ?? 'Салбаруудыг татаж чадсангүй.';
       }
@@ -249,268 +321,414 @@ class _TimeOrderScreenState extends State<TimeOrderScreen> {
           Flexible(child: Text(item.name, overflow: TextOverflow.ellipsis)),
         ],
       );
-    } else if (isBranchWithLogo) {
-      // 2. BRANCH LAYOUT: Image Banner with Overlayed Name (used for menu item options)
-      const double bannerHeight = 220.0;
-
-      return Opacity(
-        // Opacity handles the grayed-out effect
-        opacity: isBranchUnavailable ? 0.8 : 1.0,
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(8.0),
-          child: Container(
-            height: bannerHeight,
-            width: double.infinity,
-            decoration: BoxDecoration(
-              border: Border.all(color: Colors.grey.shade300),
-              borderRadius: BorderRadius.circular(8.0),
-            ),
-            child: Stack(
-              fit: StackFit.expand,
-              children: [
-                // 1. Full-width Image (Banner)
-                ColorFiltered(
-                  // B&W filter applied if unavailable
-                  colorFilter:
-                      isBranchUnavailable
-                          ? const ColorFilter.matrix(<double>[
-                            0.2126,
-                            0.7152,
-                            0.0722,
-                            0,
-                            0,
-                            0.2126,
-                            0.7152,
-                            0.0722,
-                            0,
-                            0,
-                            0.2126,
-                            0.7152,
-                            0.0722,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            1,
-                            0,
-                          ])
-                          : const ColorFilter.mode(Colors.transparent, BlendMode.multiply),
-                  child: Image.network(
-                    item.logoUrl!,
-                    fit: BoxFit.cover,
-                    errorBuilder:
-                        (context, error, stackTrace) => Container(
-                          color: Colors.grey[400],
-                          child: const Center(
-                            child: Icon(Icons.apartment, color: Colors.white, size: 40),
-                          ),
-                        ),
-                  ),
-                ),
-
-                // 2. Overlayed Text Container (at the bottom)
-                Positioned(
-                  bottom: 0,
-                  left: 0,
-                  right: 0,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 8.0),
-                    color: Colors.black38,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        // Branch Name
-                        Text(
-                          item.name,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 16,
-                          ),
-                          overflow: TextOverflow.ellipsis,
-                          maxLines: 1,
-                        ),
-                        const SizedBox(height: 4),
-
-                        // NEW STRUCTURE: Phones and Facebook links
-                        if ((item.phones != null && item.phones!.isNotEmpty) ||
-                            (item.facebook != null && item.facebook!.isNotEmpty))
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              // A. Phones (Using Wrap for multiple lines)
-                              if (item.phones != null && item.phones!.isNotEmpty)
-                                Wrap(
-                                  spacing: 8.0,
-                                  runSpacing: 4.0,
-                                  crossAxisAlignment: WrapCrossAlignment.center,
-                                  children: [
-                                    const Icon(Icons.phone, color: Colors.white70, size: 14),
-                                    ...item.phones!.map(
-                                      (phone) => InkWell(
-                                        // Disabled for unavailable branches
-                                        onTap:
-                                            isBranchUnavailable
-                                                ? null
-                                                : () => _launchUrl('tel:$phone'),
-                                        child: Text(
-                                          phone,
-                                          style: TextStyle(
-                                            color: Colors.white,
-                                            fontSize: 14,
-                                            decoration:
-                                                isBranchUnavailable
-                                                    ? TextDecoration.none
-                                                    : TextDecoration.underline,
-                                            decorationColor: Colors.white,
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-
-                              if ((item.phones != null && item.phones!.isNotEmpty) &&
-                                  (item.facebook != null && item.facebook!.isNotEmpty))
-                                const SizedBox(height: 8),
-
-                              // B. Facebook (Pushed to the bottom-right using a Row)
-                              if (item.facebook != null && item.facebook!.isNotEmpty)
-                                Row(
-                                  mainAxisAlignment: MainAxisAlignment.end,
-                                  children: [
-                                    InkWell(
-                                      // Disabled for unavailable branches
-                                      onTap:
-                                          isBranchUnavailable
-                                              ? null
-                                              : () => _launchUrl(item.facebook!),
-                                      child: Row(
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          Icon(
-                                            Icons.facebook,
-                                            color:
-                                                isBranchAvailable
-                                                    ? Colors.blueAccent
-                                                    : Colors.white,
-                                            size: 14,
-                                          ),
-                                          const SizedBox(width: 4),
-                                          Text(
-                                            // TRANSLATED
-                                            'Facebook Page',
-                                            style: TextStyle(
-                                              color:
-                                                  isBranchAvailable
-                                                      ? Colors.blueAccent
-                                                      : Colors.white,
-                                              fontSize: 14,
-                                              decoration: TextDecoration.underline,
-                                              decorationColor:
-                                                  isBranchAvailable
-                                                      ? Colors.blueAccent
-                                                      : Colors.white,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                            ],
-                          ),
-                      ],
-                    ),
-                  ),
-                ),
-
-                // 3. UNAVAILABLE CAPTION (Mongolian Text)
-                if (isBranchUnavailable)
-                  Positioned(
-                    top: 8,
-                    right: 8,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: Colors.red.shade700,
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                      child: const Text(
-                        'ОНЛАЙН ҮЗЛЭГИЙН ХУВААРЬ БАЙХГҮЙ',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 12,
-                        ),
-                      ),
-                    ),
-                  ),
-
-                // 4. CLICKABLE INDICATOR (Pulsing Animation)
-                if (isBranchAvailable)
-                  const Positioned(top: 50, right: 50, child: PulsingClickIndicator()),
-              ],
-            ),
-          ),
-        ),
-      );
     }
+    // else if (isBranchWithLogo) {
+    //   // 2. BRANCH LAYOUT: Image Banner with Overlayed Name (used for menu item options)
+    //   const double bannerHeight = 220.0;
+
+    //   return Opacity(
+    //     // Opacity handles the grayed-out effect
+    //     opacity: isBranchUnavailable ? 0.8 : 1.0,
+    //     child: ClipRRect(
+    //       borderRadius: BorderRadius.circular(8.0),
+    //       child: Container(
+    //         height: bannerHeight,
+    //         width: double.infinity,
+    //         decoration: BoxDecoration(
+    //           border: Border.all(color: Colors.grey.shade300),
+    //           borderRadius: BorderRadius.circular(8.0),
+    //         ),
+    //         child: Stack(
+    //           fit: StackFit.expand,
+    //           children: [
+    //             // 1. Full-width Image (Banner)
+    //             ColorFiltered(
+    //               // B&W filter applied if unavailable
+    //               colorFilter:
+    //                   isBranchUnavailable
+    //                       ? const ColorFilter.matrix(<double>[
+    //                         0.2126,
+    //                         0.7152,
+    //                         0.0722,
+    //                         0,
+    //                         0,
+    //                         0.2126,
+    //                         0.7152,
+    //                         0.0722,
+    //                         0,
+    //                         0,
+    //                         0.2126,
+    //                         0.7152,
+    //                         0.0722,
+    //                         0,
+    //                         0,
+    //                         0,
+    //                         0,
+    //                         0,
+    //                         1,
+    //                         0,
+    //                       ])
+    //                       : const ColorFilter.mode(Colors.transparent, BlendMode.multiply),
+    //               child: Image.network(
+    //                 item.logoUrl!,
+    //                 fit: BoxFit.cover,
+    //                 errorBuilder:
+    //                     (context, error, stackTrace) => Container(
+    //                       color: Colors.grey[400],
+    //                       child: const Center(
+    //                         child: Icon(Icons.apartment, color: Colors.white, size: 40),
+    //                       ),
+    //                     ),
+    //               ),
+    //             ),
+
+    //             // 2. Overlayed Text Container (at the bottom)
+    //             Positioned(
+    //               bottom: 0,
+    //               left: 0,
+    //               right: 0,
+    //               child: Container(
+    //                 padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 8.0),
+    //                 color: Colors.black38,
+    //                 child: Column(
+    //                   crossAxisAlignment: CrossAxisAlignment.start,
+    //                   mainAxisSize: MainAxisSize.min,
+    //                   children: [
+    //                     // Branch Name
+    //                     Text(
+    //                       item.name,
+    //                       style: const TextStyle(
+    //                         color: Colors.white,
+    //                         fontWeight: FontWeight.bold,
+    //                         fontSize: 16,
+    //                       ),
+    //                       overflow: TextOverflow.ellipsis,
+    //                       maxLines: 1,
+    //                     ),
+    //                     const SizedBox(height: 4),
+
+    //                     // NEW STRUCTURE: Phones and Facebook links
+    //                     if ((item.phones != null && item.phones!.isNotEmpty) ||
+    //                         (item.facebook != null && item.facebook!.isNotEmpty))
+    //                       Column(
+    //                         crossAxisAlignment: CrossAxisAlignment.start,
+    //                         children: [
+    //                           // A. Phones (Using Wrap for multiple lines)
+    //                           if (item.phones != null && item.phones!.isNotEmpty)
+    //                             Wrap(
+    //                               spacing: 8.0,
+    //                               runSpacing: 4.0,
+    //                               crossAxisAlignment: WrapCrossAlignment.center,
+    //                               children: [
+    //                                 const Icon(Icons.phone, color: Colors.white70, size: 14),
+    //                                 ...item.phones!.map(
+    //                                   (phone) => InkWell(
+    //                                     // Disabled for unavailable branches
+    //                                     onTap:
+    //                                         isBranchUnavailable
+    //                                             ? null
+    //                                             : () => _launchUrl('tel:$phone'),
+    //                                     child: Text(
+    //                                       phone,
+    //                                       style: TextStyle(
+    //                                         color: Colors.white,
+    //                                         fontSize: 14,
+    //                                         decoration:
+    //                                             isBranchUnavailable
+    //                                                 ? TextDecoration.none
+    //                                                 : TextDecoration.underline,
+    //                                         decorationColor: Colors.white,
+    //                                       ),
+    //                                     ),
+    //                                   ),
+    //                                 ),
+    //                               ],
+    //                             ),
+
+    //                           if ((item.phones != null && item.phones!.isNotEmpty) &&
+    //                               (item.facebook != null && item.facebook!.isNotEmpty))
+    //                             const SizedBox(height: 8),
+
+    //                           // B. Facebook (Pushed to the bottom-right using a Row)
+    //                           if (item.facebook != null && item.facebook!.isNotEmpty)
+    //                             Row(
+    //                               mainAxisAlignment: MainAxisAlignment.end,
+    //                               children: [
+    //                                 InkWell(
+    //                                   // Disabled for unavailable branches
+    //                                   onTap:
+    //                                       isBranchUnavailable
+    //                                           ? null
+    //                                           : () => _launchUrl(item.facebook!),
+    //                                   child: Row(
+    //                                     mainAxisSize: MainAxisSize.min,
+    //                                     children: [
+    //                                       Icon(
+    //                                         Icons.facebook,
+    //                                         color:
+    //                                             isBranchAvailable
+    //                                                 ? Colors.blueAccent
+    //                                                 : Colors.white,
+    //                                         size: 14,
+    //                                       ),
+    //                                       const SizedBox(width: 4),
+    //                                       Text(
+    //                                         // TRANSLATED
+    //                                         'Facebook Page',
+    //                                         style: TextStyle(
+    //                                           color:
+    //                                               isBranchAvailable
+    //                                                   ? Colors.blueAccent
+    //                                                   : Colors.white,
+    //                                           fontSize: 14,
+    //                                           decoration: TextDecoration.underline,
+    //                                           decorationColor:
+    //                                               isBranchAvailable
+    //                                                   ? Colors.blueAccent
+    //                                                   : Colors.white,
+    //                                         ),
+    //                                       ),
+    //                                     ],
+    //                                   ),
+    //                                 ),
+    //                               ],
+    //                             ),
+    //                         ],
+    //                       ),
+    //                   ],
+    //                 ),
+    //               ),
+    //             ),
+
+    //             // 3. UNAVAILABLE CAPTION (Mongolian Text)
+    //             if (isBranchUnavailable)
+    //               Positioned(
+    //                 top: 8,
+    //                 right: 8,
+    //                 child: Container(
+    //                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+    //                   decoration: BoxDecoration(
+    //                     color: Colors.red.shade700,
+    //                     borderRadius: BorderRadius.circular(4),
+    //                   ),
+    //                   child: const Text(
+    //                     'ОНЛАЙН ҮЗЛЭГИЙН ХУВААРЬ БАЙХГҮЙ',
+    //                     style: TextStyle(
+    //                       color: Colors.white,
+    //                       fontWeight: FontWeight.bold,
+    //                       fontSize: 12,
+    //                     ),
+    //                   ),
+    //                 ),
+    //               ),
+
+    //             // 4. CLICKABLE INDICATOR (Pulsing Animation)
+    //             if (isBranchAvailable)
+    //               const Positioned(top: 50, right: 50, child: PulsingClickIndicator()),
+    //           ],
+    //         ),
+    //       ),
+    //     ),
+    //   );
+    // }
 
     // 3. DEFAULT LAYOUT: Just the name (for Tasags, Doctors, and items without logo)
     return Text(item.name);
   }
   // Inside _TimeOrderScreenState:
   // Inside _TimeOrderScreenState:
+  // Inside _TimeOrderScreenState
+  // Inside _TimeOrderScreenState in time_order_screen.dart
+
+  Widget _buildSelectedBranchCard(DropdownItem item, bool isEnabled, bool isSelected) {
+    // Replicate the styling from BranchSelectionModal's _buildItemChild
+    final bool isBranchAvailable = item.isAvailable;
+
+    // Define a smaller banner height for the form field
+    const double cardHeight = 220.0;
+
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(8.0),
+      child: Container(
+        height: cardHeight,
+        width: double.infinity,
+        decoration: BoxDecoration(
+          border: Border.all(
+            // Use the selection color for the form field border
+            color: isSelected ? Colors.blue.shade700 : Colors.grey.shade300,
+            width: isSelected ? 3.0 : 1.0,
+          ),
+        ),
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            // 1. Full-width Image (Banner)
+            ColorFiltered(
+              // Use the opacity/color filter if the branch is unavailable
+              colorFilter:
+                  !isBranchAvailable
+                      ? const ColorFilter.matrix(<double>[
+                        0.2126,
+                        0.7152,
+                        0.0722,
+                        0,
+                        0,
+                        0.2126,
+                        0.7152,
+                        0.0722,
+                        0,
+                        0,
+                        0.2126,
+                        0.7152,
+                        0.0722,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        1,
+                        0,
+                      ])
+                      : const ColorFilter.mode(Colors.transparent, BlendMode.multiply),
+              child: Image.network(
+                item.logoUrl!,
+                fit: BoxFit.cover,
+                errorBuilder:
+                    (context, error, stackTrace) => Container(
+                      color: Colors.grey[400],
+                      child: const Center(
+                        child: Icon(Icons.apartment, color: Colors.white, size: 30), // Smaller icon
+                      ),
+                    ),
+              ),
+            ),
+
+            // 2. Overlayed Text Container (at the bottom)
+            Positioned(
+              bottom: 0,
+              left: 0,
+              right: 0,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 8.0),
+                color: Colors.black45, // Slightly darker overlay
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    // Branch Name
+                    Expanded(
+                      child: Text(
+                        item.name,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                        maxLines: 1,
+                      ),
+                    ),
+                    // Dropdown Indicator
+                    Icon(
+                      Icons.arrow_drop_down,
+                      color: isEnabled ? Colors.white : Colors.grey.shade400,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+
+            // 3. UNAVAILABLE CAPTION (Optional, simplified for field)
+            if (!isBranchAvailable)
+              Positioned(
+                top: 4,
+                right: 4,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: Colors.red.shade700,
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: const Text(
+                    'ҮЗЛЭГГҮЙ', // Simplified text
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 10,
+                    ),
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
 
   Widget _buildBranchSelectionField() {
     final bool enabled = _selectedHospital != null && !_isLoadingBranches;
     const double modalHeightMultiplier = 0.70;
 
-    // This is the DropdownButtonFormField that provides the correct styling
-    final Widget fieldWidget = DropdownButtonFormField<DropdownItem>(
-      // Use the branch's current selected value
-      initialValue: _selectedBranch,
+    // --- START: CUSTOM FIELD WIDGET LOGIC ---
+    final Widget fieldContent;
 
-      // Crucially, disable the button to prevent the built-in menu from showing
-      // If the widget is enabled, we use IgnorePointer below to intercept the tap.
-      // If it's disabled (e.g., _selectedHospital is null), we let the widget display its disabled state.
-      onChanged: (enabled && !_isLoadingBranches) ? (value) {} : null,
+    if (_selectedBranch != null) {
+      // If a branch is selected, show the card view with a label
+      fieldContent = Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // NEW: Label Text "Салбар"
+          Padding(
+            padding: const EdgeInsets.only(bottom: 4.0, left: 15.0),
+            child: Text(
+              'Салбар',
+              style: TextStyle(
+                color: enabled ? Colors.grey.shade700 : Colors.grey.shade500,
+                fontSize: 12,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
 
-      // Provide the correct styling
-      decoration: InputDecoration(
-        labelText: 'Салбар',
-        border: const OutlineInputBorder(),
-        suffixIcon:
+          // The full-height branch card
+          _buildSelectedBranchCard(
+            _selectedBranch!,
+            enabled,
+            true, // Always show it as "selected" when displayed here
+          ),
+        ],
+      );
+    } else {
+      // If no branch is selected, or loading, show a standard placeholder box
+      fieldContent = Container(
+        decoration: BoxDecoration(
+          border: Border.all(
+            color: enabled ? Colors.grey.shade400 : Colors.grey.shade300,
+            width: 1.0,
+          ),
+          borderRadius: BorderRadius.circular(4.0),
+        ),
+        padding: const EdgeInsets.symmetric(vertical: 16.0, horizontal: 12.0),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              _isLoadingBranches ? 'Салбар татаж байна...' : 'Салбар сонгоно уу',
+              style: TextStyle(color: enabled ? Colors.black54 : Colors.grey, fontSize: 16),
+            ),
             _isLoadingBranches
-                ? const Padding(
-                  padding: EdgeInsets.all(8.0),
-                  child: SizedBox(
-                    height: 20,
-                    width: 20,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  ),
+                ? const SizedBox(
+                  height: 20,
+                  width: 20,
+                  child: CircularProgressIndicator(strokeWidth: 2),
                 )
-                : const Icon(Icons.arrow_drop_down),
-      ),
-      isExpanded: true,
-      hint: const Text('Салбар сонгоно уу'),
-      validator: (value) => value == null ? 'Салбар сонгоно уу' : null,
+                : Icon(Icons.arrow_drop_down, color: enabled ? Colors.black54 : Colors.grey),
+          ],
+        ),
+      );
+    }
+    // --- END: CUSTOM FIELD WIDGET ---
 
-      // The items list doesn't matter much since we prevent the menu from showing,
-      // but it needs to be non-null for the field to work properly when a value is selected.
-      items:
-          _branches.map((item) {
-            return DropdownMenuItem<DropdownItem>(
-              value: item,
-              child: Text(item.name, overflow: TextOverflow.ellipsis),
-            );
-          }).toList(),
-    );
-
-    // We wrap the DropdownButtonFormField to intercept the tap and launch the modal
+    // Wrap the content in InkWell to handle the modal tap
     return InkWell(
       onTap:
           enabled
@@ -520,14 +738,17 @@ class _TimeOrderScreenState extends State<TimeOrderScreen> {
                   return;
                 }
 
-                // Launch the custom modal bottom sheet
+                // ... (The showModalBottomSheet code remains the same)
                 final DropdownItem? selectedBranch = await showModalBottomSheet<DropdownItem>(
                   context: context,
                   isScrollControlled: true,
-                  shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero),
+                  shape: const RoundedRectangleBorder(
+                    borderRadius: BorderRadius.vertical(top: Radius.circular(15.0)),
+                  ),
                   backgroundColor: Colors.white,
 
                   builder: (context) {
+                    // ... (Existing builder content with BranchSelectionModal)
                     const double listTopPadding = 55.0;
 
                     return Container(
@@ -535,7 +756,6 @@ class _TimeOrderScreenState extends State<TimeOrderScreen> {
                       color: Colors.white,
                       child: Stack(
                         children: [
-                          // 1. Branch List Content
                           Padding(
                             padding: const EdgeInsets.only(top: listTopPadding),
                             child: BranchSelectionModal(
@@ -544,10 +764,10 @@ class _TimeOrderScreenState extends State<TimeOrderScreen> {
                               onBranchSelected: (branch) {
                                 Navigator.pop(context, branch);
                               },
+                              launchUrlCallback: _launchUrl,
                             ),
                           ),
-
-                          // 2. Title (Centered)
+                          // ... (Title, Divider, Close Button)
                           const Positioned(
                             top: 10,
                             left: 0,
@@ -558,11 +778,7 @@ class _TimeOrderScreenState extends State<TimeOrderScreen> {
                               style: TextStyle(fontSize: 20, fontWeight: FontWeight.normal),
                             ),
                           ),
-
-                          // 3. Divider
                           const Positioned(top: 45, left: 0, right: 0, child: Divider(height: 0)),
-
-                          // 4. The Close Button (Top Right)
                           Positioned(
                             top: 0,
                             right: 0,
@@ -579,20 +795,39 @@ class _TimeOrderScreenState extends State<TimeOrderScreen> {
                 );
 
                 // Handle the result
-                if (selectedBranch != null && selectedBranch != _selectedBranch) {
-                  _handleBranchSelection(selectedBranch);
-                } else if (selectedBranch != null && !selectedBranch.isAvailable) {
-                  _showWarningSnackbar(
-                    '(${selectedBranch.name}) салбарыг одоогоор сонгох боломжгүй байна. Та өөр салбар сонгоно уу.',
-                  );
+                if (selectedBranch != null) {
+                  // If the user selected a branch (available or unavailable)
+                  if (selectedBranch.isAvailable) {
+                    _handleBranchSelection(selectedBranch);
+                  } else {
+                    _showWarningSnackbar(
+                      '(${selectedBranch.name}) салбарыг одоогоор сонгох боломжгүй байна. Та өөр салбар сонгоно уу.',
+                    );
+                  }
                 }
               }
               : null,
-      // The field widget is wrapped in IgnorePointer when enabled to prevent the built-in dropdown from opening
-      child: IgnorePointer(ignoring: enabled, child: fieldWidget),
+      // Use the content determined above
+      child: fieldContent,
     );
   }
 
+  // NOTE: Ensure you have a helper function like _handleBranchSelection
+  // in your _TimeOrderScreenState to set the state and load next data:
+  /*
+void _handleBranchSelection(DropdownItem branch) {
+  setState(() {
+    _selectedBranch = branch;
+    _tasags = [];
+    _selectedTasag = null;
+    _doctors = [];
+    _selectedDoctor = null;
+  });
+  if (_selectedHospital?.tenant != null) {
+    _loadTasags(_selectedHospital!.tenant!, branch.id);
+  }
+}
+*/
   // NEW: Extract the branch selection logic for reuse
   void _handleBranchSelection(DropdownItem newValue) {
     setState(() {
@@ -692,7 +927,8 @@ class _TimeOrderScreenState extends State<TimeOrderScreen> {
                 }
               },
             ),
-            const SizedBox(height: 20),
+
+            SizedBox(height: _selectedBranch != null ? 10 : 20),
 
             // 2. Branch Dropdown (getBranches)
 
