@@ -34,11 +34,7 @@ class TimeOrderDAO extends BaseDAO {
   }
 
   //Сонгосон тасгийн эмч нарын жагсаалтыг дуудах
-  Future<ApiResponse<List<dynamic>>> getDoctors(
-    String tenant,
-    String branchId,
-    String tasagId,
-  ) {
+  Future<ApiResponse<List<dynamic>>> getDoctors(String tenant, String branchId, String tasagId) {
     return get<List<dynamic>>(
       '${Constants.appUrl}/order/employee?tenant=$tenant&branchId=$branchId&tasagId=$tasagId',
       config: const RequestConfig(headerType: HeaderType.bearerToken),
@@ -51,6 +47,17 @@ class TimeOrderDAO extends BaseDAO {
   Future<ApiResponse<List<dynamic>>> getTimes(Map<String, dynamic> body) {
     return post<List<dynamic>>(
       '${Constants.appUrl}/order/times',
+      body: body,
+      config: const RequestConfig(headerType: HeaderType.bearerAndJson),
+      // transform:
+      //     (json) => (json['data'] as List).map((item) => item as Map<String, dynamic>).toList(),
+    );
+  }
+
+  //Сонгосон цагыг баталгаажуулах
+  Future<ApiResponse<List<dynamic>>> confirmOrder(Map<String, dynamic> body) {
+    return post<List<dynamic>>(
+      '${Constants.appUrl}/order/confirm',
       body: body,
       config: const RequestConfig(headerType: HeaderType.bearerAndJson),
       // transform:

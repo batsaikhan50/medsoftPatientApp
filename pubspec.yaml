@@ -49,6 +49,7 @@ dependencies:
   flutter_localizations: # <-- ADD THIS LINE
     sdk: flutter
   url_launcher: ^6.3.2
+  marquee: ^2.3.0
 
 flutter_launcher_icons:
   android: "launcher_icon"

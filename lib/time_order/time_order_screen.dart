@@ -42,6 +42,10 @@ class TimeOrderScreen extends StatefulWidget {
 class _TimeOrderScreenState extends State<TimeOrderScreen> {
   final TimeOrderDAO _dao = TimeOrderDAO();
 
+  // New state for pre-fetched time slots
+  List<dynamic>? _preFetchedTimeSlots;
+  bool _isLoadingTimeSlots = false;
+
   // State for fetched data
   List<DropdownItem> _hospitals = [];
   List<DropdownItem> _branches = [];
@@ -120,6 +124,41 @@ class _TimeOrderScreenState extends State<TimeOrderScreen> {
       _showWarningSnackbar('Уучлаарай, холбоосыг нээх боломжгүй байна: $url');
       debugPrint('Could not launch $url');
     }
+  }
+
+  // time_order_screen.dart (inside _TimeOrderScreenState)
+
+  Future<void> _checkAvailableTimeSlots() async {
+    if (_selectedHospital == null || _selectedBranch == null || _selectedTasag == null) {
+      setState(() {
+        _preFetchedTimeSlots = null;
+        _isLoadingTimeSlots = false;
+      });
+      return;
+    }
+
+    setState(() {
+      _isLoadingTimeSlots = true;
+      _preFetchedTimeSlots = null;
+    });
+
+    final body = {
+      'tenant': _selectedHospital!.tenant,
+      'branchId': _selectedBranch!.id,
+      'tasagId': _selectedTasag!.id,
+      'employeeId': _selectedDoctor?.id, // Use selected doctor if available
+    };
+
+    final response = await _dao.getTimes(body);
+
+    setState(() {
+      _isLoadingTimeSlots = false;
+      if (response.success && response.data is List) {
+        _preFetchedTimeSlots = response.data as List;
+      } else {
+        _preFetchedTimeSlots = []; // Treat failure or non-list data as no slots
+      }
+    });
   }
 
   // RENAMED and MODIFIED: Changed from AlertDialog to a SnackBar for the warning,
@@ -280,6 +319,27 @@ class _TimeOrderScreenState extends State<TimeOrderScreen> {
       } else {
         _error = response.message ?? 'Эмч нарыг татаж чадсангүй.';
       }
+    });
+  }
+
+  void _clearSelections() {
+    setState(() {
+      _selectedHospital = null;
+      _selectedBranch = null;
+      _selectedTasag = null;
+      _selectedDoctor = null;
+
+      // Clear related fetched lists/statuses too
+      _branches = [];
+      _tasags = [];
+      _doctors = [];
+
+      // Clear pre-fetched time slots and status
+      _preFetchedTimeSlots = null;
+      _isLoadingTimeSlots = false;
+
+      // If you need to reload the initial data (e.g., hospitals)
+      _loadHospitals();
     });
   }
 
@@ -668,7 +728,10 @@ class _TimeOrderScreenState extends State<TimeOrderScreen> {
     final bool enabled = _selectedHospital != null && !_isLoadingBranches;
     const double modalHeightMultiplier = 0.70;
 
-    // --- START: CUSTOM FIELD WIDGET LOGIC ---
+    // Determine if the clear button should be visible (only when a branch is selected)
+    final bool isClearable = _selectedBranch != null && enabled && !_isLoadingBranches;
+
+    // --- START: CUSTOM FIELD WIDGET LOGIC (remains mostly the same) ---
     final Widget fieldContent;
 
     if (_selectedBranch != null) {
@@ -678,7 +741,12 @@ class _TimeOrderScreenState extends State<TimeOrderScreen> {
         children: [
           // NEW: Label Text "Салбар"
           Padding(
-            padding: const EdgeInsets.only(bottom: 4.0, left: 15.0),
+            // Adjust padding to accommodate the clear button overlay if needed
+            padding: const EdgeInsets.only(
+              bottom: 4.0,
+              left: 2.0,
+              right: 40.0,
+            ), // Added right padding
             child: Text(
               'Салбар',
               style: TextStyle(
@@ -689,17 +757,14 @@ class _TimeOrderScreenState extends State<TimeOrderScreen> {
             ),
           ),
 
-          // The full-height branch card
-          _buildSelectedBranchCard(
-            _selectedBranch!,
-            enabled,
-            true, // Always show it as "selected" when displayed here
-          ),
+          // The full-height branch card (no changes needed here)
+          _buildSelectedBranchCard(_selectedBranch!, enabled, true),
         ],
       );
     } else {
       // If no branch is selected, or loading, show a standard placeholder box
       fieldContent = Container(
+        // ... (Placeholder box remains unchanged)
         decoration: BoxDecoration(
           border: Border.all(
             color: enabled ? Colors.grey.shade400 : Colors.grey.shade300,
@@ -728,87 +793,110 @@ class _TimeOrderScreenState extends State<TimeOrderScreen> {
     }
     // --- END: CUSTOM FIELD WIDGET ---
 
-    // Wrap the content in InkWell to handle the modal tap
-    return InkWell(
-      onTap:
-          enabled
-              ? () async {
-                if (_branches.isEmpty) {
-                  _showWarningSnackbar('Салбарууд татагдаж дуусаагүй эсвэл байхгүй байна.');
-                  return;
-                }
+    // 1. Wrap the entire InkWell in a Stack
+    return Stack(
+      children: [
+        // 2. The main Interactive Content (InkWell)
+        InkWell(
+          onTap:
+              enabled
+                  ? () async {
+                    // ... (Your existing showModalBottomSheet logic) ...
+                    if (_branches.isEmpty) {
+                      _showWarningSnackbar('Салбарууд татагдаж дуусаагүй эсвэл байхгүй байна.');
+                      return;
+                    }
 
-                // ... (The showModalBottomSheet code remains the same)
-                final DropdownItem? selectedBranch = await showModalBottomSheet<DropdownItem>(
-                  context: context,
-                  isScrollControlled: true,
-                  shape: const RoundedRectangleBorder(
-                    borderRadius: BorderRadius.vertical(top: Radius.circular(15.0)),
-                  ),
-                  backgroundColor: Colors.white,
-
-                  builder: (context) {
-                    // ... (Existing builder content with BranchSelectionModal)
-                    const double listTopPadding = 55.0;
-
-                    return Container(
-                      height: MediaQuery.of(context).size.height * modalHeightMultiplier,
-                      color: Colors.white,
-                      child: Stack(
-                        children: [
-                          Padding(
-                            padding: const EdgeInsets.only(top: listTopPadding),
-                            child: BranchSelectionModal(
-                              branches: _branches,
-                              currentSelectedBranch: _selectedBranch,
-                              onBranchSelected: (branch) {
-                                Navigator.pop(context, branch);
-                              },
-                              launchUrlCallback: _launchUrl,
-                            ),
-                          ),
-                          // ... (Title, Divider, Close Button)
-                          const Positioned(
-                            top: 10,
-                            left: 0,
-                            right: 0,
-                            child: Text(
-                              'Салбар сонгох',
-                              textAlign: TextAlign.center,
-                              style: TextStyle(fontSize: 20, fontWeight: FontWeight.normal),
-                            ),
-                          ),
-                          const Positioned(top: 45, left: 0, right: 0, child: Divider(height: 0)),
-                          Positioned(
-                            top: 0,
-                            right: 0,
-                            child: IconButton(
-                              icon: const Icon(Icons.close, size: 30),
-                              color: Colors.black54,
-                              onPressed: () => Navigator.pop(context),
-                            ),
-                          ),
-                        ],
+                    final DropdownItem? selectedBranch = await showModalBottomSheet<DropdownItem>(
+                      context: context,
+                      isScrollControlled: true,
+                      shape: const RoundedRectangleBorder(
+                        borderRadius: BorderRadius.vertical(top: Radius.circular(15.0)),
                       ),
-                    );
-                  },
-                );
+                      backgroundColor: Colors.white,
 
-                // Handle the result
-                if (selectedBranch != null) {
-                  // If the user selected a branch (available or unavailable)
-                  if (selectedBranch.isAvailable) {
-                    _handleBranchSelection(selectedBranch);
-                  } else {
-                    _showWarningSnackbar(
-                      '(${selectedBranch.name}) салбарыг одоогоор сонгох боломжгүй байна. Та өөр салбар сонгоно уу.',
+                      builder: (context) {
+                        // ... (Modal builder logic)
+                        const double listTopPadding = 55.0;
+
+                        return Container(
+                          height: MediaQuery.of(context).size.height * modalHeightMultiplier,
+                          color: Colors.white,
+                          child: Stack(
+                            children: [
+                              Padding(
+                                padding: const EdgeInsets.only(top: listTopPadding),
+                                child: BranchSelectionModal(
+                                  branches: _branches,
+                                  currentSelectedBranch: _selectedBranch,
+                                  onBranchSelected: (branch) {
+                                    Navigator.pop(context, branch);
+                                  },
+                                  launchUrlCallback: _launchUrl,
+                                ),
+                              ),
+                              const Positioned(
+                                top: 10,
+                                left: 0,
+                                right: 0,
+                                child: Text(
+                                  'Салбар сонгох',
+                                  textAlign: TextAlign.center,
+                                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.normal),
+                                ),
+                              ),
+                              const Positioned(
+                                top: 45,
+                                left: 0,
+                                right: 0,
+                                child: Divider(height: 0),
+                              ),
+                              Positioned(
+                                top: 0,
+                                right: 0,
+                                child: IconButton(
+                                  icon: const Icon(Icons.close, size: 30),
+                                  color: Colors.black54,
+                                  onPressed: () => Navigator.pop(context),
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      },
                     );
+
+                    // Handle the result
+                    if (selectedBranch != null) {
+                      if (selectedBranch.isAvailable) {
+                        _handleBranchSelection(selectedBranch);
+                      } else {
+                        _showWarningSnackbar(
+                          '(${selectedBranch.name}) салбарыг одоогоор сонгох боломжгүй байна. Та өөр салбар сонгоно уу.',
+                        );
+                      }
+                    }
                   }
-                }
-              }
-              : null,
-      // Use the content determined above
-      child: fieldContent,
+                  : null,
+          // Use the content determined above
+          child: fieldContent,
+        ),
+
+        // 3. The Clear Button (Positioned over the top right corner)
+        if (isClearable)
+          Positioned(
+            top: 32, // Position it right at the top
+            right: 13, // Position it far to the right
+            child: IconButton(
+              icon: const Icon(Icons.cancel, size: 25),
+              color: Colors.grey.shade400, // Use a noticeable color
+              onPressed: () {
+                // Call the handler logic to clear the branch selection
+                _handleBranchSelection(null);
+              },
+            ),
+          ),
+      ],
     );
   }
 
@@ -829,7 +917,7 @@ void _handleBranchSelection(DropdownItem branch) {
 }
 */
   // NEW: Extract the branch selection logic for reuse
-  void _handleBranchSelection(DropdownItem newValue) {
+  void _handleBranchSelection(DropdownItem? newValue) {
     setState(() {
       _selectedBranch = newValue;
       // Reset dependents upon new branch selection
@@ -838,14 +926,14 @@ void _handleBranchSelection(DropdownItem branch) {
       _doctors = [];
       _selectedDoctor = null;
     });
-    if (_selectedHospital?.tenant != null) {
+    if (_selectedHospital?.tenant != null && newValue != null) {
       // Only load tasags if a hospital is selected
       _loadTasags(_selectedHospital!.tenant!, newValue.id);
     }
   }
   // Inside _TimeOrderScreenState:
 
-  // Cleaned up generic Dropdown Builder (REPLACE the existing _buildDropdown)
+  // Inside your TimeOrderScreenState (time_order_screen.dart)
 
   Widget _buildDropdown({
     required String labelText,
@@ -855,52 +943,120 @@ void _handleBranchSelection(DropdownItem branch) {
     required ValueChanged<DropdownItem?> onChanged,
     bool enabled = true,
   }) {
-    // IMPORTANT: The logic for isBranchDropdown and all its custom features have been removed.
+    // Determine if the clear button should be visible and enabled
+    final bool isClearable = selectedValue != null && enabled && !isLoading;
 
-    return DropdownButtonFormField<DropdownItem>(
-      decoration: InputDecoration(
-        labelText: labelText,
-        border: const OutlineInputBorder(),
-        suffixIcon:
-            isLoading
-                ? const Padding(
-                  padding: EdgeInsets.all(8.0),
-                  child: SizedBox(
-                    height: 20,
-                    width: 20,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  ),
-                )
-                : null,
-      ),
-      initialValue: selectedValue,
+    // The custom clear button widget
+    Widget? clearButton;
+    if (isClearable) {
+      clearButton = IconButton(
+        icon: const Icon(Icons.clear, size: 20),
+        color: Colors.grey,
+        onPressed: () {
+          if (labelText == 'Эмнэлэг') {
+            setState(() {
+              _selectedHospital = null;
+              _selectedBranch = null;
+              _tasags = [];
+              _selectedTasag = null;
+              _doctors = [];
+              _selectedDoctor = null;
+            });
+          }
 
-      // Note: menuMaxHeight, selectedItemBuilder are now removed.
-      items:
-          items.map((item) {
-            // Note: isUnavailableBranch, onTap, and custom enabled logic are now removed.
-            return DropdownMenuItem<DropdownItem>(
-              value: item,
-              enabled: true, // All generic items are selectable
-              child: _buildItemChild(item), // Reusing your generic item builder
-            );
-          }).toList(),
+          if (labelText == 'Тасаг') {
+            setState(() {
+              _selectedTasag = null;
+              _doctors = [];
+              _selectedDoctor = null;
+            });
+          }
 
-      onChanged:
-          enabled && !isLoading
-              ? (DropdownItem? newValue) {
-                // Now just call the generic onChanged
-                onChanged(newValue);
-              }
-              : null,
-      isExpanded: true,
-      hint: Text('$labelText сонгоно уу'), // TRANSLATED
-      validator: (value) => value == null ? '$labelText сонгоно уу' : null, // TRANSLATED
+          if (labelText == 'Эмч') {
+            setState(() {
+              _doctors = [];
+              _selectedDoctor = null;
+            });
+          }
+          onChanged(null);
+        },
+      );
+    }
+
+    // To place the button on top of the field, we wrap it in a Stack
+    return Stack(
+      alignment: Alignment.centerRight,
+      children: [
+        // 1. The main Dropdown Field
+        DropdownButtonFormField<DropdownItem>(
+          decoration: InputDecoration(
+            labelText: labelText,
+            border: const OutlineInputBorder(),
+            // Use a custom suffix if loading, otherwise, leave it null for the clear button to occupy the space
+            suffixIcon:
+                isLoading
+                    ? const Padding(
+                      padding: EdgeInsets.all(8.0),
+                      child: SizedBox(
+                        height: 20,
+                        width: 20,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      ),
+                    )
+                    : (isClearable
+                        ? const SizedBox(width: 40)
+                        : null), // Add padding/placeholder if clearable
+          ),
+          initialValue: selectedValue,
+
+          items:
+              items.map((item) {
+                return DropdownMenuItem<DropdownItem>(
+                  value: item,
+                  enabled: true,
+                  child: _buildItemChild(item),
+                );
+              }).toList(),
+
+          onChanged: enabled && !isLoading ? onChanged : null,
+          isExpanded: true,
+          hint: Text('$labelText сонгоно уу'),
+          validator: (value) => value == null ? '$labelText сонгоно уу' : null,
+        ),
+
+        // 2. The Clear Button (positioned on top)
+        if (isClearable)
+          Positioned(
+            // Adjust this position based on your InputDecoration's padding
+            // This places it to the left of the default dropdown arrow/icon
+            right: isLoading ? 8 : 12,
+            child: clearButton!,
+          ),
+      ],
     );
   }
 
   @override
   Widget build(BuildContext context) {
+    bool isEnabled = _preFetchedTimeSlots != null && _preFetchedTimeSlots!.isNotEmpty;
+    bool isDoctorSelected = _selectedDoctor != null;
+
+    String buttonLabel = 'Цаг Сонгох';
+    Color labelColor = Colors.white; // Default color
+
+    if (_isLoadingTimeSlots) {
+      buttonLabel = 'Хуваарийг шалгаж байна...'; // Checking Schedule...
+      isEnabled = false;
+    } else if (_preFetchedTimeSlots == null || _preFetchedTimeSlots!.isEmpty) {
+      isEnabled = false;
+      if (!isDoctorSelected) {
+        buttonLabel = 'Эмч сонгоно уу'; // Select a Doctor
+      } else {
+        buttonLabel = 'Онлайн үзлэгийн хуваарь байхгүй'; // No Online Appointment Schedule
+      }
+      labelColor = Colors.redAccent; // Visually indicate no slots
+    }
+
     return Scaffold(
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),
@@ -989,25 +1145,26 @@ void _handleBranchSelection(DropdownItem branch) {
                   setState(() {
                     _selectedDoctor = newValue;
                   });
+                  _checkAvailableTimeSlots();
 
                   // NEW: Navigate to TimeSelectionScreen
 
-                  if (_selectedHospital?.tenant != null &&
-                      _selectedBranch != null &&
-                      _selectedTasag != null) {
-                    Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder:
-                            (context) => TimeSelectionScreen(
-                              tenant: _selectedHospital!.tenant!,
-                              branchId: _selectedBranch!.id,
-                              tasagId: _selectedTasag!.id,
-                              employeeId: newValue.id,
-                              doctorName: newValue.name, // Pass the name for display
-                            ),
-                      ),
-                    );
-                  }
+                  // if (_selectedHospital?.tenant != null &&
+                  //     _selectedBranch != null &&
+                  //     _selectedTasag != null) {
+                  //   Navigator.of(context).push(
+                  //     MaterialPageRoute(
+                  //       builder:
+                  //           (context) => TimeSelectionScreen(
+                  //             tenant: _selectedHospital!.tenant!,
+                  //             branchId: _selectedBranch!.id,
+                  //             tasagId: _selectedTasag!.id,
+                  //             employeeId: newValue.id,
+                  //             doctorName: newValue.name, // Pass the name for display
+                  //           ),
+                  //     ),
+                  //   );
+                  // }
                 }
               },
               enabled: _selectedTasag != null,
@@ -1018,16 +1175,96 @@ void _handleBranchSelection(DropdownItem branch) {
               Text('Алдаа: $_error', style: const TextStyle(color: Colors.red)), // TRANSLATED
             // Example of usage: Display selected values
             const Divider(),
-            const Text(
-              'Сонгогдсон захиалгын мэдээлэл:',
-              style: TextStyle(fontWeight: FontWeight.bold),
-            ), // TRANSLATED
-            Text(
-              'Эмнэлэг: ${_selectedHospital?.name ?? 'Байхгүй'} (Tenant: ${_selectedHospital?.tenant ?? 'Байхгүй'})', // TRANSLATED
-            ),
-            Text('Салбар: ${_selectedBranch?.name ?? 'Байхгүй'}'), // TRANSLATED
-            Text('Тасаг: ${_selectedTasag?.name ?? 'Байхгүй'}'), // TRANSLATED
-            Text('Эмч: ${_selectedDoctor?.name ?? 'Байхгүй'}'), // TRANSLATED
+            // const Text(
+            //   'Сонгогдсон захиалгын мэдээлэл:',
+            //   style: TextStyle(fontWeight: FontWeight.bold),
+            // ), // TRANSLATED
+            // Text(
+            //   'Эмнэлэг: ${_selectedHospital?.name ?? 'Байхгүй'} (Tenant: ${_selectedHospital?.tenant ?? 'Байхгүй'})', // TRANSLATED
+            // ),
+            // Text('Салбар: ${_selectedBranch?.name ?? 'Байхгүй'}'), // TRANSLATED
+            // Text('Тасаг: ${_selectedTasag?.name ?? 'Байхгүй'}'), // TRANSLATED
+            // Text('Эмч: ${_selectedDoctor?.name ?? 'Байхгүй'}'), // TRANSLATED
+
+            // Check if all necessary selections have been made: Hospital, Branch, and Tasag
+            if (_selectedHospital != null &&
+                _selectedBranch != null &&
+                _selectedTasag != null &&
+                !_isLoadingDoctors) // Ensure doctors aren't still loading
+              Padding(
+                padding: const EdgeInsets.only(top: 20.0),
+                child: SizedBox(
+                  width: double.infinity,
+                  height: 50,
+                  child: ElevatedButton.icon(
+                    onPressed:
+                        isEnabled
+                            ? () async {
+                              debugPrint('Redirecting to Time Selection Screen...');
+
+                              // Navigate only if the button is enabled (and thus has slots)
+                              if (_selectedHospital?.tenant != null &&
+                                  _selectedBranch != null &&
+                                  _selectedTasag != null) {
+                                final bool? isSuccess = await Navigator.of(context).push<bool>(
+                                  MaterialPageRoute(
+                                    builder:
+                                        (context) => TimeSelectionScreen(
+                                          tenant: _selectedHospital!.tenant!,
+                                          branchId: _selectedBranch!.id,
+                                          tasagId: _selectedTasag!.id,
+                                          tasagName: _selectedTasag!.name,
+                                          employeeId: _selectedDoctor?.id,
+                                          doctorName: _selectedDoctor?.name,
+                                          timeData: _preFetchedTimeSlots!,
+                                        ),
+                                  ),
+                                );
+
+                                // 3. Handle the result after TimeSelectionScreen is popped
+                                if (isSuccess == true) {
+                                  // SUCCESS: Clear all selections in THIS screen (TimeOrderScreen)
+                                  _clearSelections();
+                                  // Note: The success SnackBar is already shown in TimeSelectionScreen
+                                }
+                              }
+                            }
+                            : null, // Disable button if isEnabled is false
+                    icon:
+                        _isLoadingTimeSlots
+                            ? const SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                              ),
+                            )
+                            : const Icon(Icons.calendar_month, size: 24),
+                    label: Text(
+                      buttonLabel,
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: isEnabled ? Colors.white : labelColor,
+                      ),
+                    ),
+                    style: ElevatedButton.styleFrom(
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                      // Adjust background color for disabled state if necessary
+                      backgroundColor:
+                          isEnabled ? Theme.of(context).primaryColor : Colors.grey[400],
+                    ),
+                  ),
+                ),
+              ),
+
+            // You might still want to keep the error text if there's an error outside the selections
+            if (_error != null)
+              Padding(
+                padding: const EdgeInsets.only(top: 8.0),
+                child: Text('Алдаа: $_error', style: const TextStyle(color: Colors.red)),
+              ),
           ],
         ),
       ),
