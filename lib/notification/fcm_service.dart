@@ -24,7 +24,7 @@ String? globalFCMToken;
 @pragma('vm:entry-point')
 Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   await Firebase.initializeApp();
-  debugPrint("🔔 Background message received: ${message.messageId}");
+  print("🔔 Background message received: ${message.messageId}");
 
   final flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
 
@@ -43,8 +43,8 @@ Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   if (notification != null && notification.title != null && notification.body != null) {
     final title = notification.title ?? 'No title';
     final body = notification.body ?? 'No body';
-    debugPrint("🔔 Background TITLE: $title");
-    debugPrint("🔔 Background BODY: $body");
+    print("🔔 Background TITLE: $title");
+    print("🔔 Background BODY: $body");
 
     final AndroidNotificationDetails androidDetails = AndroidNotificationDetails(
       'medsoft_channel_id',
@@ -70,9 +70,9 @@ Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
       // payload: jsonEncode(message.data),
     );
 
-    debugPrint('✅ Notification .show() called successfully');
+    print('✅ Notification .show() called successfully');
   } else {
-    debugPrint("⚠️ No notification content in message");
+    print("⚠️ No notification content in message");
   }
 }
 
@@ -86,7 +86,7 @@ class FCMService {
 
   /// Initializes Firebase Messaging, requests permissions, gets the token, and sets up listeners.
   Future<void> initFCM() async {
-    debugPrint("HERE------------------------------");
+    print("HERE------------------------------");
     // Initialize the local notification service first (must be called once)
     await _localNotificationService.initializeNotifications();
 
@@ -95,13 +95,13 @@ class FCMService {
 
     // Get device token
     globalFCMToken = await _messaging.getToken();
-    debugPrint("✅ FCM Token: $globalFCMToken");
+    print("✅ FCM Token: $globalFCMToken");
 
     // ✅ Subscribe to broadcast topic "all" (Unsubscribing from 'all' is strange,
     // keeping the original code's intent but noting it might be a mistake)
     await _messaging.subscribeToTopic('all');
     await _messaging.unsubscribeFromTopic('all');
-    debugPrint("📡 Subscribed and immediately Unsubscribed to topic 'all'");
+    print("📡 Subscribed and immediately Unsubscribed to topic 'all'");
 
     // Foreground listener
     FirebaseMessaging.onMessage.listen(_firebaseMessagingForegroundHandler);
@@ -112,7 +112,7 @@ class FCMService {
 
   /// Handles incoming FCM messages when the app is in the foreground.
   void _firebaseMessagingForegroundHandler(RemoteMessage message) {
-    debugPrint('📬 Foreground message: ${message.notification?.title}');
+    print('📬 Foreground message: ${message.notification?.title}');
 
     // Use the local notification plugin to display the notification
     if (message.notification != null) {
@@ -122,8 +122,8 @@ class FCMService {
         presentBadge: true,
       );
 
-      debugPrint("🔔 FF Background TITLE: ${message.notification!.title}");
-      debugPrint("🔔 FF Background BODY: ${message.notification!.body}");
+      print("🔔 FF Background TITLE: ${message.notification!.title}");
+      print("🔔 FF Background BODY: ${message.notification!.body}");
 
       _localNotificationService.plugin.show(
         message.notification.hashCode,
@@ -141,7 +141,7 @@ class FCMService {
 
   /// Handles when a user taps an FCM notification and the app opens/resumes.
   void _firebaseMessagingOnOpenAppHandler(RemoteMessage message) {
-    debugPrint('➡️ Notification tapped, app opened/resumed: ${message.notification?.title}');
+    print('➡️ Notification tapped, app opened/resumed: ${message.notification?.title}');
     // You can use navigatorKey to navigate the user to a specific screen
     // navigatorKey.currentState?.pushNamed('/some_route');
   }
