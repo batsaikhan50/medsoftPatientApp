@@ -86,17 +86,19 @@ abstract class BaseDAO {
       debugPrint('Headers: $headers');
 
       final response = await http.get(Uri.parse(url), headers: headers);
-      final result = _handleResponse<dynamic>(response, parse: parse);
+      final result = _handleResponse<T>(response, parse: parse);
 
       // if (result.success && transform != null && result.data != null) {
       //   return ApiResponse<T>(success: true, data: transform(result.data), message: result.message);
       // }
 
-      return ApiResponse<T>(
-        success: result.success,
-        data: result.data as T?,
-        message: result.message,
-      );
+      // *** FIX 2: Return result directly (now that its type is ApiResponse<T>) ***
+      return result;
+      // return ApiResponse<T>(
+      //   success: result.success,
+      //   data: result.data as T?,
+      //   message: result.message,
+      // );
     } catch (e) {
       debugPrint('GET error: $e');
       return ApiResponse<T>(success: false, message: e.toString());
