@@ -86,6 +86,7 @@ flutter:
     - assets/icon/locationlogologin.png
     - assets/icon/ambulanceCar.png
     - assets/icon/userWithPhone.png
+    - assets/icon/dan.png
     - assets/guide/always.png
     - assets/guide/precise.png
     - assets/guide/background.png

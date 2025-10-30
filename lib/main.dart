@@ -32,13 +32,14 @@ final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp();
-  
+
   // Use the moved background handler from fcm_token.dart (not fcm_service.dart)
   FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
 
   // --- NEW FCM INITIALIZATION LOGIC ---
   final fcmService = FCMService();
-  await fcmService.initFCM(); // This calls _localNotificationService.initializeNotifications() and sets globalFCMToken
+  await fcmService
+      .initFCM(); // This calls _localNotificationService.initializeNotifications() and sets globalFCMToken
   // --- END NEW FCM INITIALIZATION LOGIC ---
 
   // Since globalFCMToken is now set, we can rely on it being available
@@ -57,16 +58,16 @@ class MyApp extends StatelessWidget {
         GlobalMaterialLocalizations.delegate,
         GlobalWidgetsLocalizations.delegate,
         GlobalCupertinoLocalizations.delegate,
-        // Add specific delegate for Mongolian if available, 
+        // Add specific delegate for Mongolian if available,
         // but flutter_localizations should handle 'mn' for date/time.
       ],
-      
+
       // 2. DEFINE SUPPORTED LOCALES
       supportedLocales: const [
         Locale('en', ''), // English
         Locale('mn', ''), // Mongolian (mn) <-- REQUIRED
       ],
-      
+
       debugShowCheckedModeBanner: false,
       navigatorKey: navigatorKey,
       title: 'Patient App',
@@ -293,7 +294,7 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
       case 3:
         return const HistoryScreen();
       case 4:
-        return const ProfileScreen();
+        return ProfileScreen(onGuideTap: _navigateToGuideScreen, onLogoutTap: _logOut);
       default:
         return _buildLocationBody();
     }
@@ -518,15 +519,14 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
     }
   }
 
+  void _navigateToGuideScreen() {
+    Navigator.push(context, MaterialPageRoute(builder: (context) => const GuideScreen()));
+  }
+
   void _logOut() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
 
-    await prefs.setBool('isLoggedIn', false);
-    await prefs.remove('X-Tenant');
-    await prefs.remove('X-Medsoft-Token');
-    await prefs.remove('Username');
-    await prefs.remove('scannedToken');
-    await prefs.remove('tenantDomain');
+    prefs.clear();
     try {
       await platform.invokeMethod('stopLocationUpdates');
     } on PlatformException catch (e) {

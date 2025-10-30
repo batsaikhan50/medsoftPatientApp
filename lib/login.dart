@@ -243,12 +243,7 @@ class _LoginScreenState extends State<LoginScreen> with WidgetsBindingObserver {
 
     if (response.success) {
       final prefs = await SharedPreferences.getInstance();
-      await prefs.setBool('isLoggedIn', false);
-      await prefs.remove('X-Tenant');
-      await prefs.remove('X-Medsoft-Token');
-      await prefs.remove('Username');
-      await prefs.remove('scannedToken');
-      await prefs.remove('tenantDomain');
+      prefs.clear();
 
       setState(() {
         _selectedToggleIndex = 0;
@@ -289,7 +284,7 @@ class _LoginScreenState extends State<LoginScreen> with WidgetsBindingObserver {
   Future<void> _login() async {
     setState(() => _isLoading = true);
 
-    debugPrint("FCM Token received in LoginScreen: ${widget.fcmToken}"); 
+    debugPrint("FCM Token received in LoginScreen: ${widget.fcmToken}");
 
     final body = {
       'username': _usernameLoginController.text,
@@ -307,6 +302,9 @@ class _LoginScreenState extends State<LoginScreen> with WidgetsBindingObserver {
       final token = response.data!['token'];
       await prefs.setString('X-Medsoft-Token', token);
       await prefs.setString('Username', _usernameLoginController.text);
+      await prefs.setString('Lastname', response.data!['user']['lastname']);
+      await prefs.setString('Firstname', response.data!['user']['firstname']);
+      await prefs.setString('RegNo', response.data!['user']['regNo']);
 
       _loadSharedPreferencesData();
 

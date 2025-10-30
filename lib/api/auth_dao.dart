@@ -21,7 +21,7 @@ class AuthDAO extends BaseDAO {
     );
   }
 
-  // QR хүлээх
+  //QR хүлээх
   Future<ApiResponse<Map<String, dynamic>>> waitQR(String token) {
     return get<Map<String, dynamic>>(
       '${Constants.appUrl}/qr/wait?id=$token',
@@ -52,6 +52,14 @@ class AuthDAO extends BaseDAO {
       '${Constants.appUrl}/auth/reset/password',
       body: body,
       config: const RequestConfig(headerType: HeaderType.jsonOnly, excludeToken: true),
+    );
+  }
+
+  //ДАН-с мэдээлэл дуудах
+  Future<ApiResponse<Map<String, dynamic>>> getPatientInfo() {
+    return get<Map<String, dynamic>>(
+      '${Constants.appUrl}/patient/profile',
+      config: const RequestConfig(headerType: HeaderType.bearerToken),
     );
   }
 }
