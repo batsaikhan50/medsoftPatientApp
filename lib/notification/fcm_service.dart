@@ -34,7 +34,7 @@ Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
     requestSoundPermission: true,
     defaultPresentAlert: true,
     defaultPresentSound: true,
-    defaultPresentBadge: true,
+    defaultPresentBadge: false,
   );
   const initSettings = InitializationSettings(iOS: iOSInit);
   await flutterLocalNotificationsPlugin.initialize(initSettings);
@@ -58,7 +58,7 @@ Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
     const iOSDetails = DarwinNotificationDetails(
       presentAlert: true,
       presentSound: true,
-      presentBadge: true,
+      presentBadge: false,
     );
     final details = NotificationDetails(android: androidDetails, iOS: iOSDetails);
 
@@ -119,7 +119,7 @@ class FCMService {
       const iOSDetails = DarwinNotificationDetails(
         presentAlert: true, // <-- This MUST be present
         presentSound: true,
-        presentBadge: true,
+        presentBadge: false,
       );
 
       print("🔔 FF Background TITLE: ${message.notification!.title}");

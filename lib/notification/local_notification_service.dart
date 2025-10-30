@@ -54,16 +54,18 @@ class LocalNotificationService {
     );
 
     // Initialize plugin with settings and callback for notification taps
-    await _flutterLocalNotificationsPlugin.initialize(settings,
-        onDidReceiveNotificationResponse: (NotificationResponse response) {
-      debugPrint('Notification tapped: ${response.payload}');
-    });
+    await _flutterLocalNotificationsPlugin.initialize(
+      settings,
+      onDidReceiveNotificationResponse: (NotificationResponse response) {
+        debugPrint('Notification tapped: ${response.payload}');
+      },
+    );
 
     // CRITICAL: Create Android Notification Channel
     await _flutterLocalNotificationsPlugin
         .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()
         ?.createNotificationChannel(_androidChannel);
-    
+
     _isInitialized = true;
     debugPrint("🔔 Local notifications initialized and Android channel created.");
   }
@@ -78,8 +80,8 @@ class LocalNotificationService {
       priority: Priority.high,
       showWhen: false,
     );
-    const DarwinNotificationDetails iOSDetails = DarwinNotificationDetails(badgeNumber: 1);
-    
+    const DarwinNotificationDetails iOSDetails = DarwinNotificationDetails(badgeNumber: 0);
+
     const NotificationDetails notificationDetails = NotificationDetails(
       android: androidDetails,
       iOS: iOSDetails,

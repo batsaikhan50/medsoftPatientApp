@@ -151,7 +151,7 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
   final _mapDao = MapDAO();
   // String? _fcmToken;
 
-  int _selectedIndex = 0;
+  int _selectedIndex = 1;
 
   final List<String> _locationHistory = [];
   Map<String, dynamic> sharedPreferencesData = {};
