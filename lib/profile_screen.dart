@@ -303,30 +303,36 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ],
 
               // 5. NEW Row: Birthday
-              _buildInfoRow(
-                context,
-                const Icon(Icons.cake, color: Colors.pink),
-                birthday,
-                subtitle: 'Төрсөн огноо',
-              ),
-              const Divider(height: 20, thickness: 1),
+              if (danAuthenticated) ...[
+                // ADD THIS CONDITION
+                _buildInfoRow(
+                  context,
+                  const Icon(Icons.cake, color: Colors.pink),
+                  birthday,
+                  subtitle: 'Төрсөн огноо',
+                ),
+                const Divider(height: 20, thickness: 1),
+              ],
 
               // 6. NEW Row: Gender
-              _buildInfoRow(
-                context,
-                Icon(
-                  gender == 'Эрэгтэй'
-                      ? Icons.male
-                      : (gender == 'Эмэгтэй' ? Icons.female : Icons.person),
-                  color:
-                      gender == 'Эрэгтэй'
-                          ? Colors.blue
-                          : (gender == 'Эмэгтэй' ? Colors.pink : Colors.grey),
+              if (danAuthenticated) ...[
+                // ADD THIS CONDITION
+                _buildInfoRow(
+                  context,
+                  Icon(
+                    gender == 'Эрэгтэй'
+                        ? Icons.male
+                        : (gender == 'Эмэгтэй' ? Icons.female : Icons.person),
+                    color:
+                        gender == 'Эрэгтэй'
+                            ? Colors.blue
+                            : (gender == 'Эмэгтэй' ? Colors.pink : Colors.grey),
+                  ),
+                  gender,
+                  subtitle: 'Хүйс',
                 ),
-                gender,
-                subtitle: 'Хүйс',
-              ),
-              const Divider(height: 20, thickness: 1),
+                const Divider(height: 20, thickness: 1),
+              ],
 
               // Last Row: Information Note
               _buildInfoRow(
@@ -390,7 +396,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
                         side: BorderSide(
-                          color: danAuthenticated ? _wateryGreen : _dangerRed,
+                          color: danAuthenticated ? _wateryGreen : Colors.blueGrey,
                           width: 1.5,
                         ),
                       ),
@@ -426,12 +432,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   const SizedBox(height: 20),
 
                   // "Хэрэглэх заавар" (Guide) Button
-                  ListTile(
-                    leading: const Icon(Icons.info_outline, color: Colors.blueAccent),
-                    title: const Text('Хэрэглэх заавар', style: TextStyle(fontSize: 18)),
-                    onTap: widget.onGuideTap,
-                  ),
-                  const Divider(),
+                  // ListTile(
+                  //   leading: const Icon(Icons.info_outline, color: Colors.blueAccent),
+                  //   title: const Text('Хэрэглэх заавар', style: TextStyle(fontSize: 18)),
+                  //   onTap: widget.onGuideTap,
+                  // ),
+                  // const Divider(),
 
                   // "Гарах" (Logout) Button
                   Container(

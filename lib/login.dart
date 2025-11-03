@@ -25,7 +25,8 @@ class _LoginScreenState extends State<LoginScreen> with WidgetsBindingObserver {
   final TextEditingController _usernameController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   final TextEditingController _passwordCheckController = TextEditingController();
-  final TextEditingController _regNoController = TextEditingController();
+  // final TextEditingController _regNoController = TextEditingController();
+  final TextEditingController _regNoNumberController = TextEditingController();
   final TextEditingController _firstnameController = TextEditingController();
   final TextEditingController _lastnameController = TextEditingController();
   final TextEditingController _codeController = TextEditingController();
@@ -40,7 +41,45 @@ class _LoginScreenState extends State<LoginScreen> with WidgetsBindingObserver {
   final FocusNode _regNoFocus = FocusNode();
   final FocusNode _firstnameFocus = FocusNode();
   final FocusNode _lastnameFocus = FocusNode();
-
+  String? _regNoFirstLetter;
+  String? _regNoSecondLetter;
+  final List<String> _mongolianCyrillicLetters = [
+    'А',
+    'Б',
+    'В',
+    'Г',
+    'Д',
+    'Е',
+    'Ё',
+    'Ж',
+    'З',
+    'И',
+    'Й',
+    'К',
+    'Л',
+    'М',
+    'Н',
+    'О',
+    'Ө',
+    'П',
+    'Р',
+    'С',
+    'Т',
+    'У',
+    'Ү',
+    'Ф',
+    'Х',
+    'Ц',
+    'Ч',
+    'Ш',
+    'Щ',
+    'Ъ',
+    'Ы',
+    'Ь',
+    'Э',
+    'Ю',
+    'Я',
+  ];
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
@@ -51,7 +90,8 @@ class _LoginScreenState extends State<LoginScreen> with WidgetsBindingObserver {
     _passwordCheckController.removeListener(_updatePasswordRules);
     _passwordController.dispose();
     _passwordCheckController.dispose();
-    _regNoController.dispose();
+    // _regNoController.dispose();
+    _regNoNumberController.dispose();
     _firstnameFocus.dispose();
     _lastnameFocus.dispose();
     _codeController.dispose();
@@ -88,7 +128,6 @@ class _LoginScreenState extends State<LoginScreen> with WidgetsBindingObserver {
     r'^[А-ЯӨҮ]{2}[0-9]{2}(0[1-9]|1[0-2]|2[0-9]|3[0-2])(0[1-9]|[12][0-9]|3[01])[0-9]{2}$',
   );
   final RegExp mongolianCyrillicRegex = RegExp(r'^[А-Яа-яӨөҮүЁё]+$');
-
   String? username;
 
   @override
@@ -166,7 +205,12 @@ class _LoginScreenState extends State<LoginScreen> with WidgetsBindingObserver {
       _updatePasswordRules();
     });
 
-    _regNoController.addListener(() {
+    // _regNoController.addListener(() {
+    //   setState(() {});
+    //   _validateRegNo();
+    // });
+
+    _regNoNumberController.addListener(() {
       setState(() {});
       _validateRegNo();
     });
@@ -192,11 +236,19 @@ class _LoginScreenState extends State<LoginScreen> with WidgetsBindingObserver {
   }
 
   void _validateRegNo() {
-    final regNo = _regNoController.text.trim().toUpperCase();
+    // final regNo = _regNoController.text.trim().toUpperCase();
+    final firstLetter = _regNoFirstLetter ?? '';
+    final secondLetter = _regNoSecondLetter ?? '';
+    final numberPart = _regNoNumberController.text.trim();
+    final regNo = firstLetter + secondLetter + numberPart;
 
     setState(() {
       if (regNo.isEmpty) {
         _regNoValidationError = null;
+      } else if (firstLetter.isEmpty || secondLetter.isEmpty) {
+        _regNoValidationError = 'Регистрын дугаарын үсгийг сонгоно уу';
+      } else if (numberPart.length != 8) {
+        _regNoValidationError = 'Регистрын дугаарын тоо 8 оронтой байх ёстой';
       } else if (!_regNoRegex.hasMatch(regNo)) {
         _regNoValidationError = 'Регистрын дугаар буруу байна';
       } else {
@@ -210,9 +262,17 @@ class _LoginScreenState extends State<LoginScreen> with WidgetsBindingObserver {
     final passwordMatchError = _validatePasswordMatch(password, _passwordCheckController.text);
     final rules = _validatePasswordRules(password);
 
-    final regNo = _regNoController.text.trim().toUpperCase();
-    if (regNo.isEmpty || !_regNoRegex.hasMatch(regNo)) {
-      _regNoValidationError = 'Регистрын дугаар буруу байна';
+    // ⚠️ UPDATED logic to combine letters and number field for validation
+    final firstLetter = _regNoFirstLetter ?? '';
+    final secondLetter = _regNoSecondLetter ?? '';
+    final numberPart = _regNoNumberController.text.trim();
+    final regNo = firstLetter + secondLetter + numberPart;
+
+    if (firstLetter.isEmpty ||
+        secondLetter.isEmpty ||
+        numberPart.isEmpty ||
+        !_regNoRegex.hasMatch(regNo)) {
+      _regNoValidationError = 'Регистрын дугаарыг бүрэн зөв оруулна уу';
     } else {
       _regNoValidationError = null;
     }
@@ -229,11 +289,15 @@ class _LoginScreenState extends State<LoginScreen> with WidgetsBindingObserver {
   Future<void> _register() async {
     setState(() => _isLoading = true);
 
+    // ⚠️ UPDATED: Combine the parts for the 'regNo' field in the body
+    final regNo =
+        (_regNoFirstLetter ?? '') + (_regNoSecondLetter ?? '') + _regNoNumberController.text;
+
     final body = {
       'username': _usernameController.text,
       'password': _passwordController.text,
       'passwordConfirm': _passwordCheckController.text,
-      'regNo': _regNoController.text,
+      'regNo': regNo, // ⚠️ UPDATED
       'firstname': _firstnameController.text,
       'lastname': _lastnameController.text,
       'type': 'patient',
@@ -550,6 +614,39 @@ class _LoginScreenState extends State<LoginScreen> with WidgetsBindingObserver {
     );
   }
 
+  Widget _buildRegNoLetterPicker({
+    required String? currentValue,
+    required ValueChanged<String?> onChanged,
+  }) {
+    return DropdownButtonFormField<String>(
+      initialValue: currentValue,
+      decoration: InputDecoration(
+        isDense: true,
+        // ⬅️ FIX: Increased vertical padding to match the height of 'Овог' field (vertical: 15)
+        contentPadding: const EdgeInsets.symmetric(horizontal: 4, vertical: 15),
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+      ),
+      icon: const Icon(Icons.arrow_drop_down, size: 20),
+      style: const TextStyle(fontSize: 16, color: Colors.black, fontWeight: FontWeight.bold),
+      dropdownColor: Colors.white,
+      items:
+          _mongolianCyrillicLetters
+              .map(
+                (letter) => DropdownMenuItem(
+                  value: letter,
+                  child: Center(
+                    child: Text(letter, style: const TextStyle(fontWeight: FontWeight.bold)),
+                  ),
+                ),
+              )
+              .toList(),
+      onChanged: (String? newValue) {
+        onChanged(newValue);
+        _validateRegNo();
+      },
+    );
+  }
+
   Widget _buildLoginForm() {
     final isTablet = MediaQuery.of(context).size.shortestSide >= 600;
     final screenWidth = MediaQuery.of(context).size.width;
@@ -772,37 +869,132 @@ class _LoginScreenState extends State<LoginScreen> with WidgetsBindingObserver {
                     ),
                   ),
 
-                if (_selectedToggleIndex == 1) const SizedBox(height: 20),
+                if (_selectedToggleIndex == 1) const SizedBox(height: 10),
 
+                // if (_selectedToggleIndex == 1)
+                //   TextFormField(
+                //     controller: _regNoController,
+                //     focusNode: _regNoFocus,
+                //     textInputAction: TextInputAction.next,
+                //     decoration: InputDecoration(
+                //       labelText: 'Регистрын дугаар',
+                //       prefixIcon: const Icon(Icons.badge),
+                //       suffixIcon:
+                //           _regNoController.text.isNotEmpty
+                //               ? IconButton(
+                //                 icon: const Icon(Icons.clear),
+                //                 onPressed: () {
+                //                   _regNoController.clear();
+                //                 },
+                //               )
+                //               : null,
+                //       border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                //       errorText: _regNoValidationError,
+                //     ),
+                //     onChanged: (value) {
+                //       _regNoController.value = _regNoController.value.copyWith(
+                //         text: value.toUpperCase(),
+                //         selection: TextSelection.collapsed(offset: value.length),
+                //       );
+                //     },
+                //   ),
                 if (_selectedToggleIndex == 1)
-                  TextFormField(
-                    controller: _regNoController,
-                    focusNode: _regNoFocus,
-                    textInputAction: TextInputAction.next,
-                    decoration: InputDecoration(
-                      labelText: 'Регистрын дугаар',
-                      prefixIcon: const Icon(Icons.badge),
-                      suffixIcon:
-                          _regNoController.text.isNotEmpty
-                              ? IconButton(
-                                icon: const Icon(Icons.clear),
-                                onPressed: () {
-                                  _regNoController.clear();
-                                },
-                              )
-                              : null,
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                      errorText: _regNoValidationError,
-                    ),
-                    onChanged: (value) {
-                      _regNoController.value = _regNoController.value.copyWith(
-                        text: value.toUpperCase(),
-                        selection: TextSelection.collapsed(offset: value.length),
-                      );
-                    },
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Manually add the Label
+                      const Text(
+                        'Регистрын дугаар',
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: Colors.black54,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+
+                      // Input Row
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // First Letter Picker
+                          Expanded(
+                            flex: 2, // Stable width for the letter
+                            child: _buildRegNoLetterPicker(
+                              currentValue: _regNoFirstLetter,
+                              onChanged: (String? newValue) {
+                                setState(() {
+                                  _regNoFirstLetter = newValue;
+                                });
+                                _validateRegNo();
+                              },
+                            ),
+                          ),
+                          // ⬅️ FIX: Small 4-pixel gap to prevent border collision
+                          const SizedBox(width: 4),
+                          // Second Letter Picker
+                          Expanded(
+                            flex: 2, // Stable width for the letter
+                            child: _buildRegNoLetterPicker(
+                              currentValue: _regNoSecondLetter,
+                              onChanged: (String? newValue) {
+                                setState(() {
+                                  _regNoSecondLetter = newValue;
+                                });
+                                _validateRegNo();
+                              },
+                            ),
+                          ),
+                          // ⬅️ FIX: Small 4-pixel gap
+                          const SizedBox(width: 4),
+                          Expanded(
+                            flex: 5, // Keep the stable flex ratio
+                            child: TextFormField(
+                              controller: _regNoNumberController,
+                              focusNode: _regNoFocus,
+                              textInputAction: TextInputAction.next,
+                              keyboardType: TextInputType.number,
+                              maxLength: 8,
+                              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                              decoration: InputDecoration(
+                                hintText: '8 оронтой тоо',
+                                counterText: '', // Hides the counter
+                                isDense: true,
+                                // ⬅️ FIX: Use the same increased vertical padding (vertical: 15)
+                                contentPadding: const EdgeInsets.symmetric(
+                                  horizontal: 10,
+                                  vertical: 15,
+                                ),
+                                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                                suffixIcon:
+                                    _regNoNumberController.text.isNotEmpty
+                                        ? IconButton(
+                                          icon: const Icon(Icons.clear, size: 20),
+                                          onPressed: () {
+                                            _regNoNumberController.clear();
+                                            _validateRegNo();
+                                          },
+                                        )
+                                        : null,
+                              ),
+                              onChanged: (value) => _validateRegNo(),
+                            ),
+                          ),
+                        ],
+                      ),
+                      // Manually add the Error Text
+                      if (_regNoValidationError != null)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 8.0, left: 12.0),
+                          child: Text(
+                            _regNoValidationError!,
+                            style: const TextStyle(color: Color(0xFFD32F2F), fontSize: 12),
+                          ),
+                        ),
+                    ],
                   ),
 
-                if (_selectedToggleIndex == 1) const SizedBox(height: 20),
+                if (_selectedToggleIndex == 1) const SizedBox(height: 10),
 
                 if (_selectedToggleIndex == 1)
                   TextFormField(
