@@ -445,10 +445,23 @@ class _LoginScreenState extends State<LoginScreen> with WidgetsBindingObserver {
   }
 
   Widget buildAnimatedToggle() {
-    final isTablet = MediaQuery.of(context).size.shortestSide >= 600;
     final screenWidth = MediaQuery.of(context).size.width;
-    final toggleWidth = isTablet ? screenWidth * 0.5 : screenWidth - 32;
+
+    // 1. Max Width Constraint (Fix for wide landscape)
+    const double maxToggleWidth = 500.0;
+    final toggleWidth = screenWidth > maxToggleWidth ? maxToggleWidth : screenWidth - 32;
+
     final knobWidth = (toggleWidth - 8) / 2;
+
+    // 2. Define the Target Position (The final resting place)
+    final double targetPosition = _selectedToggleIndex == 1 ? knobWidth : 0.0;
+
+    // 3. Determine the current Visual Position
+    // This value ensures the knob follows the drag, but snaps to the target when not dragging.
+    // When dragging, _dragPosition is the source of truth. When not dragging, it defaults to targetPosition.
+    final double currentKnobPosition =
+        // Check if we are actively dragging (i.e., _dragPosition is not snapped to a target)
+        (_dragPosition > 0 && _dragPosition < knobWidth) ? _dragPosition : targetPosition;
 
     return Center(
       child: ConstrainedBox(
@@ -457,16 +470,20 @@ class _LoginScreenState extends State<LoginScreen> with WidgetsBindingObserver {
           onHorizontalDragUpdate: (details) {
             setState(() {
               _dragPosition += details.delta.dx;
+              // Clamping is necessary to keep the drag within bounds
               _dragPosition = _dragPosition.clamp(0, knobWidth);
             });
           },
           onHorizontalDragEnd: (_) {
             setState(() {
+              // Snap to the closest side after dragging ends
               if (_dragPosition < (knobWidth / 2)) {
                 _selectedToggleIndex = 0;
+                // Reset _dragPosition to 0 after snap for consistency
                 _dragPosition = 0;
               } else {
                 _selectedToggleIndex = 1;
+                // Reset _dragPosition to knobWidth after snap for consistency
                 _dragPosition = knobWidth;
               }
             });
@@ -474,6 +491,7 @@ class _LoginScreenState extends State<LoginScreen> with WidgetsBindingObserver {
           onTapDown: (details) {
             final dx = details.localPosition.dx;
             setState(() {
+              // Tap directly sets the index and the drag position (which will be used as the target)
               if (dx < toggleWidth / 2) {
                 _selectedToggleIndex = 0;
                 _dragPosition = 0;
@@ -495,7 +513,8 @@ class _LoginScreenState extends State<LoginScreen> with WidgetsBindingObserver {
                 AnimatedPositioned(
                   duration: const Duration(milliseconds: 200),
                   curve: Curves.easeOut,
-                  left: _dragPosition,
+                  // *** KEY FIX: Use the calculated currentKnobPosition ***
+                  left: currentKnobPosition,
                   top: 0,
                   bottom: 0,
                   width: knobWidth,
@@ -510,6 +529,7 @@ class _LoginScreenState extends State<LoginScreen> with WidgetsBindingObserver {
                     ),
                   ),
                 ),
+                // ... (The rest of the Row for labels and icons is unchanged)
                 Row(
                   children: List.generate(2, (index) {
                     final label = index == 0 ? 'Нэвтрэх' : 'Бүртгүүлэх';
@@ -671,6 +691,7 @@ class _LoginScreenState extends State<LoginScreen> with WidgetsBindingObserver {
         bottom: MediaQuery.of(context).viewInsets.bottom + 32,
       ),
       keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+
       child: Center(
         child: ConstrainedBox(
           constraints: BoxConstraints(maxWidth: contentWidth),
