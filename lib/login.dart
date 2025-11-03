@@ -657,11 +657,9 @@ class _LoginScreenState extends State<LoginScreen> with WidgetsBindingObserver {
       resizeToAvoidBottomInset: true,
       body: GestureDetector(
         onTap: () => FocusScope.of(context).unfocus(),
-        child: SafeArea(
-          child: KeyboardActions(
-            config: _buildKeyboardActionsConfig(context),
-            child: _buildLoginForm(),
-          ),
+        child: KeyboardActions(
+          config: _buildKeyboardActionsConfig(context),
+          child: _buildLoginForm(),
         ),
       ),
     );
@@ -711,7 +709,7 @@ class _LoginScreenState extends State<LoginScreen> with WidgetsBindingObserver {
       padding: EdgeInsets.only(
         left: 16,
         right: 16,
-        top: MediaQuery.of(context).size.shortestSide >= 600 ? 200 : 20,
+        top: MediaQuery.of(context).size.shortestSide >= 600 ? 250 : 70,
         bottom: MediaQuery.of(context).viewInsets.bottom + 32,
       ),
       keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
@@ -1139,7 +1137,7 @@ class _LoginScreenState extends State<LoginScreen> with WidgetsBindingObserver {
                   ),
 
                 if (_selectedToggleIndex == 0) const SizedBox(height: 20),
-                if (_selectedToggleIndex == 1) const SizedBox(height: 10),
+                if (_selectedToggleIndex == 1) const SizedBox(height: 0),
 
                 ElevatedButton(
                   style: ElevatedButton.styleFrom(
@@ -1147,7 +1145,7 @@ class _LoginScreenState extends State<LoginScreen> with WidgetsBindingObserver {
                         _selectedToggleIndex == 0
                             ? const Color(0xFF009688)
                             : const Color(0xFF0077b3),
-                    padding: const EdgeInsets.symmetric(vertical: 10),
+                    padding: const EdgeInsets.symmetric(vertical: 0),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                     minimumSize: const Size(double.infinity, 40),
                   ),
