@@ -38,6 +38,7 @@ class _LoginScreenState extends State<LoginScreen> with WidgetsBindingObserver {
   final FocusNode _usernameFocus = FocusNode();
   final FocusNode _passwordFocus = FocusNode();
   final FocusNode _passwordCheckFocus = FocusNode();
+  final FocusNode _regNoLetterFocus = FocusNode();
   final FocusNode _regNoFocus = FocusNode();
   final FocusNode _firstnameFocus = FocusNode();
   final FocusNode _lastnameFocus = FocusNode();
@@ -90,7 +91,8 @@ class _LoginScreenState extends State<LoginScreen> with WidgetsBindingObserver {
     _passwordCheckController.removeListener(_updatePasswordRules);
     _passwordController.dispose();
     _passwordCheckController.dispose();
-    // _regNoController.dispose();
+    _regNoNumberController.dispose();
+
     _regNoNumberController.dispose();
     _firstnameFocus.dispose();
     _lastnameFocus.dispose();
@@ -101,6 +103,8 @@ class _LoginScreenState extends State<LoginScreen> with WidgetsBindingObserver {
     _passwordFocus.dispose();
     _passwordCheckFocus.dispose();
     _scrollController.dispose();
+    _regNoLetterFocus.dispose();
+    _regNoFocus.dispose();
     super.dispose();
   }
 
@@ -579,6 +583,11 @@ class _LoginScreenState extends State<LoginScreen> with WidgetsBindingObserver {
             displayDoneButton: false,
           ),
           KeyboardActionsItem(
+            focusNode: _regNoLetterFocus, // The 8-digit number field
+            displayArrows: false,
+            displayDoneButton: false,
+          ),
+          KeyboardActionsItem(
             focusNode: _regNoFocus,
             displayArrows: true,
             displayDoneButton: false,
@@ -620,6 +629,7 @@ class _LoginScreenState extends State<LoginScreen> with WidgetsBindingObserver {
   }) {
     return DropdownButtonFormField<String>(
       initialValue: currentValue,
+      focusNode: _regNoLetterFocus,
       decoration: InputDecoration(
         isDense: true,
         // ⬅️ FIX: Increased vertical padding to match the height of 'Овог' field (vertical: 15)
@@ -988,13 +998,13 @@ class _LoginScreenState extends State<LoginScreen> with WidgetsBindingObserver {
                           padding: const EdgeInsets.only(top: 8.0, left: 12.0),
                           child: Text(
                             _regNoValidationError!,
-                            style: const TextStyle(color: Color(0xFFD32F2F), fontSize: 12),
+                            style: const TextStyle(color: Colors.deepOrange, fontSize: 12),
                           ),
                         ),
                     ],
                   ),
 
-                if (_selectedToggleIndex == 1) const SizedBox(height: 10),
+                if (_selectedToggleIndex == 1) const SizedBox(height: 20),
 
                 if (_selectedToggleIndex == 1)
                   TextFormField(
