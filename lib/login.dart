@@ -444,23 +444,48 @@ class _LoginScreenState extends State<LoginScreen> with WidgetsBindingObserver {
     return null;
   }
 
-  Widget buildAnimatedToggle() {
-    final screenWidth = MediaQuery.of(context).size.width;
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
 
-    // 1. Max Width Constraint (Fix for wide landscape)
+    // Calculate the necessary screen metrics inside a method that runs on dependency change
+    final screenWidth = MediaQuery.of(context).size.width;
     const double maxToggleWidth = 500.0;
     final toggleWidth = screenWidth > maxToggleWidth ? maxToggleWidth : screenWidth - 32;
+    final newKnobWidth = (toggleWidth - 8) / 2;
+    final newTargetPosition = _selectedToggleIndex == 1 ? newKnobWidth : 0.0;
 
+    // Crucial: Only update if the knobWidth has changed significantly
+    // OR if the current position is not the target position.
+    // This correctly snaps the position right after an orientation change.
+    if (_dragPosition != newTargetPosition) {
+      // We use a temporary variable for comparison to ensure we only call setState once.
+      // If the widget was snapped before (at 0 or the old knobWidth), it must snap to the new target.
+      // Calling setState here ensures the widget rebuilds with the corrected _dragPosition.
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        // Use setState to ensure the build method runs with the corrected position.
+        if (mounted) {
+          setState(() {
+            _dragPosition = newTargetPosition;
+          });
+        }
+      });
+    }
+  }
+
+  Widget buildAnimatedToggle() {
+    final screenWidth = MediaQuery.of(context).size.width;
+    const double maxToggleWidth = 500.0;
+    final toggleWidth = screenWidth > maxToggleWidth ? maxToggleWidth : screenWidth - 32;
     final knobWidth = (toggleWidth - 8) / 2;
 
-    // 2. Define the Target Position (The final resting place)
+    // The snap logic must be moved to didChangeDependencies, so we only need the target here.
     final double targetPosition = _selectedToggleIndex == 1 ? knobWidth : 0.0;
 
-    // 3. Determine the current Visual Position
-    // This value ensures the knob follows the drag, but snaps to the target when not dragging.
-    // When dragging, _dragPosition is the source of truth. When not dragging, it defaults to targetPosition.
+    // The current position uses _dragPosition for the actual drag movement,
+    // and targetPosition for the snapped location.
+    // We MUST keep this logic for the dragging to work!
     final double currentKnobPosition =
-        // Check if we are actively dragging (i.e., _dragPosition is not snapped to a target)
         (_dragPosition > 0 && _dragPosition < knobWidth) ? _dragPosition : targetPosition;
 
     return Center(
@@ -513,8 +538,7 @@ class _LoginScreenState extends State<LoginScreen> with WidgetsBindingObserver {
                 AnimatedPositioned(
                   duration: const Duration(milliseconds: 200),
                   curve: Curves.easeOut,
-                  // *** KEY FIX: Use the calculated currentKnobPosition ***
-                  left: currentKnobPosition,
+                  left: currentKnobPosition, // Now using the correct position
                   top: 0,
                   bottom: 0,
                   width: knobWidth,
@@ -529,7 +553,7 @@ class _LoginScreenState extends State<LoginScreen> with WidgetsBindingObserver {
                     ),
                   ),
                 ),
-                // ... (The rest of the Row for labels and icons is unchanged)
+                // ... (Labels remain the same)
                 Row(
                   children: List.generate(2, (index) {
                     final label = index == 0 ? 'Нэвтрэх' : 'Бүртгүүлэх';
