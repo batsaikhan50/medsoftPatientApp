@@ -141,17 +141,20 @@ class _QrScanScreenState extends State<QrScanScreen> {
         children: [
           Expanded(
             flex: 5,
-            child: QRView(
-              key: qrKey,
-              onQRViewCreated: _onQRViewCreated,
-              overlay: QrScannerOverlayShape(
-                borderColor: const Color(0xFF00CCCC), // The color of the corner borders
-                borderRadius: 15, // Slightly increased corner radius
-                borderLength: 50, // Significantly increased border length
-                borderWidth: 15, // Significantly increased border thickness
-                cutOutSize: scanArea, // Size of the central cutout area
-                // Changed to white background
-                overlayColor: const Color(0xFFFDF7FE), // Background color outside the cutout area
+            child: AspectRatio(
+              aspectRatio: 1.0,
+              child: QRView(
+                key: qrKey,
+                onQRViewCreated: _onQRViewCreated,
+                overlay: QrScannerOverlayShape(
+                  borderColor: const Color(0xFF00CCCC), // The color of the corner borders
+                  borderRadius: 15, // Slightly increased corner radius
+                  borderLength: 50, // Significantly increased border length
+                  borderWidth: 15, // Significantly increased border thickness
+                  cutOutSize: scanArea, // Size of the central cutout area
+                  // Changed to white background
+                  overlayColor: const Color(0xFFFDF7FE), // Background color outside the cutout area
+                ),
               ),
             ),
           ),
