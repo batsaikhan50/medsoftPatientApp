@@ -727,7 +727,10 @@ class _LoginScreenState extends State<LoginScreen> with WidgetsBindingObserver {
       padding: EdgeInsets.only(
         left: 16,
         right: 16,
-        top: MediaQuery.of(context).size.shortestSide >= 600 ? 250 : 70,
+        top:
+            MediaQuery.of(context).size.shortestSide >= 600
+                ? MediaQuery.of(context).size.height * 0.15
+                : 70,
         bottom: MediaQuery.of(context).viewInsets.bottom + 32,
       ),
       keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,

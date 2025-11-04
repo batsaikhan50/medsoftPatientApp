@@ -1058,215 +1058,229 @@ void _handleBranchSelection(DropdownItem branch) {
       labelColor = Colors.redAccent; // Visually indicate no slots
     }
 
+    // --- FIX: Apply max width constraint for large screens ---
+    final double screenWidth = MediaQuery.of(context).size.width;
+    const double maxWidth = 600.0;
+
+    // Determine if we should constrain the width
+    final bool shouldConstrain = screenWidth > maxWidth;
+
     return Scaffold(
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: <Widget>[
-            // 1. Hospital Dropdown (getAllHospitals)
-            _buildDropdown(
-              labelText: 'Эмнэлэг',
-              selectedValue: _selectedHospital,
-              items: _hospitals,
-              isLoading: _isLoadingHospitals,
-              onChanged: (DropdownItem? newValue) {
-                if (newValue != null && newValue != _selectedHospital) {
-                  setState(() {
-                    _selectedHospital = newValue;
-                    _selectedBranch = null; // Clear branch when hospital changes
-                    _selectedTasag = null;
-                    _selectedDoctor = null;
-                  });
-                  if (newValue.tenant != null) {
-                    _loadBranches(newValue.tenant!);
-                  }
-                }
-              },
-            ),
+      // 1. Center the content if the screen is wider than the max width
+      body: Center(
+        // 2. Apply the maximum width constraint
+        child: ConstrainedBox(
+          constraints: BoxConstraints(maxWidth: shouldConstrain ? maxWidth : double.infinity),
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: <Widget>[
+                // 1. Hospital Dropdown (getAllHospitals)
+                _buildDropdown(
+                  labelText: 'Эмнэлэг',
+                  selectedValue: _selectedHospital,
+                  items: _hospitals,
+                  isLoading: _isLoadingHospitals,
+                  onChanged: (DropdownItem? newValue) {
+                    if (newValue != null && newValue != _selectedHospital) {
+                      setState(() {
+                        _selectedHospital = newValue;
+                        _selectedBranch = null; // Clear branch when hospital changes
+                        _selectedTasag = null;
+                        _selectedDoctor = null;
+                      });
+                      if (newValue.tenant != null) {
+                        _loadBranches(newValue.tenant!);
+                      }
+                    }
+                  },
+                ),
 
-            SizedBox(height: _selectedBranch != null ? 10 : 20),
+                SizedBox(height: _selectedBranch != null ? 10 : 20),
 
-            // 2. Branch Dropdown (getBranches)
+                // 2. Branch Dropdown (getBranches)
 
-            // _buildDropdown(
-            //   labelText: 'Салбар',
-            //   selectedValue: _selectedBranch,
-            //   items: _branches,
-            //   isLoading: _isLoadingBranches,
-            //   onChanged: (DropdownItem? newValue) {
-            //     if (newValue != null && newValue != _selectedBranch) {
-            //       setState(() {
-            //         _selectedBranch = newValue;
-            //         // Reset dependents upon new branch selection
-            //         _tasags = [];
-            //         _selectedTasag = null;
-            //         _doctors = [];
-            //         _selectedDoctor = null;
-            //       });
-            //       if (_selectedHospital?.tenant != null) {
-            //         // Only load tasags if a hospital is selected
-            //         _loadTasags(_selectedHospital!.tenant!, newValue.id);
-            //       }
-            //     }
-            //   },
-            //   enabled: _selectedHospital != null, // Enable only after hospital is selected
-            // ),
-            _buildBranchSelectionField(),
-            const SizedBox(height: 20),
+                // _buildDropdown(
+                //   labelText: 'Салбар',
+                //   selectedValue: _selectedBranch,
+                //   items: _branches,
+                //   isLoading: _isLoadingBranches,
+                //   onChanged: (DropdownItem? newValue) {
+                //     if (newValue != null && newValue != _selectedBranch) {
+                //       setState(() {
+                //         _selectedBranch = newValue;
+                //         // Reset dependents upon new branch selection
+                //         _tasags = [];
+                //         _selectedTasag = null;
+                //         _doctors = [];
+                //         _selectedDoctor = null;
+                //       });
+                //       if (_selectedHospital?.tenant != null) {
+                //         // Only load tasags if a hospital is selected
+                //         _loadTasags(_selectedHospital!.tenant!, newValue.id);
+                //       }
+                //     }
+                //   },
+                //   enabled: _selectedHospital != null, // Enable only after hospital is selected
+                // ),
+                _buildBranchSelectionField(),
+                const SizedBox(height: 20),
 
-            // 3. Department (Tasag) Dropdown (getTasags)
-            _buildDropdown(
-              labelText: 'Тасаг',
-              selectedValue: _selectedTasag,
-              items: _tasags,
-              isLoading: _isLoadingTasags,
-              onChanged: (DropdownItem? newValue) {
-                if (newValue != null && newValue != _selectedTasag) {
-                  setState(() {
-                    _selectedTasag = newValue;
-                  });
-                  if (_selectedHospital?.tenant != null && _selectedBranch != null) {
-                    _loadDoctors(_selectedHospital!.tenant!, _selectedBranch!.id, newValue.id);
-                  }
-                }
-              },
-              enabled: _selectedBranch != null,
-            ),
-            const SizedBox(height: 20),
+                // 3. Department (Tasag) Dropdown (getTasags)
+                _buildDropdown(
+                  labelText: 'Тасаг',
+                  selectedValue: _selectedTasag,
+                  items: _tasags,
+                  isLoading: _isLoadingTasags,
+                  onChanged: (DropdownItem? newValue) {
+                    if (newValue != null && newValue != _selectedTasag) {
+                      setState(() {
+                        _selectedTasag = newValue;
+                      });
+                      if (_selectedHospital?.tenant != null && _selectedBranch != null) {
+                        _loadDoctors(_selectedHospital!.tenant!, _selectedBranch!.id, newValue.id);
+                      }
+                    }
+                  },
+                  enabled: _selectedBranch != null,
+                ),
+                const SizedBox(height: 20),
 
-            // 4. Doctor Dropdown (getDoctors)
-            _buildDropdown(
-              labelText: 'Эмч',
-              selectedValue: _selectedDoctor,
-              items: _doctors,
-              isLoading: _isLoadingDoctors,
-              onChanged: (DropdownItem? newValue) {
-                if (newValue != null) {
-                  setState(() {
-                    _selectedDoctor = newValue;
-                  });
-                  _checkAvailableTimeSlots();
+                // 4. Doctor Dropdown (getDoctors)
+                _buildDropdown(
+                  labelText: 'Эмч',
+                  selectedValue: _selectedDoctor,
+                  items: _doctors,
+                  isLoading: _isLoadingDoctors,
+                  onChanged: (DropdownItem? newValue) {
+                    if (newValue != null) {
+                      setState(() {
+                        _selectedDoctor = newValue;
+                      });
+                      _checkAvailableTimeSlots();
 
-                  // NEW: Navigate to TimeSelectionScreen
+                      // NEW: Navigate to TimeSelectionScreen
 
-                  // if (_selectedHospital?.tenant != null &&
-                  //     _selectedBranch != null &&
-                  //     _selectedTasag != null) {
-                  //   Navigator.of(context).push(
-                  //     MaterialPageRoute(
-                  //       builder:
-                  //           (context) => TimeSelectionScreen(
-                  //             tenant: _selectedHospital!.tenant!,
-                  //             branchId: _selectedBranch!.id,
-                  //             tasagId: _selectedTasag!.id,
-                  //             employeeId: newValue.id,
-                  //             doctorName: newValue.name, // Pass the name for display
-                  //           ),
-                  //     ),
-                  //   );
-                  // }
-                }
-              },
-              enabled: _selectedTasag != null,
-            ),
-            const SizedBox(height: 30),
+                      // if (_selectedHospital?.tenant != null &&
+                      //     _selectedBranch != null &&
+                      //     _selectedTasag != null) {
+                      //   Navigator.of(context).push(
+                      //     MaterialPageRoute(
+                      //       builder:
+                      //           (context) => TimeSelectionScreen(
+                      //             tenant: _selectedHospital!.tenant!,
+                      //             branchId: _selectedBranch!.id,
+                      //             tasagId: _selectedTasag!.id,
+                      //             employeeId: newValue.id,
+                      //             doctorName: newValue.name, // Pass the name for display
+                      //           ),
+                      //     ),
+                      //   );
+                      // }
+                    }
+                  },
+                  enabled: _selectedTasag != null,
+                ),
+                const SizedBox(height: 30),
 
-            if (_error != null)
-              Text('Алдаа: $_error', style: const TextStyle(color: Colors.red)), // TRANSLATED
-            // Example of usage: Display selected values
-            const Divider(),
-            // const Text(
-            //   'Сонгогдсон захиалгын мэдээлэл:',
-            //   style: TextStyle(fontWeight: FontWeight.bold),
-            // ), // TRANSLATED
-            // Text(
-            //   'Эмнэлэг: ${_selectedHospital?.name ?? 'Байхгүй'} (Tenant: ${_selectedHospital?.tenant ?? 'Байхгүй'})', // TRANSLATED
-            // ),
-            // Text('Салбар: ${_selectedBranch?.name ?? 'Байхгүй'}'), // TRANSLATED
-            // Text('Тасаг: ${_selectedTasag?.name ?? 'Байхгүй'}'), // TRANSLATED
-            // Text('Эмч: ${_selectedDoctor?.name ?? 'Байхгүй'}'), // TRANSLATED
+                if (_error != null)
+                  Text('Алдаа: $_error', style: const TextStyle(color: Colors.red)), // TRANSLATED
+                // Example of usage: Display selected values
+                const Divider(),
+                // const Text(
+                //   'Сонгогдсон захиалгын мэдээлэл:',
+                //   style: TextStyle(fontWeight: FontWeight.bold),
+                // ), // TRANSLATED
+                // Text(
+                //   'Эмнэлэг: ${_selectedHospital?.name ?? 'Байхгүй'} (Tenant: ${_selectedHospital?.tenant ?? 'Байхгүй'})', // TRANSLATED
+                // ),
+                // Text('Салбар: ${_selectedBranch?.name ?? 'Байхгүй'}'), // TRANSLATED
+                // Text('Тасаг: ${_selectedTasag?.name ?? 'Байхгүй'}'), // TRANSLATED
+                // Text('Эмч: ${_selectedDoctor?.name ?? 'Байхгүй'}'), // TRANSLATED
 
-            // Check if all necessary selections have been made: Hospital, Branch, and Tasag
-            if (_selectedHospital != null &&
-                _selectedBranch != null &&
-                _selectedTasag != null &&
-                !_isLoadingDoctors) // Ensure doctors aren't still loading
-              Padding(
-                padding: const EdgeInsets.only(top: 20.0),
-                child: SizedBox(
-                  width: double.infinity,
-                  height: 50,
-                  child: ElevatedButton.icon(
-                    onPressed:
-                        isEnabled
-                            ? () async {
-                              debugPrint('Redirecting to Time Selection Screen...');
+                // Check if all necessary selections have been made: Hospital, Branch, and Tasag
+                if (_selectedHospital != null &&
+                    _selectedBranch != null &&
+                    _selectedTasag != null &&
+                    !_isLoadingDoctors) // Ensure doctors aren't still loading
+                  Padding(
+                    padding: const EdgeInsets.only(top: 20.0),
+                    child: SizedBox(
+                      width: double.infinity,
+                      height: 50,
+                      child: ElevatedButton.icon(
+                        onPressed:
+                            isEnabled
+                                ? () async {
+                                  debugPrint('Redirecting to Time Selection Screen...');
 
-                              // Navigate only if the button is enabled (and thus has slots)
-                              if (_selectedHospital?.tenant != null &&
-                                  _selectedBranch != null &&
-                                  _selectedTasag != null) {
-                                final bool? isSuccess = await Navigator.of(context).push<bool>(
-                                  MaterialPageRoute(
-                                    builder:
-                                        (context) => TimeSelectionScreen(
-                                          tenant: _selectedHospital!.tenant!,
-                                          branchId: _selectedBranch!.id,
-                                          tasagId: _selectedTasag!.id,
-                                          tasagName: _selectedTasag!.name,
-                                          employeeId: _selectedDoctor?.id,
-                                          doctorName: _selectedDoctor?.name,
-                                          timeData: _preFetchedTimeSlots!,
-                                        ),
-                                  ),
-                                );
+                                  // Navigate only if the button is enabled (and thus has slots)
+                                  if (_selectedHospital?.tenant != null &&
+                                      _selectedBranch != null &&
+                                      _selectedTasag != null) {
+                                    final bool? isSuccess = await Navigator.of(context).push<bool>(
+                                      MaterialPageRoute(
+                                        builder:
+                                            (context) => TimeSelectionScreen(
+                                              tenant: _selectedHospital!.tenant!,
+                                              branchId: _selectedBranch!.id,
+                                              tasagId: _selectedTasag!.id,
+                                              tasagName: _selectedTasag!.name,
+                                              employeeId: _selectedDoctor?.id,
+                                              doctorName: _selectedDoctor?.name,
+                                              timeData: _preFetchedTimeSlots!,
+                                            ),
+                                      ),
+                                    );
 
-                                // 3. Handle the result after TimeSelectionScreen is popped
-                                if (isSuccess == true) {
-                                  // SUCCESS: Clear all selections in THIS screen (TimeOrderScreen)
-                                  _clearSelections();
-                                  // Note: The success SnackBar is already shown in TimeSelectionScreen
+                                    // 3. Handle the result after TimeSelectionScreen is popped
+                                    if (isSuccess == true) {
+                                      // SUCCESS: Clear all selections in THIS screen (TimeOrderScreen)
+                                      _clearSelections();
+                                      // Note: The success SnackBar is already shown in TimeSelectionScreen
+                                    }
+                                  }
                                 }
-                              }
-                            }
-                            : null, // Disable button if isEnabled is false
-                    icon:
-                        _isLoadingTimeSlots
-                            ? const SizedBox(
-                              width: 20,
-                              height: 20,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                              ),
-                            )
-                            : const Icon(Icons.calendar_month, size: 24),
-                    label: Text(
-                      buttonLabel,
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        color: isEnabled ? Colors.white : labelColor,
+                                : null, // Disable button if isEnabled is false
+                        icon:
+                            _isLoadingTimeSlots
+                                ? const SizedBox(
+                                  width: 20,
+                                  height: 20,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                  ),
+                                )
+                                : const Icon(Icons.calendar_month, size: 24),
+                        label: Text(
+                          buttonLabel,
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            color: isEnabled ? Colors.white : labelColor,
+                          ),
+                        ),
+                        style: ElevatedButton.styleFrom(
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                          // Adjust background color for disabled state if necessary
+                          backgroundColor:
+                              isEnabled ? Theme.of(context).primaryColor : Colors.grey[400],
+                        ),
                       ),
                     ),
-                    style: ElevatedButton.styleFrom(
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                      // Adjust background color for disabled state if necessary
-                      backgroundColor:
-                          isEnabled ? Theme.of(context).primaryColor : Colors.grey[400],
-                    ),
                   ),
-                ),
-              ),
 
-            // You might still want to keep the error text if there's an error outside the selections
-            if (_error != null)
-              Padding(
-                padding: const EdgeInsets.only(top: 8.0),
-                child: Text('Алдаа: $_error', style: const TextStyle(color: Colors.red)),
-              ),
-          ],
+                // You might still want to keep the error text if there's an error outside the selections
+                if (_error != null)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 8.0),
+                    child: Text('Алдаа: $_error', style: const TextStyle(color: Colors.red)),
+                  ),
+              ],
+            ),
+          ),
         ),
       ),
     );
@@ -1289,7 +1303,7 @@ class _PulsingClickIndicatorState extends State<PulsingClickIndicator>
   @override
   void initState() {
     super.initState();
- SystemChrome.setPreferredOrientations([
+    SystemChrome.setPreferredOrientations([
       DeviceOrientation.portraitUp,
       DeviceOrientation.portraitDown,
     ]);
@@ -1302,7 +1316,6 @@ class _PulsingClickIndicatorState extends State<PulsingClickIndicator>
     // MODIFIED: Change Tween to animate the scale factor (zoom effect)
     // Starts at 80% (0.8) of the original size and zooms out to 100% (1.0).
     _animation = Tween(begin: 0.7, end: 1.0).animate(_controller);
-
   }
 
   @override
