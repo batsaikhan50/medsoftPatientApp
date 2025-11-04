@@ -69,6 +69,24 @@ class _TimeOrderScreenState extends State<TimeOrderScreen> {
   @override
   void initState() {
     super.initState();
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final shortestSide = MediaQuery.of(context).size.shortestSide;
+      debugPrint('shortestSide : $shortestSide');
+
+      const double tabletBreakpoint = 600;
+
+      if (shortestSide < tabletBreakpoint) {
+        SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
+      } else {
+        SystemChrome.setPreferredOrientations([
+          DeviceOrientation.portraitUp,
+          DeviceOrientation.landscapeLeft,
+          DeviceOrientation.landscapeRight,
+        ]);
+      }
+    });
+
     _loadHospitals();
   }
 
@@ -1187,7 +1205,11 @@ void _handleBranchSelection(DropdownItem branch) {
                 if (_error != null)
                   Text('Алдаа: $_error', style: const TextStyle(color: Colors.red)), // TRANSLATED
                 // Example of usage: Display selected values
-                const Divider(),
+                if (_selectedHospital != null &&
+                    _selectedBranch != null &&
+                    _selectedTasag != null &&
+                    !_isLoadingDoctors)
+                  const Divider(),
                 // const Text(
                 //   'Сонгогдсон захиалгын мэдээлэл:',
                 //   style: TextStyle(fontWeight: FontWeight.bold),
@@ -1303,11 +1325,6 @@ class _PulsingClickIndicatorState extends State<PulsingClickIndicator>
   @override
   void initState() {
     super.initState();
-    SystemChrome.setPreferredOrientations([
-      DeviceOrientation.portraitUp,
-      DeviceOrientation.portraitDown,
-    ]);
-
     _controller = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 600), // Cycle duration

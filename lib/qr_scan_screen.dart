@@ -21,13 +21,22 @@ class _QrScanScreenState extends State<QrScanScreen> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final shortestSide = MediaQuery.of(context).size.shortestSide;
+      debugPrint('shortestSide : $shortestSide');
 
-    SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
-    // 1. Lock to Portrait when the screen is initialized
-    // SystemChrome.setPreferredOrientations([
-    //   DeviceOrientation.portraitUp,
-    //   DeviceOrientation.portraitDown,
-    // ]);
+      const double tabletBreakpoint = 600;
+
+      if (shortestSide < tabletBreakpoint) {
+        SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
+      } else {
+        SystemChrome.setPreferredOrientations([
+          DeviceOrientation.portraitUp,
+          DeviceOrientation.landscapeLeft,
+          DeviceOrientation.landscapeRight,
+        ]);
+      }
+    });
   }
 
   @override

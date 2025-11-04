@@ -98,7 +98,7 @@ class _LoginScreenState extends State<LoginScreen> with WidgetsBindingObserver {
     _passwordController.dispose();
     _passwordCheckController.dispose();
     _regNoNumberController.dispose();
-    _regNoFocus.dispose();
+    // _regNoFocus.dispose();
     _firstnameFocus.dispose();
     _lastnameFocus.dispose();
     _codeController.dispose();
@@ -190,7 +190,27 @@ class _LoginScreenState extends State<LoginScreen> with WidgetsBindingObserver {
   void initState() {
     super.initState();
 
-    SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
+    // final shortestSide = MediaQuery.of(context).size.shortestSide;
+    // debugPrint('shortestSide : $shortestSide');
+    // Check if the current context has a size available (it usually does in initState of a State)
+
+    // Orientation setup (safe inside post-frame callback)
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final shortestSide = MediaQuery.of(context).size.shortestSide;
+      debugPrint('shortestSide : $shortestSide');
+
+      const double tabletBreakpoint = 600;
+
+      if (shortestSide < tabletBreakpoint) {
+        SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
+      } else {
+        SystemChrome.setPreferredOrientations([
+          DeviceOrientation.portraitUp,
+          DeviceOrientation.landscapeLeft,
+          DeviceOrientation.landscapeRight,
+        ]);
+      }
+    });
 
     WidgetsBinding.instance.addObserver(this);
 
