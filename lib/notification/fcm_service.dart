@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
@@ -86,6 +88,7 @@ class FCMService {
 
   /// Initializes Firebase Messaging, requests permissions, gets the token, and sets up listeners.
   Future<void> initFCM() async {
+    await _localNotificationService.clearAppBadge();
     print("HERE------------------------------");
     // Initialize the local notification service first (must be called once)
     await _localNotificationService.initializeNotifications();
@@ -113,7 +116,9 @@ class FCMService {
   /// Handles incoming FCM messages when the app is in the foreground.
   void _firebaseMessagingForegroundHandler(RemoteMessage message) {
     print('📬 Foreground message: ${message.notification?.title}');
-
+    print("----------------- START OF FULL MESSAGE -----------------");
+    print(jsonEncode(message.toMap()));
+    print("------------------ END OF FULL MESSAGE ------------------");
     // Use the local notification plugin to display the notification
     if (message.notification != null) {
       const iOSDetails = DarwinNotificationDetails(
@@ -122,8 +127,8 @@ class FCMService {
         presentBadge: false,
       );
 
-      print("🔔 FF Background TITLE: ${message.notification!.title}");
-      print("🔔 FF Background BODY: ${message.notification!.body}");
+      print("🔔 FF Push noti TITLE: ${message.notification!.title}");
+      print("🔔 FF Push noti BODY: ${message.notification!.body}");
 
       _localNotificationService.plugin.show(
         message.notification.hashCode,

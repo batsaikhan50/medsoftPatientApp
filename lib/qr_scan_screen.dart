@@ -1,6 +1,7 @@
 import 'dart:developer';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:medsoft_patient/api/auth_dao.dart';
 import 'package:medsoft_patient/claim_qr.dart';
 import 'package:qr_code_scanner/qr_code_scanner.dart';
@@ -17,12 +18,33 @@ class _QrScanScreenState extends State<QrScanScreen> {
   final _authDAO = AuthDAO();
   QRViewController? controller;
   bool isScanned = false;
+  @override
+  void initState() {
+    super.initState();
+    // 1. Lock to Portrait when the screen is initialized
+    // SystemChrome.setPreferredOrientations([
+    //   DeviceOrientation.portraitUp,
+    //   DeviceOrientation.portraitDown,
+    // ]);
+  }
 
   @override
   void dispose() {
+    // 2. Reset orientation to allow all directions when the screen is disposed
+    // SystemChrome.setPreferredOrientations([
+    //   DeviceOrientation.portraitUp,
+    //   DeviceOrientation.portraitDown,
+    //   DeviceOrientation.landscapeLeft,
+    //   DeviceOrientation.landscapeRight,
+    // ]);
     controller?.dispose();
     super.dispose();
   }
+  // @override
+  // void dispose() {
+  //   controller?.dispose();
+  //   super.dispose();
+  // }
 
   Future<void> _handleScannedToken(String url) async {
     // try {

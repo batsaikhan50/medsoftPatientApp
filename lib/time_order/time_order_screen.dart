@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:medsoft_patient/api/time_order_dao.dart';
 import 'package:medsoft_patient/time_order/branch_select_widget.dart';
 import 'package:medsoft_patient/time_order/time_selection_screen.dart'; // Assuming this is the correct path
@@ -1288,6 +1289,11 @@ class _PulsingClickIndicatorState extends State<PulsingClickIndicator>
   @override
   void initState() {
     super.initState();
+ SystemChrome.setPreferredOrientations([
+      DeviceOrientation.portraitUp,
+      DeviceOrientation.portraitDown,
+    ]);
+
     _controller = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 600), // Cycle duration
@@ -1296,6 +1302,7 @@ class _PulsingClickIndicatorState extends State<PulsingClickIndicator>
     // MODIFIED: Change Tween to animate the scale factor (zoom effect)
     // Starts at 80% (0.8) of the original size and zooms out to 100% (1.0).
     _animation = Tween(begin: 0.7, end: 1.0).animate(_controller);
+
   }
 
   @override

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_app_badger/flutter_app_badger.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
 class LocalNotificationService {
@@ -68,6 +69,15 @@ class LocalNotificationService {
 
     _isInitialized = true;
     debugPrint("🔔 Local notifications initialized and Android channel created.");
+  }
+
+  Future<void> clearAppBadge() async {
+    if (await FlutterAppBadger.isAppBadgeSupported()) {
+      FlutterAppBadger.removeBadge(); // This clears the badge count
+      debugPrint("App badge cleared.");
+    } else {
+      debugPrint("App badge not supported on this device.");
+    }
   }
 
   /// Shows a notification specific to the logout use case.
