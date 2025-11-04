@@ -37,9 +37,9 @@ void main() async {
   FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
 
   // --- NEW FCM INITIALIZATION LOGIC ---
-  // final fcmService = FCMService();
-  // await fcmService
-  //     .initFCM(); // This calls _localNotificationService.initializeNotifications() and sets globalFCMToken
+  final fcmService = FCMService();
+  await fcmService
+      .initFCM(); // This calls _localNotificationService.initializeNotifications() and sets globalFCMToken
   // --- END NEW FCM INITIALIZATION LOGIC ---
 
   // Since globalFCMToken is now set, we can rely on it being available
