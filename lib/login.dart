@@ -83,6 +83,12 @@ class _LoginScreenState extends State<LoginScreen> with WidgetsBindingObserver {
   ];
   @override
   void dispose() {
+    SystemChrome.setPreferredOrientations([
+      DeviceOrientation.portraitUp,
+      DeviceOrientation.landscapeLeft,
+      DeviceOrientation.landscapeRight,
+    ]);
+
     WidgetsBinding.instance.removeObserver(this);
     _usernameLoginController.dispose();
     _passwordLoginController.dispose();
@@ -183,6 +189,9 @@ class _LoginScreenState extends State<LoginScreen> with WidgetsBindingObserver {
   @override
   void initState() {
     super.initState();
+
+    SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
+
     WidgetsBinding.instance.addObserver(this);
 
     _usernameLoginController.addListener(() {
@@ -474,9 +483,12 @@ class _LoginScreenState extends State<LoginScreen> with WidgetsBindingObserver {
 
   Widget buildAnimatedToggle() {
     final screenWidth = MediaQuery.of(context).size.width;
+    debugPrint('Screen width: $screenWidth');
     const double maxToggleWidth = 500.0;
     final toggleWidth = screenWidth > maxToggleWidth ? maxToggleWidth : screenWidth - 32;
+    debugPrint("Toggle width: $toggleWidth");
     final knobWidth = (toggleWidth - 8) / 2;
+    debugPrint("Knob width: $knobWidth");
 
     // The snap logic must be moved to didChangeDependencies, so we only need the target here.
     final double targetPosition = _selectedToggleIndex == 1 ? knobWidth : 0.0;
@@ -699,10 +711,17 @@ class _LoginScreenState extends State<LoginScreen> with WidgetsBindingObserver {
   }
 
   Widget _buildLoginForm() {
+    // final isTablet = MediaQuery.of(context).size.shortestSide >= 600;
+    // final screenWidth = MediaQuery.of(context).size.width;
+    // final contentWidth = isTablet ? screenWidth * 0.5 : double.infinity;
     final isTablet = MediaQuery.of(context).size.shortestSide >= 600;
-    final screenWidth = MediaQuery.of(context).size.width;
-    final contentWidth = isTablet ? screenWidth * 0.5 : double.infinity;
+    // Let's use the toggle's max width for content on large screens
+    const double maxToggleWidth = 500.0;
 
+    // The contentWidth should be at least maxToggleWidth to prevent clipping.
+    // However, since we are only using this BoxConstrains for the overall content width,
+    // let's adjust it to use the fixed max width instead of 50% screen width.
+    final contentWidth = isTablet ? maxToggleWidth : double.infinity;
     return SingleChildScrollView(
       controller: _scrollController,
       padding: EdgeInsets.only(

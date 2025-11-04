@@ -21,6 +21,8 @@ class _QrScanScreenState extends State<QrScanScreen> {
   @override
   void initState() {
     super.initState();
+
+    SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
     // 1. Lock to Portrait when the screen is initialized
     // SystemChrome.setPreferredOrientations([
     //   DeviceOrientation.portraitUp,
@@ -31,12 +33,11 @@ class _QrScanScreenState extends State<QrScanScreen> {
   @override
   void dispose() {
     // 2. Reset orientation to allow all directions when the screen is disposed
-    // SystemChrome.setPreferredOrientations([
-    //   DeviceOrientation.portraitUp,
-    //   DeviceOrientation.portraitDown,
-    //   DeviceOrientation.landscapeLeft,
-    //   DeviceOrientation.landscapeRight,
-    // ]);
+    SystemChrome.setPreferredOrientations([
+      DeviceOrientation.portraitUp,
+      DeviceOrientation.landscapeLeft,
+      DeviceOrientation.landscapeRight,
+    ]);
     controller?.dispose();
     super.dispose();
   }

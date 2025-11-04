@@ -112,16 +112,38 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   static const Color _wateryGreen = Color.fromARGB(255, 67, 180, 100);
   static const Color _dangerRed = Color.fromARGB(255, 217, 83, 96);
-  // Helper function to decode Base64 image
-  Widget _buildProfileImage(String? base64Image, String initials) {
+
+  Widget _buildProfileImage(String? base64Image, String initials, bool isWideScreen) {
+    // 80.0 for phone/narrow screen, 120.0 for iPad/wide screen
+    final double size = isWideScreen ? 160.0 : 100.0;
+    final double fontSize = isWideScreen ? 48.0 : 32.0;
+
+    // Helper for the initials avatar fallback
+    Widget initialsAvatar(String initials) {
+      return Container(
+        width: size,
+        height: size,
+        decoration: BoxDecoration(
+          color: Colors.blueAccent.withOpacity(0.8),
+          shape: BoxShape.circle,
+        ),
+        child: Center(
+          child: Text(
+            initials.isEmpty ? '?' : initials,
+            style: TextStyle(fontSize: fontSize, fontWeight: FontWeight.bold, color: Colors.white),
+          ),
+        ),
+      );
+    }
+
     if (base64Image != null && base64Image.isNotEmpty) {
       try {
         final parts = base64Image.split(',');
         final imageBytes = base64Decode(parts.last);
 
         return Container(
-          width: 80,
-          height: 80,
+          width: size,
+          height: size,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
             border: Border.all(color: Colors.blueAccent.withOpacity(0.8), width: 2),
@@ -131,17 +153,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
               imageBytes,
               fit: BoxFit.cover,
               errorBuilder: (context, error, stackTrace) {
-                return _initialsAvatar(initials);
+                return initialsAvatar(initials);
               },
             ),
           ),
         );
       } catch (e) {
         print("Error decoding image: $e");
-        return _initialsAvatar(initials);
+        return initialsAvatar(initials);
       }
     }
-    return _initialsAvatar(initials);
+    return initialsAvatar(initials);
   }
 
   // Helper for the initials avatar fallback
@@ -228,6 +250,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isLandscape = MediaQuery.of(context).orientation == Orientation.landscape;
+
+    // 1. Define a Max Width for tablets/large screens
+    const double maxWidth = 600.0;
+
     return Scaffold(
       body: SingleChildScrollView(
         child: FutureBuilder<Map<String, dynamic>>(
@@ -259,7 +286,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             final String initials = _getInitials(firstName, lastName);
             final String fullName = '${lastName.isNotEmpty ? lastName[0] : ''}.$firstName';
 
-            // --- INFO ROWS LIST ---
+            // --- INFO ROWS LIST (Unchanged) ---
             List<Widget> infoRows = [
               // 1st Row: Registration Number (RegNo)
               _buildInfoRow(
@@ -348,125 +375,158 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ),
             ];
 
-            return Padding(
-              padding: const EdgeInsets.all(20.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: <Widget>[
-                  const SizedBox(height: 20),
-                  // PROFILE PICTURE & Name
-                  Center(
-                    child: Column(
-                      children: [
-                        _buildProfileImage(base64Image, initials),
-                        const SizedBox(height: 20),
-                        Center(
-                          child: Text(
-                            fullName,
-                            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                          ),
-                        ),
-                        const SizedBox(height: 20),
-                      ],
-                    ),
-                  ),
+            return LayoutBuilder(
+              builder: (context, constraints) {
+                // 2. Calculate the dynamic margin and maximum width
+                final double horizontalMargin = isLandscape ? 80.0 : 15.0;
+                final bool isWideScreen = constraints.maxWidth > maxWidth + (horizontalMargin * 2);
 
-                  // --- USER INFO CONTAINER ---
-                  Container(
-                    padding: const EdgeInsets.all(15.0),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(15),
-                      border: Border.all(color: Colors.grey.shade300),
-                    ),
-                    // Use the conditional list of widgets here
-                    child: Column(children: infoRows),
-                  ),
+                // Only constrain and center if the screen is wider than the desired content width
+                final double effectiveWidth = isWideScreen ? maxWidth : constraints.maxWidth;
 
-                  // DAN Button - FIX 3 APPLIED HERE
-                  Padding(
-                    padding: const EdgeInsets.only(top: 20.0),
-                    child: ElevatedButton(
-                      onPressed: () => danButtonOnPressed(context),
-                      style: ElevatedButton.styleFrom(
-                        // Use the new watery green color
-                        backgroundColor: danAuthenticated ? _wateryGreen : Colors.white,
-                        foregroundColor: danAuthenticated ? Colors.white : Colors.black,
-                        elevation: 1.0,
-                        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-                        side: BorderSide(
-                          color: danAuthenticated ? _wateryGreen : Colors.blueGrey,
-                          width: 1.5,
-                        ),
-                      ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        // Removed mainAxisSize: MainAxisSize.min
+                // 3. The main content Column is wrapped in a Center widget
+                return Center(
+                  // 4. Constrain the overall width of the content area
+                  child: ConstrainedBox(
+                    constraints: BoxConstraints(maxWidth: effectiveWidth),
+                    child: Padding(
+                      padding: const EdgeInsets.all(20.0),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: <Widget>[
-                          Image.asset('assets/icon/dan.png', height: 24),
-                          const SizedBox(width: 8),
-
-                          // FIX: Wrap the Text widget in Expanded to prevent overflow
-                          Expanded(
-                            child: Text(
-                              danAuthenticated ? '-с дахин мэдээлэл дуудах' : '-с мэдээлэл дуудах',
-                              style: TextStyle(
-                                fontSize: danAuthenticated ? 14.6 : 18,
-                                fontWeight: FontWeight.bold,
-                              ),
-                              textAlign:
-                                  TextAlign
-                                      .left, // Ensure text starts from the left of its expanded box
-                              overflow: TextOverflow.fade, // Handle extreme cases with a fade
-                              softWrap: false, // Ensure it stays on one line
+                          const SizedBox(height: 20),
+                          // PROFILE PICTURE & Name
+                          Center(
+                            child: Column(
+                              children: [
+                                _buildProfileImage(base64Image, initials, isWideScreen),
+                                const SizedBox(height: 20),
+                                Center(
+                                  child: Text(
+                                    fullName,
+                                    style: const TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(height: 20),
+                              ],
                             ),
                           ),
+
+                          // --- USER INFO CONTAINER ---
+                          Container(
+                            // The horizontal margin is now applied *within* the ConstrainedBox
+                            // to prevent the Container from hitting the screen edges
+                            margin: EdgeInsets.symmetric(
+                              vertical: 15.0,
+                              horizontal:
+                                  isWideScreen
+                                      ? 0.0
+                                      : horizontalMargin, // Use 0.0 if already centered
+                            ),
+
+                            padding: const EdgeInsets.all(15.0),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(15),
+                              border: Border.all(color: Colors.grey.shade300),
+                            ),
+                            // Use the conditional list of widgets here
+                            child: Column(children: infoRows),
+                          ),
+
+                          // DAN Button
+                          Padding(
+                            // Same margin logic as the Container
+                            padding: EdgeInsets.symmetric(
+                              horizontal: isWideScreen ? 0.0 : horizontalMargin,
+                            ),
+                            child: ElevatedButton(
+                              onPressed: () => danButtonOnPressed(context),
+                              style: ElevatedButton.styleFrom(
+                                // Use the new watery green color
+                                backgroundColor: danAuthenticated ? _wateryGreen : Colors.white,
+                                foregroundColor: danAuthenticated ? Colors.white : Colors.black,
+                                elevation: 1.0,
+                                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(15),
+                                ),
+                                side: BorderSide(
+                                  color: danAuthenticated ? _wateryGreen : Colors.blueGrey,
+                                  width: 1.5,
+                                ),
+                              ),
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                // Removed mainAxisSize: MainAxisSize.min
+                                children: <Widget>[
+                                  Image.asset('assets/icon/dan.png', height: 24),
+                                  const SizedBox(width: 8),
+
+                                  // FIX: Wrap the Text widget in Expanded to prevent overflow
+                                  Expanded(
+                                    child: Text(
+                                      danAuthenticated
+                                          ? '-с дахин мэдээлэл дуудах'
+                                          : '-с мэдээлэл дуудах',
+                                      style: TextStyle(
+                                        fontSize: danAuthenticated ? 14.6 : 18,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                      textAlign:
+                                          TextAlign
+                                              .left, // Ensure text starts from the left of its expanded box
+                                      overflow:
+                                          TextOverflow.fade, // Handle extreme cases with a fade
+                                      softWrap: false, // Ensure it stays on one line
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+
+                          const SizedBox(height: 20),
+
+                          // "Гарах" (Logout) Button
+                          Container(
+                            // Same margin logic as the Container
+                            margin: EdgeInsets.symmetric(
+                              vertical: 15.0,
+                              horizontal: isWideScreen ? 0.0 : horizontalMargin,
+                            ),
+                            child: Material(
+                              elevation: 1.0,
+                              color: _dangerRed, // Use consistent color
+                              borderRadius: BorderRadius.circular(20),
+                              child: InkWell(
+                                onTap: widget.onLogoutTap,
+                                borderRadius: BorderRadius.circular(20),
+                                child: Container(
+                                  alignment: Alignment.center,
+                                  padding: const EdgeInsets.symmetric(vertical: 12),
+                                  child: const Text(
+                                    'Гарах',
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 20,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 10),
                         ],
                       ),
                     ),
                   ),
-
-                  // The Spacer is removed since SingleChildScrollView should not contain Spacer
-                  // Instead, we use SizedBox for spacing
-                  const SizedBox(height: 20),
-
-                  // "Хэрэглэх заавар" (Guide) Button
-                  // ListTile(
-                  //   leading: const Icon(Icons.info_outline, color: Colors.blueAccent),
-                  //   title: const Text('Хэрэглэх заавар', style: TextStyle(fontSize: 18)),
-                  //   onTap: widget.onGuideTap,
-                  // ),
-                  // const Divider(),
-
-                  // "Гарах" (Logout) Button
-                  Container(
-                    margin: const EdgeInsets.symmetric(vertical: 10),
-                    child: Material(
-                      elevation: 1.0,
-                      color: _dangerRed, // Use consistent color
-                      borderRadius: BorderRadius.circular(20),
-                      child: InkWell(
-                        onTap: widget.onLogoutTap,
-                        borderRadius: BorderRadius.circular(20),
-                        child: Container(
-                          alignment: Alignment.center,
-                          padding: const EdgeInsets.symmetric(vertical: 12),
-                          child: const Text(
-                            'Гарах',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 20,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-                ],
-              ),
+                );
+              },
             );
           },
         ),
