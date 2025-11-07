@@ -16,7 +16,7 @@ class MapDAO extends BaseDAO {
     return post<Map<String, dynamic>>(
       '${Constants.appUrl}/room/done',
       body: body,
-      config: const RequestConfig(headerType: HeaderType.bearerAndJson),
+      config: const RequestConfig(headerType: HeaderType.bearerAndJsonAndXtokenAndTenant),
     );
   }
 
@@ -27,6 +27,4 @@ class MapDAO extends BaseDAO {
       config: const RequestConfig(headerType: HeaderType.bearerToken),
     );
   }
-
-  
 }

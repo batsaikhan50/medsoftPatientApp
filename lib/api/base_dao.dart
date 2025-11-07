@@ -34,6 +34,7 @@ enum HeaderType {
   bearerToken, // Authorization: Bearer <token>
   xToken, // X-Token: Constants.xToken
   bearerAndJson, // Bearer + JSON
+  bearerAndJsonAndXtokenAndTenant, // Bearer + JSON + X-Token + X-Tenant
   custom, // For custom headers
 }
 
@@ -108,6 +109,7 @@ abstract class BaseDAO {
   Future<Map<String, String>> _buildHeaders(RequestConfig config) async {
     final prefs = await SharedPreferences.getInstance();
     final savedToken = prefs.getString('X-Medsoft-Token') ?? '';
+    final savedTenant = prefs.getString('X-Tenant') ?? '';
 
     Map<String, String> headers = {};
 
@@ -127,6 +129,16 @@ abstract class BaseDAO {
         headers['Content-Type'] = 'application/json';
         if (!config.excludeToken && savedToken.isNotEmpty) {
           headers['Authorization'] = 'Bearer $savedToken';
+        }
+        break;
+      case HeaderType.bearerAndJsonAndXtokenAndTenant:
+        headers['Content-Type'] = 'application/json';
+        if (!config.excludeToken && savedToken.isNotEmpty) {
+          headers['Authorization'] = 'Bearer $savedToken';
+        }
+        headers['X-Token'] = Constants.xToken;
+        if (!config.excludeToken && savedTenant.isNotEmpty) {
+          headers['X-Tenant'] = savedToken;
         }
         break;
       case HeaderType.custom:

@@ -1,14 +1,17 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:http/http.dart' as http;
 // import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:medsoft_patient/api/auth_dao.dart';
 import 'package:medsoft_patient/api/map_dao.dart';
 import 'package:medsoft_patient/claim_qr.dart';
+import 'package:medsoft_patient/constants.dart';
 import 'package:medsoft_patient/guide.dart';
 import 'package:medsoft_patient/history_screen.dart';
 import 'package:medsoft_patient/login.dart';
@@ -159,7 +162,7 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
   Map<String, dynamic>? roomInfo;
   String? _errorMessage;
   Timer? _timer;
-  final bool _isDialogShowing = false;
+  bool _isDialogShowing = false;
   String appBarCaption = 'Медсофт';
 
   @override
@@ -343,12 +346,91 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
 
       if (response.statusCode == 200) {
         if (response.data!['success'] == true && response.data!['data']?['doneRequested'] == true) {
-          if (!_isDialogShowing) {}
+          if (!_isDialogShowing) {
+            _showDoneDialog();
+          }
         }
       }
     } catch (e) {
       debugPrint("❌ API error: $e");
     }
+  }
+
+  void _showDoneDialog() {
+    _isDialogShowing = true;
+    final context = navigatorKey.currentState?.overlay?.context;
+    if (context == null) return;
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder:
+          (_) => AlertDialog(
+            title: const Text("Үзлэг дууссан"),
+            content: const Text("Үзсэн дууссан эсэхийг баталгаажуулна уу?"),
+            actions: [
+              TextButton(
+                style: TextButton.styleFrom(foregroundColor: Colors.red),
+                onPressed: () {
+                  Navigator.of(context).pop();
+                  _isDialogShowing = false;
+
+                  debugPrint("❌ User declined the request.");
+                },
+                child: const Text("Татгалзах"),
+              ),
+
+              TextButton(
+                style: TextButton.styleFrom(foregroundColor: Colors.green),
+                onPressed: () async {
+                  Navigator.of(context).pop();
+                  _isDialogShowing = false;
+
+                  debugPrint("✅ User accepted the request.");
+
+                  final prefs = await SharedPreferences.getInstance();
+                  final token = prefs.getString('X-Medsoft-Token') ?? '';
+                  final currentRoomId = prefs.getString('currentRoomId') ?? '';
+
+                  if (token.isEmpty) {
+                    debugPrint("⚠️ No token found, cannot call done API.");
+                    return;
+                  }
+
+                  try {
+                    if (currentRoomId.isEmpty) {
+                      debugPrint("⚠️ No roomId found, cannot call done API.");
+                      return;
+                    }
+                    debugPrint("currentRoomId: ${prefs.getString('currentRoomId')}");
+
+                    debugPrint("URL: ${Uri.parse("${Constants.appUrl}/room/done")}");
+                    final response = await http.post(
+                      Uri.parse("${Constants.appUrl}/room/done"),
+                      headers: {
+                        'Authorization': 'Bearer $token',
+                        'Content-Type': 'application/json',
+                      },
+                      body: json.encode({'roomId': currentRoomId}),
+                    );
+
+                    debugPrint("📡 Done API response: ${response.statusCode} ${response.body}");
+
+                    if (response.statusCode == 200) {
+                      debugPrint("✅ Done confirmed, stopping timer.");
+                      _stopApiPolling();
+                    } else {
+                      debugPrint("❌ Done API failed with status: ${response.statusCode}");
+                    }
+                  } catch (e) {
+                    debugPrint("❌ Done API error: $e");
+                  }
+                },
+                child: const Text("Зөвшөөрөх"),
+              ),
+            ],
+          ),
+    );
   }
 
   Future<void> fetchRoom() async {
@@ -387,8 +469,10 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
             final url = roomInfo!['url'] as String;
             final title = "Байршил";
             final roomId = roomInfo!['roomId'] as String;
+            final tenantName = roomInfo!['serverName'] as String;
 
             await prefs.setString('currentRoomId', roomId);
+            await prefs.setString('xTenant', tenantName);
             final roomIdNum = roomInfo!['_id'];
 
             debugPrint('roomIdNum: ${roomIdNum.toString()}');
