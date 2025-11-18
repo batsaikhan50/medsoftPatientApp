@@ -30,16 +30,16 @@ class AuthDAO extends BaseDAO {
   }
 
   // QR баталгаажуулах
-  Future<ApiResponse<Map<String, dynamic>>> claimQR(String token) {
-    return get<Map<String, dynamic>>(
+  Future<ApiResponse<String>> claimQR(String token) {
+    return get<String>(
       '${Constants.appUrl}/qr/claim?id=$token',
       config: const RequestConfig(headerType: HeaderType.bearerToken),
     );
   }
 
   //Нууц үг сэргээх OTP илгээх
-  Future<ApiResponse<Map<String, dynamic>>> sendResetPassOTP(Map<String, dynamic> body) {
-    return post<Map<String, dynamic>>(
+  Future<ApiResponse<void>> sendResetPassOTP(Map<String, dynamic> body) {
+    return post<void>(
       '${Constants.appUrl}/auth/otp',
       body: body,
       config: const RequestConfig(headerType: HeaderType.jsonOnly, excludeToken: true),

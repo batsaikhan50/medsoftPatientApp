@@ -54,9 +54,9 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
         ).showSnackBar(const SnackBar(content: Text('OTP илгээгдлээ.')));
       } else {
         if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Алдаа: ${response.data!['message'] ?? response.data!}')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Алдаа: ${response.message}')));
       }
     } catch (e) {
       if (!mounted) return;
@@ -107,9 +107,9 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
         Navigator.pop(context);
       } else {
         if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Алдаа: ${response.data!['message'] ?? response.data!}')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Алдаа: ${response.message}')));
       }
     } catch (e) {
       if (!mounted) return;

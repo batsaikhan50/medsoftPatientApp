@@ -12,8 +12,8 @@ class MapDAO extends BaseDAO {
   }
 
   //Үйлдлийг дуусгах
-  Future<ApiResponse<Map<String, dynamic>>> acceptDoneRequest(Map<String, dynamic> body) {
-    return post<Map<String, dynamic>>(
+  Future<ApiResponse<void>> acceptDoneRequest(Map<String, dynamic> body) {
+    return post<void>(
       '${Constants.appUrl}/room/done',
       body: body,
       config: const RequestConfig(headerType: HeaderType.bearerAndJsonAndXtokenAndTenant),
