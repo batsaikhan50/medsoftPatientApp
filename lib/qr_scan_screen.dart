@@ -78,6 +78,8 @@ class _QrScanScreenState extends State<QrScanScreen> {
     final response = await _authDAO.waitQR(token);
 
     if (response.statusCode == 200) {
+      debugPrint("Wait API success: ${response.statusCode}");
+
       if (!mounted) return;
       Navigator.pushReplacement(
         context,

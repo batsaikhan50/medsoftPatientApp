@@ -24,7 +24,7 @@ class _ClaimQRScreenState extends State<ClaimQRScreen> {
     if (!mounted) return;
 
     if (response.success) {
-      log("Claim success: ${response.data}");
+      debugPrint("Claim success: ${response.message}");
 
       Navigator.pushAndRemoveUntil(
         context,
@@ -32,7 +32,7 @@ class _ClaimQRScreenState extends State<ClaimQRScreen> {
         (route) => false,
       );
     } else {
-      log("Claim failed: ${response.statusCode} - ${response.message}");
+      debugPrint("Claim failed: ${response.statusCode} - ${response.message}");
 
       setState(() {
         _isLoading = false;

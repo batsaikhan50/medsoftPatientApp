@@ -15,6 +15,7 @@ import 'package:medsoft_patient/constants.dart';
 import 'package:medsoft_patient/guide.dart';
 import 'package:medsoft_patient/history_screen.dart';
 import 'package:medsoft_patient/login.dart';
+import 'package:medsoft_patient/news.dart';
 import 'package:medsoft_patient/notification/fcm_service.dart';
 import 'package:medsoft_patient/notification/local_notification_service.dart';
 import 'package:medsoft_patient/notification_screen.dart';
@@ -40,9 +41,9 @@ void main() async {
   FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
 
   // --- NEW FCM INITIALIZATION LOGIC ---
-  final fcmService = FCMService();
-  await fcmService
-      .initFCM(); // This calls _localNotificationService.initializeNotifications() and sets globalFCMToken
+  // final fcmService = FCMService();
+  // await fcmService
+  //     .initFCM(); // This calls _localNotificationService.initializeNotifications() and sets globalFCMToken
   // --- END NEW FCM INITIALIZATION LOGIC ---
 
   // Since globalFCMToken is now set, we can rely on it being available
@@ -405,16 +406,18 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
                     debugPrint("currentRoomId: ${prefs.getString('currentRoomId')}");
 
                     debugPrint("URL: ${Uri.parse("${Constants.appUrl}/room/done")}");
-                    final response = await http.post(
-                      Uri.parse("${Constants.appUrl}/room/done"),
-                      headers: {
-                        'Authorization': 'Bearer $token',
-                        'Content-Type': 'application/json',
-                      },
-                      body: json.encode({'roomId': currentRoomId}),
-                    );
+                    // final response = await http.post(
+                    //   Uri.parse("${Constants.appUrl}/room/done"),
+                    //   headers: {
+                    //     'Authorization': 'Bearer $token',
+                    //     'Content-Type': 'application/json',
+                    //   },
+                    //   body: json.encode({'roomId': currentRoomId}),
+                    // );
 
-                    debugPrint("📡 Done API response: ${response.statusCode} ${response.body}");
+                    final response = await _mapDao.acceptDoneRequest({'roomId': currentRoomId});
+
+                    debugPrint("📡 Done API response: ${response.statusCode}");
 
                     if (response.statusCode == 200) {
                       debugPrint("✅ Done confirmed, stopping timer.");
@@ -646,28 +649,44 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
   //     notificationDetails,
   //   );
   // }
-
   Widget _buildLocationBody() {
-    return Center(
-      child: ElevatedButton.icon(
-        style: ElevatedButton.styleFrom(
-          backgroundColor: const Color(0xFF00CCCC),
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+    return Column(
+      children: [
+        // Top Half: NewsFeedWidget (70% of space)
+        const Expanded(
+          flex: 6, // Represents 70% (7 out of 10 total flex points)
+          child: NewsFeedWidget(),
         ),
-        onPressed:
-            _isLoading
-                ? null
-                : () async {
-                  setState(() => _isLoading = true);
-                  await fetchRoom();
-                },
-        icon: const Icon(Icons.map),
-        label: Text(
-          _isLoading ? 'Түр хүлээнэ үү...' : 'Газрын зураг харах',
-          style: const TextStyle(fontSize: 18),
+
+        // Divider
+        const Divider(height: 1, thickness: 1),
+
+        // Bottom Half: Map Button (30% of space)
+        Expanded(
+          flex: 4, // Represents 30% (3 out of 10 total flex points)
+          child: Center(
+            child: ElevatedButton.icon(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF00CCCC),
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+              onPressed:
+                  _isLoading
+                      ? null
+                      : () async {
+                        setState(() => _isLoading = true);
+                        await fetchRoom();
+                      },
+              icon: const Icon(Icons.map),
+              label: Text(
+                _isLoading ? 'Түр хүлээнэ үү...' : 'Газрын зураг харах',
+                style: const TextStyle(fontSize: 18),
+              ),
+            ),
+          ),
         ),
-      ),
+      ],
     );
   }
 
