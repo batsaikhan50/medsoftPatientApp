@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -401,8 +402,6 @@ class _LoginScreenState extends State<LoginScreen> with WidgetsBindingObserver {
       await prefs.setString('Lastname', response.data!['user']['lastname']);
       await prefs.setString('Firstname', response.data!['user']['firstname']);
       await prefs.setString('RegNo', response.data!['user']['regNo']);
-
-      _loadSharedPreferencesData();
 
       final savedToken = await getSavedToken();
       if (savedToken != null) {

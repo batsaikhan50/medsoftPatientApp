@@ -1,15 +1,693 @@
 import 'package:flutter/material.dart';
+// Assuming history_dao.dart is in the same folder or path 'history_dao.dart'
+// If running in a separate environment, this import needs to be adjusted.
+// Define models used for data structure
+import 'package:flutter_html/flutter_html.dart';
+import 'package:medsoft_patient/api/history_dao.dart'; // Using flutter_html for robust HTML rendering
+import 'package:medsoft_patient/pdf_viewer.dart';
+import 'dart:io';
+import 'dart:typed_data';
+import 'package:path_provider/path_provider.dart';
 
-class HistoryScreen extends StatelessWidget {
+// --- Data Models (Based on API Responses) ---
+
+// Tenant Model
+class HistoryTenant {
+  final String tenantName;
+  final String fullName;
+  final String shortName;
+
+  HistoryTenant.fromJson(Map<String, dynamic> json)
+    : tenantName = json['tenantName'],
+      fullName = json['fullName'],
+      shortName = json['shortName'];
+}
+
+class HistoryAction {
+  final String key;
+  final String value;
+
+  HistoryAction.fromJson(Map<String, dynamic> json) : key = json['key'], value = json['value'];
+}
+
+// Available History Type Model
+class HistoryAvailable {
+  final String key;
+  final String value;
+  final List<HistoryAction> actions; // <-- NEW FIELD
+
+  HistoryAvailable.fromJson(Map<String, dynamic> json)
+    : key = json['key'],
+      value = json['value'],
+      // Parse the list of actions, safely handling null or missing data
+      actions =
+          (json['actions'] as List<dynamic>?)
+              ?.map((e) => HistoryAction.fromJson(e as Map<String, dynamic>))
+              .toList() ??
+          const []; // Default to an empty list
+}
+// History Column Data Model
+// --- Data Models (Based on API Responses) ---
+
+// History Column Data Model
+class HistoryColumn {
+  // Use 'String?' if it's truly optional, but if it must be a string for display/logic,
+  // providing a default value is safer during parsing.
+
+  final String field;
+  final String caption;
+  final String? footer;
+  final bool hidden;
+  final bool html;
+  final List<HistoryCellData> data;
+
+  HistoryColumn.fromJson(Map<String, dynamic> json)
+    // **FIX: Use null-coalescing operator (??) to safely handle null values for non-nullable String fields**
+    : field = json['field'] ?? '', // Default to empty string if null
+      caption = json['caption'] ?? '', // Default to empty string if null
+      footer = json['footer'],
+      hidden = json['hidden'] ?? false,
+      html = json['html'] ?? false,
+      data = (json['data'] as List).map((e) => HistoryCellData.fromJson(e)).toList();
+}
+
+// History Cell Data Model
+class HistoryCellData {
+  final String? value;
+  final String? html;
+  final Map<String, dynamic> props;
+
+  HistoryCellData.fromJson(Map<String, dynamic> json)
+    : value = json['value'], // Nullable, safe
+      html = json['html'], // Nullable, safe
+      props = json['props'] ?? {}; // Nullable Map, safe
+}
+// --- History Screen Implementation ---
+
+class HistoryScreen extends StatefulWidget {
   const HistoryScreen({super.key});
+
+  @override
+  State<HistoryScreen> createState() => _HistoryScreenState();
+}
+
+class _HistoryScreenState extends State<HistoryScreen> {
+  final HistoryDAO _historyDAO = HistoryDAO();
+
+  List<HistoryTenant> _tenants = [];
+  List<HistoryAvailable> _availableHistory = [];
+  List<HistoryColumn> _historyData = [];
+
+  HistoryTenant? _selectedTenant;
+  HistoryAvailable? _selectedHistoryType;
+  bool _isLoading = true;
+  String? _errorMessage;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchInitialData();
+  }
+
+  // Function to fetch tenants and available history types
+  Future<void> _fetchInitialData() async {
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+
+    try {
+      // 1. Fetch Tenants
+      final tenantResponse = await _historyDAO.getHistoryTenants();
+      if (tenantResponse.success && tenantResponse.data != null) {
+        _tenants =
+            (tenantResponse.data!)
+                .map((e) => HistoryTenant.fromJson(e as Map<String, dynamic>))
+                .toList();
+        _selectedTenant = _tenants.isNotEmpty ? _tenants.first : null;
+      } else {
+        throw Exception('Түрээслэгчдийг татаж чадсангүй.'); // Failed to fetch tenants
+      }
+
+      // 2. Fetch Available History Types
+      final availableResponse = await _historyDAO.getHistoryAvailable();
+      if (availableResponse.success && availableResponse.data != null) {
+        _availableHistory =
+            (availableResponse.data!)
+                .map((e) => HistoryAvailable.fromJson(e as Map<String, dynamic>))
+                .toList();
+        _selectedHistoryType = _availableHistory.isNotEmpty ? _availableHistory.first : null;
+      } else {
+        throw Exception(
+          'Боломжит түүхийн төрлүүдийг татаж чадсангүй.',
+        ); // Failed to fetch available history types
+      }
+
+      // 3. Fetch initial history data if selections are available
+      if (_selectedTenant != null && _selectedHistoryType != null) {
+        await _fetchHistory();
+      } else {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      setState(() {
+        _errorMessage =
+            'Эхний өгөгдлийг татахад алдаа гарлаа: ${e.toString()}'; // Error fetching initial data
+        _isLoading = false;
+      });
+    }
+  }
+
+  // Function to fetch the actual patient history data
+  Future<void> _fetchHistory() async {
+    if (_selectedTenant == null || _selectedHistoryType == null) return;
+
+    setState(() {
+      _isLoading = true;
+      _historyData = [];
+      _errorMessage = null;
+    });
+
+    try {
+      // Use current year for the year parameter
+      final currentYear = DateTime.now().year.toString();
+      final historyResponse = await _historyDAO.getHistory(
+        currentYear,
+        _selectedHistoryType!.key,
+        _selectedTenant!.tenantName,
+      );
+
+      if (historyResponse.success && historyResponse.data != null) {
+        _historyData =
+            (historyResponse.data!)
+                .map((e) => HistoryColumn.fromJson(e as Map<String, dynamic>))
+                .toList();
+      } else {
+        throw Exception('Өвчтөний түүхийг татаж чадсангүй.'); // Failed to fetch patient history
+      }
+    } catch (e) {
+      _errorMessage =
+          'Түүхийн өгөгдлийг татахад алдаа гарлаа: ${e.toString()}'; // Error fetching history data
+    } finally {
+      setState(() {
+        _isLoading = false;
+      });
+    }
+  }
+
+  // Transpose data for row-by-row rendering
+  List<List<HistoryCellData>> _getRows() {
+    if (_historyData.isEmpty || _historyData.first.data.isEmpty) {
+      return [];
+    }
+
+    final numRows = _historyData.first.data.length;
+    final List<List<HistoryCellData>> rows = [];
+
+    for (int i = 0; i < numRows; i++) {
+      final List<HistoryCellData> row = [];
+      for (final column in _historyData) {
+        if (i < column.data.length) {
+          row.add(column.data[i]);
+        }
+      }
+      rows.add(row);
+    }
+    return rows;
+  }
+
+  // history_screen.dart
+  Widget _buildTenantDropdown() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+      child: DropdownButtonFormField<HistoryTenant>(
+        // **FIX: Add isExpanded: true to prevent overflow inside the Dropdown's internal Row**
+        isExpanded: true, // <--- ADD THIS LINE
+        decoration: const InputDecoration(
+          labelText: 'Түрээслэгч сонгох', // Select Tenant
+          border: OutlineInputBorder(),
+        ),
+        initialValue: _selectedTenant,
+        items:
+            _tenants.map((tenant) {
+              // Also ensure the Text widget inside the DropdownMenuItem is constrained,
+              // though isExpanded: true often handles this.
+              return DropdownMenuItem<HistoryTenant>(
+                value: tenant,
+                // Use Flexible or a fixed width if truncation is not desired,
+                // but usually the default Text behavior with isExpanded is fine.
+                child: Text(tenant.fullName, overflow: TextOverflow.ellipsis),
+              );
+            }).toList(),
+        onChanged: (HistoryTenant? newValue) {
+          setState(() {
+            _selectedTenant = newValue;
+            if (_selectedTenant != null && _selectedHistoryType != null) {
+              _fetchHistory();
+            }
+          });
+        },
+        hint: const Text('Түрээслэгч сонгоно уу'), // Select a tenant
+      ),
+    );
+  }
+
+  Widget _buildHistoryTypeButtons() {
+    return SizedBox(
+      height: 60,
+      child: ListView.builder(
+        scrollDirection: Axis.horizontal,
+        itemCount: _availableHistory.length,
+        padding: const EdgeInsets.symmetric(horizontal: 16.0),
+        itemBuilder: (context, index) {
+          final historyType = _availableHistory[index];
+          final isSelected = historyType == _selectedHistoryType;
+          return Padding(
+            padding: const EdgeInsets.only(right: 8.0),
+            child: ActionChip(
+              label: Text(
+                historyType.value,
+                style: TextStyle(color: isSelected ? Colors.white : Colors.blue),
+              ),
+              backgroundColor: isSelected ? Colors.blue : Colors.blue.withOpacity(0.1),
+              side: isSelected ? BorderSide.none : const BorderSide(color: Colors.blue),
+              onPressed: () {
+                setState(() {
+                  _selectedHistoryType = historyType;
+                  _fetchHistory();
+                });
+              },
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  // history_screen.dart (inside _HistoryScreenState)
+
+  // ... existing code ...
+
+  List<HistoryAction> _getPrintActions() {
+    if (_selectedHistoryType == null) {
+      return const [];
+    }
+    // This line is safe because of the check above.
+    return _selectedHistoryType!.actions.where((action) => action.key == 'print').toList();
+  }
+
+  Future<String?> _showActionSelectionDialog(List<HistoryAction> actions) async {
+    return showDialog<String>(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Хэвлэх үйлдлийг сонгоно уу'), // Select Print Action
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children:
+                actions.map((action) {
+                  return ListTile(
+                    title: Text(action.value),
+                    onTap: () {
+                      Navigator.of(context).pop(action.key); // Return the selected action key
+                    },
+                  );
+                }).toList(),
+          ),
+          actions: <Widget>[
+            TextButton(
+              child: const Text('Цуцлах'), // Cancel
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  // Helper function to find the 'id' from the cell props
+  String? _getPrintId(List<HistoryCellData> row) {
+    // Search all cells in the row for one containing 'id' in its props
+    final cellWithId = row.firstWhere(
+      (cell) => cell.props.containsKey('id'),
+      orElse: () => HistoryCellData.fromJson({}),
+    );
+    // Safely return the 'id' value if the key exists and is a String
+    return cellWithId.props['id'] as String?;
+  }
+
+  Future<void> _openPdf(Uint8List pdfBytes, String filename) async {
+    try {
+      // 1. Get the temporary directory
+      final tempDir = await getTemporaryDirectory(); // Requires 'path_provider' package
+      final file = File('${tempDir.path}/$filename.pdf'); // Requires 'dart:io'
+
+      // 2. Write the bytes to a local file
+      await file.writeAsBytes(pdfBytes, flush: true);
+
+      // 3. Open the file (or navigate to a PDF viewer screen)
+      // Option A: Use a package like 'open_filex'
+      // await OpenFilex.open(file.path);
+
+      // Option B: Navigate to a custom PDF viewer widget
+      Navigator.of(
+        context,
+      ).push(MaterialPageRoute(builder: (context) => PdfViewerScreen(pdfPath: file.path)));
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Тайланг амжилттай нээлээ.', // Report successfully opened.
+          ),
+          backgroundColor: Colors.green,
+        ),
+      );
+    } catch (e) {
+      throw Exception('PDF-ийг нээхэд алдаа гарлаа: $e'); // Error opening PDF.
+    }
+  }
+
+  Future<void> _openPdfViewer(Uint8List pdfBytes, String filename) async {
+    // 1. Get the temporary directory
+    final tempDir = await getTemporaryDirectory();
+    final file = File('${tempDir.path}/$filename.pdf');
+
+    // 2. Write the bytes to a local file
+    await file.writeAsBytes(pdfBytes, flush: true);
+
+    // 3. Navigate to the PDF viewer screen (Assuming this class exists)
+    Navigator.of(
+      context,
+    ).push(MaterialPageRoute(builder: (context) => PdfViewerScreen(pdfPath: file.path)));
+  }
+
+  Future<void> _handlePrint(List<HistoryCellData> row) async {
+    // 1. Validate necessary components
+    if (_selectedTenant == null || _selectedHistoryType == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Түрээслэгч эсвэл Түүхийн төрөл сонгогдоогүй.',
+          ), // Tenant or History Type not selected.
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    // 2. Extract parameters
+    final String? printId = _getPrintId(row);
+    final String historyKey = _selectedHistoryType!.key;
+    final String tenantName = _selectedTenant!.tenantName;
+    // Assuming 'actionKey' is the same as 'historyKey'
+    // final String actionKey = historyKey;
+
+    if (printId == null || printId.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Хэвлэхэд шаардлагатай ID олдсонгүй.',
+          ), // Required ID for printing not found.
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+    // --- NEW ACTION KEY LOGIC START ---
+
+    final List<HistoryAction> printActions = _getPrintActions();
+    String? actionKey;
+
+    if (printActions.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Сонгосон түүхэнд хэвлэх үйлдэл тодорхойлогдоогүй.',
+          ), // Print action not defined for selected history.
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    } else if (printActions.length == 1) {
+      // Case 1: Only one print action, use it directly
+      actionKey = printActions.first.key;
+    } else {
+      // Case 2: Multiple print actions, show selection dialog
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Үйлдлийг сонгоно уу.'), // Select action.
+        ),
+      );
+      actionKey = await _showActionSelectionDialog(printActions);
+
+      if (actionKey == null) {
+        // User canceled the dialog
+        return;
+      }
+    }
+    // --- NEW ACTION KEY LOGIC END ---
+
+    // Show a temporary loading message
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Хэвлэх хүсэлт илгээж байна...'), // Sending print request...
+      ),
+    );
+
+    try {
+      final Uint8List pdfBytes = await _historyDAO.printHistoryRaw(
+        printId,
+        historyKey,
+        actionKey,
+        tenantName,
+      );
+      if (pdfBytes.isNotEmpty) {
+        // Use the helper to save and open the PDF
+        await _openPdfViewer(pdfBytes, '${historyKey}_$printId');
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Тайланг амжилттай нээлээ.'), // Report successfully opened.
+            backgroundColor: Colors.green,
+          ),
+        );
+      } else {
+        // This handles cases where the API returns success (200) but an empty body.
+        throw Exception('Серверээс PDF өгөгдөл ирсэнгүй (Хоосон файл).');
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          // CHANGE 3: Update error message to reflect PDF viewing failure
+          content: Text('Тайланг нээх явцад алдаа гарлаа: ${e.toString()}'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  // ... existing code ...
+
+  bool _hasRowPrintId(List<HistoryCellData> row) {
+    return row.any((cell) => cell.props.containsKey('id'));
+  }
+
+  Widget _buildHistoryTable() {
+    final rows = _getRows();
+    final columns = _historyData.where((col) => col.hidden == false).toList();
+
+    if (rows.isEmpty && !_isLoading) {
+      return const Center(
+        child: Padding(
+          padding: EdgeInsets.all(32.0),
+          child: Text(
+            'Өгөгдөл олдсонгүй.', // No data found.
+            style: TextStyle(fontSize: 16, color: Colors.grey),
+          ),
+        ),
+      );
+    }
+
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: DataTable(
+        columnSpacing: 16.0,
+        dataRowHeight: 80.0, // Increased height for multiline HTML content
+        columns: <DataColumn>[
+          // **CHANGE 1: Add DataColumn for the Print button**
+          const DataColumn(
+            label: SizedBox(
+              width: 50, // Fixed width for the button column
+              child: Text(
+                'Хэвлэх', // Print
+                style: TextStyle(fontWeight: FontWeight.bold, color: Colors.black87),
+              ),
+            ),
+          ),
+          // Existing columns:
+          ...columns.map((col) {
+            return DataColumn(
+              label: SizedBox(
+                width: col.field == 'status' ? 80 : 150, // Fixed width for better layout
+                child: Text(
+                  col.caption,
+                  style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.black87),
+                ),
+              ),
+            );
+          }),
+        ],
+        rows:
+            rows.map((row) {
+              final rowCells =
+                  row
+                      .asMap()
+                      .entries
+                      .where((entry) {
+                        // Only include cells that correspond to visible columns
+                        final colIndex = entry.key;
+                        return colIndex < _historyData.length && !_historyData[colIndex].hidden;
+                      })
+                      .map((entry) {
+                        final cellData = entry.value;
+                        return DataCell(
+                          SizedBox(
+                            width: _historyData[entry.key].field == 'status' ? 80 : 150,
+                            child: SingleChildScrollView(
+                              child: Html(
+                                data: cellData.html ?? cellData.value ?? '',
+                                style: {
+                                  "body": Style(
+                                    margin: Margins.zero,
+                                    padding: HtmlPaddings.zero,
+                                    fontSize: FontSize(12.0),
+                                    color: Colors.black87,
+                                    fontWeight: FontWeight.normal,
+                                    lineHeight: LineHeight.em(1.2),
+                                  ),
+                                },
+                              ),
+                            ),
+                          ),
+                        );
+                      })
+                      .toList();
+              // **UPDATED VISIBILITY LOGIC**
+              final bool rowHasPrintId = _getPrintId(row) != null;
+
+              // New safety check: only look for actions if history type is selected
+              final bool hasPrintActions =
+                  _selectedHistoryType != null &&
+                  (_selectedHistoryType!.actions.any((action) => action.key == 'print'));
+
+              // Only show the button if both conditions are met
+              final bool shouldShowPrintButton = rowHasPrintId && hasPrintActions;
+
+              final printCell = DataCell(
+                Center(
+                  child:
+                      shouldShowPrintButton // Use the new comprehensive check
+                          ? IconButton(
+                            icon: const Icon(Icons.print, color: Colors.blue),
+                            onPressed: () {
+                              _handlePrint(row);
+                            },
+                          )
+                          : const SizedBox.shrink(), // Empty space if button should be hidden
+                ),
+              );
+
+              return DataRow(
+                cells: [
+                  printCell, // Prepend the print cell
+                  ...rowCells,
+                ],
+              );
+            }).toList(),
+      ),
+    );
+  }
+
+  Widget _buildFooter() {
+    return Padding(
+      padding: const EdgeInsets.all(16.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children:
+            _historyData
+                .where((col) => col.footer != null)
+                .map(
+                  (col) => Text(
+                    '${col.caption} | ${col.footer!}',
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 14,
+                      color: Colors.blueGrey,
+                    ),
+                  ),
+                )
+                .toList(),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: const Center(
-        child: Text('HISTORY SCREEN', style: TextStyle(fontSize: 18, color: Colors.grey)),
+      // appBar: AppBar(
+      //   title: const Text('Өвчний Түүх', style: TextStyle(color: Colors.white)), // Patient History
+      //   backgroundColor: Colors.blue,
+      // ),
+      body: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: <Widget>[
+          // 1. Tenant Dropdown
+          _buildTenantDropdown(),
+
+          const Divider(height: 1),
+
+          // 2. History Type Buttons
+          _availableHistory.isNotEmpty ? _buildHistoryTypeButtons() : const SizedBox.shrink(),
+
+          const Divider(height: 1),
+
+          if (_errorMessage != null)
+            Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Text(_errorMessage!, style: const TextStyle(color: Colors.red)),
+            )
+          else if (_isLoading)
+            const Expanded(
+              child: Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    CircularProgressIndicator(),
+                    SizedBox(height: 16),
+                    Text(
+                      'Өгөгдөл татаж байна...',
+                      style: TextStyle(color: Colors.blueGrey),
+                    ), // Fetching data...
+                  ],
+                ),
+              ),
+            )
+          else
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(child: SingleChildScrollView(child: _buildHistoryTable())),
+                  _buildFooter(),
+                ],
+              ),
+            ),
+        ],
       ),
     );
   }
-  //push test
 }

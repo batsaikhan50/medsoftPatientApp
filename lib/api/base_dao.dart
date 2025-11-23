@@ -167,4 +167,41 @@ abstract class BaseDAO {
       );
     }
   }
+
+  Uint8List _handleRawResponse(http.Response response) {
+    debugPrint('Response [${response.statusCode}]: ${response.body.length} bytes');
+
+    // Check for success status code (200-299)
+    if (response.statusCode >= 200 && response.statusCode < 300) {
+      // Return the raw bytes directly
+      return response.bodyBytes;
+    } else {
+      // Handle error status codes (4xx, 5xx)
+      try {
+        // Try to parse the error message if the server sent it as JSON
+        final jsonBody = jsonDecode(response.body);
+        throw Exception(
+          jsonBody['message'] ?? 'Серверээс алдаатай хариу ирлээ. (Status: ${response.statusCode})',
+        );
+      } catch (e) {
+        // If it's not JSON (e.g., raw HTML error page or empty body)
+        throw Exception('Хүсэлт амжилтгүй боллоо. (Status: ${response.statusCode})');
+      }
+    }
+  }
+
+  Future<Uint8List> getRaw(String url, {RequestConfig config = const RequestConfig()}) async {
+    try {
+      final headers = await _buildHeaders(config);
+      debugPrint('GET RAW $url');
+      debugPrint('Headers: $headers');
+
+      final response = await http.get(Uri.parse(url), headers: headers);
+      return _handleRawResponse(response);
+    } catch (e) {
+      // Re-throw the error so it can be handled by the caller (_handlePrint)
+      debugPrint('GET RAW error: $e');
+      rethrow;
+    }
+  }
 }

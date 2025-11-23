@@ -51,6 +51,8 @@ dependencies:
   url_launcher: ^6.3.2
   marquee: ^2.3.0
   flutter_html: ^3.0.0
+  path_provider: ^2.1.5
+  flutter_pdfview: ^1.4.3
 
 flutter_launcher_icons:
   android: "launcher_icon"

@@ -155,7 +155,7 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
   final _mapDao = MapDAO();
   // String? _fcmToken;
 
-  int _selectedIndex = 1;
+  int _selectedIndex = 3;
 
   final List<String> _locationHistory = [];
   Map<String, dynamic> sharedPreferencesData = {};
@@ -164,7 +164,7 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
   String? _errorMessage;
   Timer? _timer;
   bool _isDialogShowing = false;
-  String appBarCaption = 'Медсофт';
+  String appBarCaption = 'Өвчний түүх';
 
   @override
   void initState() {
@@ -275,7 +275,7 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
           appBarCaption = 'Цаг захиалга';
           break;
         case 2:
-          appBarCaption = 'QR сканнер';
+          appBarCaption = 'QR код уншигч';
           break;
         case 3:
           appBarCaption = 'Өвчний түүх';
