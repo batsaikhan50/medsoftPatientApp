@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:flutter_pdfview/flutter_pdfview.dart';
 import 'package:flutter/material.dart';
+import 'package:share_plus/share_plus.dart';
 
 class PdfViewerScreen extends StatefulWidget {
   final String pdfPath;
@@ -18,6 +19,39 @@ class _PdfViewerScreenState extends State<PdfViewerScreen> {
   int _currentPage = 0;
   bool _isReady = false;
   String _errorMessage = '';
+
+  // 2. NEW METHOD: Handle file sharing/downloading
+  // 2. TEMPORARY FIX: Reverting to the original, deprecated static method
+  Future<void> _onShareFile() async {
+    final file = File(widget.pdfPath);
+
+    if (await file.exists()) {
+      try {
+        // FIX: Revert to the original static method Share.shareXFiles()
+        // This is deprecated, but it is the most likely signature to work
+        // with a wide range of older, inconsistent package versions.
+        await SharePlus.instance.share(
+          ShareParams(
+            // text: 'Тайлан хавсаргасан байна.',
+            subject: widget.pdfTitle ?? 'Shared PDF Report',
+            files: [XFile(widget.pdfPath)],
+          ),
+        );
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text('Файл хуваалцахад алдаа гарлаа: $e')));
+        }
+      }
+    } else {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Файл олдсонгүй.')));
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -37,11 +71,23 @@ class _PdfViewerScreenState extends State<PdfViewerScreen> {
               title: Text(
                 widget.pdfTitle ?? 'Тайлан харах',
                 style: const TextStyle(
-                  fontSize: 15, // adjust size here
+                  fontSize: 20, // adjust size here
                   fontWeight: FontWeight.w500,
                 ),
               ),
               backgroundColor: const Color(0xFF00CCCC),
+              actions: [
+                if (fileExists)
+                  Padding(
+                    padding: const EdgeInsets.only(right: 10.0),
+                    child: IconButton(
+                      icon: const Icon(Icons.download, color: Colors.black),
+                      onPressed: _onShareFile,
+                      tooltip: 'Файл хуваалцах', // Share file
+                      iconSize: 26,
+                    ),
+                  ),
+              ],
             )
             : null; // Set to null when in landscape mode
     // --- FIX END ---
