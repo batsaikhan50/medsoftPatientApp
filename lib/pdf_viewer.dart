@@ -27,16 +27,10 @@ class _PdfViewerScreenState extends State<PdfViewerScreen> {
 
     if (await file.exists()) {
       try {
-        // FIX: Revert to the original static method Share.shareXFiles()
-        // This is deprecated, but it is the most likely signature to work
-        // with a wide range of older, inconsistent package versions.
-        await SharePlus.instance.share(
-          ShareParams(
-            // text: 'Тайлан хавсаргасан байна.',
-            subject: widget.pdfTitle ?? 'Shared PDF Report',
-            files: [XFile(widget.pdfPath)],
-          ),
-        );
+        // Use the shareXFiles method for sharing a local file
+        await Share.shareXFiles([
+          XFile(widget.pdfPath),
+        ], subject: widget.pdfTitle ?? 'Shared PDF Report');
       } catch (e) {
         if (mounted) {
           ScaffoldMessenger.of(
@@ -57,17 +51,23 @@ class _PdfViewerScreenState extends State<PdfViewerScreen> {
   Widget build(BuildContext context) {
     bool fileExists = File(widget.pdfPath).existsSync();
 
-    // --- FIX START ---
-    // Get the current orientation from the context
-    final orientation = MediaQuery.of(context).orientation;
+    final mediaQuery = MediaQuery.of(context);
+    final platform = Theme.of(context).platform;
+    final shortestSide = mediaQuery.size.shortestSide;
+    final isPortrait = mediaQuery.orientation == Orientation.portrait;
 
-    // Check if the device is in portrait mode
-    final isPortrait = orientation == Orientation.portrait;
+    // Define the condition for a compact iOS device (iPhone/iPod Touch)
+    // Standard cutoff is usually < 600.0 or < 700.0 for smaller devices.
+    const double kIPhoneShortestSideLimit = 600.0;
+    final bool isIPhone = platform == TargetPlatform.iOS && shortestSide < 600.0;
 
-    // Conditionally create the AppBar
     final appBarWidget =
-        isPortrait
-            ? AppBar(
+        // The AppBar is only created if:
+        // 1. The device is a compact iOS device (iPhone) AND
+        // 2. The orientation is portrait (as per your original code condition)
+        (isIPhone && !isPortrait)
+            ? null
+            : AppBar(
               title: Text(
                 widget.pdfTitle ?? 'Тайлан харах',
                 style: const TextStyle(
@@ -76,21 +76,19 @@ class _PdfViewerScreenState extends State<PdfViewerScreen> {
                 ),
               ),
               backgroundColor: const Color(0xFF00CCCC),
-              actions: [
-                if (fileExists)
-                  Padding(
-                    padding: const EdgeInsets.only(right: 10.0),
-                    child: IconButton(
-                      icon: const Icon(Icons.download, color: Colors.black),
-                      onPressed: _onShareFile,
-                      tooltip: 'Файл хуваалцах', // Share file
-                      iconSize: 26,
-                    ),
-                  ),
-              ],
-            )
-            : null; // Set to null when in landscape mode
-    // --- FIX END ---
+              // actions: [
+              //   if (fileExists)
+              //     Padding(
+              //       padding: const EdgeInsets.only(right: 10.0),
+              //       child: IconButton(
+              //         icon: const Icon(Icons.download, color: Colors.black),
+              //         onPressed: _onShareFile,
+              //         tooltip: 'Файл хуваалцах', // Share file
+              //         iconSize: 26,
+              //       ),
+              //     ),
+              // ],
+            );
 
     // Debug logs confirming file status (as seen in your output)
     // print('PDF Path: ${widget.pdfPath}');
@@ -167,22 +165,63 @@ class _PdfViewerScreenState extends State<PdfViewerScreen> {
       // Display page counter at the bottom center
       floatingActionButton:
           _pages > 0 && _isReady
-              ? Padding(
-                padding: const EdgeInsets.only(left: 32.0),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: Colors.black.withOpacity(0.6),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Text(
-                    '${_currentPage + 1}/$_pages',
-                    style: const TextStyle(fontSize: 14, color: Colors.white),
+              ? SafeArea(
+                // 👈 Wrap the entire button group in SafeArea
+                child: Padding(
+                  // Use horizontal padding for margin from the screen edges
+                  padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      // 1. Download button (Bottom Left) - HIDDEN BUT MAINTAINING SPACE
+                      // Replace the original FloatingActionButton with Visibility
+                      Visibility(
+                        visible: false, // Set to false to hide the button
+                        maintainSize: true, // Crucial: Keeps the space it occupies
+                        maintainState: true,
+                        maintainAnimation: true,
+                        child: FloatingActionButton(
+                          heroTag: "shareButton", // Must have a unique tag
+                          onPressed: () {
+                            // Add your action here
+                          },
+                          backgroundColor: Colors.blueAccent, // Example color
+                          mini: true,
+                          child: const Icon(Icons.share, color: Colors.white),
+                        ),
+                      ),
+                      // Use a Spacer to push the next elements further right
+                      const Spacer(),
+                      // 2. Page Counter (Optional: Center, or near the right button)
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: Colors.black.withOpacity(0.6),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Text(
+                          '${_currentPage + 1}/$_pages',
+                          style: const TextStyle(fontSize: 14, color: Colors.white),
+                        ),
+                      ),
+                      // Use another Spacer to ensure space for the right button
+                      const Spacer(),
+                      // 3. New Right Button (Example: Share/Another Action)
+                      // This button's position is now symmetrical with the hidden button.
+                      if (fileExists)
+                        FloatingActionButton(
+                          heroTag: "downloadButton",
+                          onPressed: _onShareFile,
+                          backgroundColor: const Color(0xFF00CCCC),
+                          mini: true,
+                          child: const Icon(Icons.download, color: Colors.black),
+                        ),
+                    ],
                   ),
                 ),
               )
               : null,
-      floatingActionButtonLocation: FloatingActionButtonLocation.miniEndFloat,
+      floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
     );
   }
 }
