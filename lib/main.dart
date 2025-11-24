@@ -684,9 +684,23 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
           flex: 4, // Represents 40%
           child: NewsFeedWidget(),
         ),
+        // 🎯 ШИНЭ ГАРЧИГ ХЭСЭГ: "Үйлчилгээ"
+        Padding(
+          padding: const EdgeInsets.only(top: 0.0, bottom: 8.0, left: 16.0, right: 16.0),
+          child: Row(
+            children: [
+              // 1. Гарчиг текст
+              const Text(
+                'Үйлчилгээ', // <<--- ГАРЧИГ: "Үйлчилгээ"
+                style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+              ),
 
-        const Divider(height: 1, thickness: 1),
-
+              const SizedBox(width: 8),
+              // 2. Зураас
+              Expanded(child: Divider(color: Colors.grey, height: 1, thickness: 1)),
+            ],
+          ),
+        ),
         // Bottom Half: Home Buttons Grid (including the map button)
         Expanded(
           flex: 7, // Represents 60%
@@ -923,7 +937,6 @@ class _HomeButtonsGridState extends State<_HomeButtonsGrid> {
   // we must keep the mapping for the strings provided by the API (like 'InsertInvitation').
 
   IconData _getIconData(String iconName) {
-    // The API uses capitalized names, so we map them to the corresponding Flutter Icons
     switch (iconName) {
       case 'InsertInvitation':
         return Icons.insert_invitation;
@@ -968,7 +981,7 @@ class _HomeButtonsGridState extends State<_HomeButtonsGrid> {
           crossAxisCount: 2, // 2 columns
           crossAxisSpacing: 10.0,
           mainAxisSpacing: 10.0,
-          childAspectRatio: 1.5, // Adjust aspect ratio for better button sizing
+          childAspectRatio: 1.6, // 💡 Өндрийг багасгахын тулд 1.5-аас 2.0 болгож өөрчлөв
         ),
         itemCount: _buttons.length,
         itemBuilder: (context, index) {
@@ -983,9 +996,10 @@ class _HomeButtonsGridState extends State<_HomeButtonsGrid> {
               foregroundColor: Colors.black,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(12),
-                side: const BorderSide(color: Colors.black, width: 1), // <-- outline
+                // side: const BorderSide(color: Colors.black, width: 0.3), // <-- outline
               ),
-              padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
+              elevation: 0.5,
+              padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 10),
             ),
             onPressed: () => _handleNavigation(navigateTo, label),
             child: Column(

@@ -77,7 +77,7 @@ class NewsFeedWidget extends StatelessWidget {
                     child: Padding(
                       padding: const EdgeInsets.all(12),
                       child: Card(
-                        elevation: 0,
+                        elevation: 0.5,
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                         child: Column(
                           mainAxisSize: MainAxisSize.max,
