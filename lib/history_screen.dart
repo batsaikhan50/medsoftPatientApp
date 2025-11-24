@@ -533,10 +533,17 @@ class _HistoryScreenState extends State<HistoryScreen> {
   bool _hasRowPrintId(List<HistoryCellData> row) {
     return row.any((cell) => cell.props.containsKey('id'));
   }
+  // history_screen.dart (inside _HistoryScreenState)
+
+  // history_screen.dart (inside _HistoryScreenState)
+  // history_screen.dart (inside _HistoryScreenState)
 
   Widget _buildHistoryTable() {
     final rows = _getRows();
     final columns = _historyData.where((col) => col.hidden == false).toList();
+
+    // 1. **Determine if the print column should be visible**
+    final bool shouldShowPrintColumn = _selectedHistoryType?.value != 'Цаг захиалгын түүх';
 
     if (rows.isEmpty && !_isLoading) {
       return const Center(
@@ -550,104 +557,125 @@ class _HistoryScreenState extends State<HistoryScreen> {
       );
     }
 
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: DataTable(
-        columnSpacing: 16.0,
-        dataRowHeight: 80.0, // Increased height for multiline HTML content
-        columns: <DataColumn>[
-          // **CHANGE 1: Add DataColumn for the Print button**
-          const DataColumn(
-            label: SizedBox(
-              width: 50, // Fixed width for the button column
-              child: Text(
-                'Хэвлэх', // Print
-                style: TextStyle(fontWeight: FontWeight.bold, color: Colors.black87),
-              ),
+    // 2. Conditionally build the DataColumns list
+    final List<DataColumn> tableColumns = <DataColumn>[
+      // Conditionally add the Print DataColumn
+      if (shouldShowPrintColumn)
+        const DataColumn(
+          label: SizedBox(
+            width: 50, // Fixed width for the button column
+            child: Text(
+              'Хэвлэх', // Print
+              style: TextStyle(fontWeight: FontWeight.bold, color: Colors.black87),
             ),
           ),
-          // Existing columns:
-          ...columns.map((col) {
-            return DataColumn(
-              label: SizedBox(
-                width: col.field == 'status' ? 80 : 150, // Fixed width for better layout
-                child: Text(
-                  col.caption,
-                  style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.black87),
-                ),
-              ),
-            );
-          }),
-        ],
-        rows:
-            rows.map((row) {
-              final rowCells =
-                  row
-                      .asMap()
-                      .entries
-                      .where((entry) {
-                        // Only include cells that correspond to visible columns
-                        final colIndex = entry.key;
-                        return colIndex < _historyData.length && !_historyData[colIndex].hidden;
-                      })
-                      .map((entry) {
-                        final cellData = entry.value;
-                        return DataCell(
-                          SizedBox(
-                            width: _historyData[entry.key].field == 'status' ? 80 : 150,
-                            child: SingleChildScrollView(
-                              child: Html(
-                                data: cellData.html ?? cellData.value ?? '',
-                                style: {
-                                  "body": Style(
-                                    margin: Margins.zero,
-                                    padding: HtmlPaddings.zero,
-                                    fontSize: FontSize(12.0),
-                                    color: Colors.black87,
-                                    fontWeight: FontWeight.normal,
-                                    lineHeight: LineHeight.em(1.2),
-                                  ),
-                                },
+        ),
+      // Existing columns:
+      ...columns.map((col) {
+        return DataColumn(
+          label: SizedBox(
+            width: col.field == 'status' ? 80 : 150, // Fixed width for better layout
+            child: Text(
+              col.caption,
+              style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.black87),
+            ),
+          ),
+        );
+      }),
+    ];
+
+    // --- FIX START: Use LayoutBuilder to get max width for centering ---
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final tableWidget = DataTable(
+          columnSpacing: 16.0,
+          dataRowHeight: 80.0, // Increased height for multiline HTML content
+          // Use the conditionally built column list
+          columns: tableColumns,
+          rows:
+              rows.map((row) {
+                final rowCells =
+                    row
+                        .asMap()
+                        .entries
+                        .where((entry) {
+                          // Only include cells that correspond to visible columns
+                          final colIndex = entry.key;
+                          return colIndex < _historyData.length && !_historyData[colIndex].hidden;
+                        })
+                        .map((entry) {
+                          final cellData = entry.value;
+                          return DataCell(
+                            SizedBox(
+                              width: _historyData[entry.key].field == 'status' ? 80 : 150,
+                              child: SingleChildScrollView(
+                                child: Html(
+                                  data: cellData.html ?? cellData.value ?? '',
+                                  style: {
+                                    "body": Style(
+                                      margin: Margins.zero,
+                                      padding: HtmlPaddings.zero,
+                                      fontSize: FontSize(12.0),
+                                      color: Colors.black87,
+                                      fontWeight: FontWeight.normal,
+                                      lineHeight: LineHeight.em(1.2),
+                                    ),
+                                  },
+                                ),
                               ),
                             ),
-                          ),
-                        );
-                      })
-                      .toList();
-              // **UPDATED VISIBILITY LOGIC**
-              final bool rowHasPrintId = _getPrintId(row) != null;
+                          );
+                        })
+                        .toList();
 
-              // New safety check: only look for actions if history type is selected
-              final bool hasPrintActions =
-                  _selectedHistoryType != null &&
-                  (_selectedHistoryType!.actions.any((action) => action.key == 'print'));
+                final bool rowHasPrintId = _getPrintId(row) != null;
+                final bool hasPrintActions =
+                    _selectedHistoryType != null &&
+                    (_selectedHistoryType!.actions.any((action) => action.key == 'print'));
 
-              // Only show the button if both conditions are met
-              final bool shouldShowPrintButton = rowHasPrintId && hasPrintActions;
+                // Only show the button if the column is visible AND the row/type supports it
+                final bool shouldShowPrintButton =
+                    shouldShowPrintColumn && // Check if column is visible
+                    rowHasPrintId &&
+                    hasPrintActions;
 
-              final printCell = DataCell(
-                Center(
-                  child:
-                      shouldShowPrintButton // Use the new comprehensive check
-                          ? IconButton(
-                            icon: const Icon(Icons.print, color: Colors.blue),
-                            onPressed: () {
-                              _handlePrint(row);
-                            },
-                          )
-                          : const SizedBox.shrink(), // Empty space if button should be hidden
-                ),
-              );
+                final printCell = DataCell(
+                  Center(
+                    child:
+                        shouldShowPrintButton
+                            ? IconButton(
+                              icon: const Icon(Icons.print, color: Colors.blue),
+                              onPressed: () {
+                                _handlePrint(row);
+                              },
+                            )
+                            : const SizedBox.shrink(), // Empty space if button should be hidden
+                  ),
+                );
 
-              return DataRow(
-                cells: [
-                  printCell, // Prepend the print cell
-                  ...rowCells,
-                ],
-              );
-            }).toList(),
-      ),
+                // 3. Conditionally add the print cell to the row
+                final List<DataCell> cells = [];
+                if (shouldShowPrintColumn) {
+                  cells.add(printCell);
+                }
+                cells.addAll(rowCells);
+
+                return DataRow(
+                  cells: cells, // Use the conditionally built cell list
+                );
+              }).toList(),
+        );
+
+        // Use SingleChildScrollView to allow horizontal scrolling
+        return SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          // Constrain the inner content to the full available width,
+          // allowing the Center widget to effectively center the narrower table.
+          child: SizedBox(width: constraints.maxWidth, child: Center(child: tableWidget)),
+        );
+      },
     );
+    // --- FIX END ---
   }
 
   Widget _buildFooter() {
@@ -783,12 +811,18 @@ class _HistoryScreenState extends State<HistoryScreen> {
   @override
   Widget build(BuildContext context) {
     // 1. Get the current orientation and screen width
-    final orientation = MediaQuery.of(context).orientation;
-    final screenWidth = MediaQuery.of(context).size.width;
+    final mediaQuery = MediaQuery.of(context);
+    final orientation = mediaQuery.orientation;
+    final screenWidth = mediaQuery.size.width;
+    final shortestSide = mediaQuery.size.shortestSide;
+    final platform = Theme.of(context).platform;
 
-    // 2. Define the constraint width: 600.0 only in landscape
-    final double? maxWidth = orientation == Orientation.landscape ? 700.0 : null;
-
+    // 2. Define the condition for the maximum width constraint:
+    // Only apply the constraint if it is a compact iOS device (like iPhone)
+    // AND it is in landscape mode.
+    final isCompactIOS = platform == TargetPlatform.iOS && shortestSide < 600.0;
+    final isLandscape = orientation == Orientation.landscape;
+    final double? maxWidth = isCompactIOS && isLandscape ? 700.0 : null;
     // 3. Use Center and ConstrainedBox/SizedBox to apply the max width
     final Widget content = Scaffold(
       body: Column(
