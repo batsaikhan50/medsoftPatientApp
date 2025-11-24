@@ -185,7 +185,12 @@ class _PdfViewerScreenState extends State<PdfViewerScreen> {
                           onPressed: () {
                             // Add your action here
                           },
-                          backgroundColor: Colors.blueAccent, // Example color
+                          backgroundColor: const Color.fromARGB(
+                            255,
+                            170,
+                            197,
+                            245,
+                          ), // Example color
                           mini: true,
                           child: const Icon(Icons.share, color: Colors.white),
                         ),

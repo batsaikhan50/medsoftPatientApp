@@ -53,7 +53,7 @@ class NewsFeedWidget extends StatelessWidget {
 
                   const SizedBox(width: 8), // Small space between text and line
                   // 2. The middle line extending to the right
-                  const Expanded(
+                  Expanded(
                     child: Divider(
                       color: Colors.grey, // Choose a suitable color for the line
                       height: 1, // Minimal height for a thin line
@@ -63,6 +63,7 @@ class NewsFeedWidget extends StatelessWidget {
                 ],
               ),
             ),
+
             Expanded(
               // Expanded is crucial inside the Column to make PageView work
               child: PageView.builder(
@@ -76,7 +77,7 @@ class NewsFeedWidget extends StatelessWidget {
                     child: Padding(
                       padding: const EdgeInsets.all(12),
                       child: Card(
-                        elevation: 5,
+                        elevation: 0,
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                         child: Column(
                           mainAxisSize: MainAxisSize.max,
@@ -96,18 +97,24 @@ class NewsFeedWidget extends StatelessWidget {
 
                             // TITLE
                             Expanded(
-                              flex: 2,
-                              child: Padding(
-                                padding: const EdgeInsets.symmetric(horizontal: 12),
-                                child: Center(
-                                  child: Text(
-                                    item["title"] ?? "",
-                                    maxLines: 7,
-                                    overflow: TextOverflow.ellipsis,
-                                    textAlign: TextAlign.center,
-                                    style: const TextStyle(
-                                      fontSize: 18,
-                                      fontWeight: FontWeight.bold,
+                              flex: 3,
+                              child: Container(
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  borderRadius: BorderRadius.vertical(bottom: Radius.circular(16)),
+                                ),
+                                child: Padding(
+                                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                                  child: Center(
+                                    child: Text(
+                                      item["title"] ?? "",
+                                      maxLines: 7,
+                                      overflow: TextOverflow.ellipsis,
+                                      textAlign: TextAlign.center,
+                                      style: const TextStyle(
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.bold,
+                                      ),
                                     ),
                                   ),
                                 ),

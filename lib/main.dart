@@ -155,7 +155,7 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
   final _mapDao = MapDAO();
   // String? _fcmToken;
 
-  int _selectedIndex = 3;
+  int _selectedIndex = 0;
 
   final List<String> _locationHistory = [];
   Map<String, dynamic> sharedPreferencesData = {};
@@ -164,7 +164,7 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
   String? _errorMessage;
   Timer? _timer;
   bool _isDialogShowing = false;
-  String appBarCaption = 'Өвчний түүх';
+  String appBarCaption = 'Медсофт';
 
   @override
   void initState() {
@@ -654,7 +654,7 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
       children: [
         // Top Half: NewsFeedWidget (70% of space)
         const Expanded(
-          flex: 6, // Represents 70% (7 out of 10 total flex points)
+          flex: 4, // Represents 70% (7 out of 10 total flex points)
           child: NewsFeedWidget(),
         ),
 
@@ -663,7 +663,7 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
 
         // Bottom Half: Map Button (30% of space)
         Expanded(
-          flex: 4, // Represents 30% (3 out of 10 total flex points)
+          flex: 6, // Represents 30% (3 out of 10 total flex points)
           child: Center(
             child: ElevatedButton.icon(
               style: ElevatedButton.styleFrom(
