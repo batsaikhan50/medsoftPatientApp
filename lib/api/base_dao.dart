@@ -68,7 +68,7 @@ abstract class BaseDAO {
         headers: headers,
         body: body != null ? jsonEncode(body) : null,
       );
-      return _handleResponse<T>(response, parse: parse);
+      return _handleResponse<T>(response,url, parse: parse);
     } catch (e) {
       debugPrint('POST error: $e');
       return ApiResponse<T>(success: false, message: e.toString());
@@ -87,7 +87,7 @@ abstract class BaseDAO {
       debugPrint('Headers: $headers');
 
       final response = await http.get(Uri.parse(url), headers: headers);
-      final result = _handleResponse<T>(response, parse: parse);
+      final result = _handleResponse<T>(response, url, parse: parse);
 
       // if (result.success && transform != null && result.data != null) {
       //   return ApiResponse<T>(success: true, data: transform(result.data), message: result.message);
@@ -153,9 +153,10 @@ abstract class BaseDAO {
     return headers;
   }
 
-  ApiResponse<T> _handleResponse<T>(http.Response response, {T Function(dynamic)? parse}) {
-    debugPrint('Response [${response.statusCode}]: ${response.body}');
-
+  ApiResponse<T> _handleResponse<T>(http.Response response,String url, {T Function(dynamic)? parse}) {
+    debugPrint('_handleResponse [${response.statusCode}]: ${response.body}');
+    debugPrint('_handleResponse url: $url');
+    
     try {
       final jsonBody = jsonDecode(response.body);
       return ApiResponse.fromJson(jsonBody, parse: parse, statusCode: response.statusCode);

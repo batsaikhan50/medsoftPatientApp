@@ -692,37 +692,51 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        leading: Padding(
-          padding: const EdgeInsets.only(left: 15.0),
-          child: Builder(
-            builder:
-                (context) => IconButton(
-                  icon: const Icon(Icons.menu),
-                  onPressed: () {
-                    Scaffold.of(context).openDrawer();
-                  },
+    final platform = Theme.of(context).platform;
+    final orientation = MediaQuery.of(context).orientation;
+    final shortestSide = MediaQuery.of(context).size.shortestSide;
+    final isHistoryScreen = appBarCaption == 'Өвчний түүх';
+    final isLandscape = orientation == Orientation.landscape;
+    debugPrint('screenWidth: $shortestSide, orientation: $orientation, platform: $platform');
+    final isCompactIOS = platform == TargetPlatform.iOS && shortestSide < 600;
+    final shouldHideAppBar = isHistoryScreen && isLandscape && isCompactIOS;
+
+    final appBarWidget =
+        shouldHideAppBar
+            ? null
+            : AppBar(
+              leading: Padding(
+                padding: const EdgeInsets.only(left: 15.0),
+                child: Builder(
+                  builder:
+                      (context) => IconButton(
+                        icon: const Icon(Icons.menu),
+                        onPressed: () {
+                          Scaffold.of(context).openDrawer();
+                        },
+                      ),
                 ),
-          ),
-        ),
-        backgroundColor: const Color(0xFF00CCCC),
-        title: Text(appBarCaption),
-        actions: [
-          Padding(
-            padding: const EdgeInsets.only(right: 15.0),
-            child: IconButton(
-              icon: const Icon(Icons.notifications),
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => const NotificationScreen()),
-                );
-              },
-            ),
-          ),
-        ],
-      ),
+              ),
+              backgroundColor: const Color(0xFF00CCCC),
+              title: Text(appBarCaption),
+              actions: [
+                Padding(
+                  padding: const EdgeInsets.only(right: 15.0),
+                  child: IconButton(
+                    icon: const Icon(Icons.notifications),
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (context) => const NotificationScreen()),
+                      );
+                    },
+                  ),
+                ),
+              ],
+            );
+
+    return Scaffold(
+      appBar: appBarWidget,
       drawer: _buildDrawer(),
       body: _buildSelectedBody(),
 

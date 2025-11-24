@@ -23,16 +23,36 @@ class _PdfViewerScreenState extends State<PdfViewerScreen> {
   Widget build(BuildContext context) {
     bool fileExists = File(widget.pdfPath).existsSync();
 
+    // --- FIX START ---
+    // Get the current orientation from the context
+    final orientation = MediaQuery.of(context).orientation;
+
+    // Check if the device is in portrait mode
+    final isPortrait = orientation == Orientation.portrait;
+
+    // Conditionally create the AppBar
+    final appBarWidget =
+        isPortrait
+            ? AppBar(
+              title: Text(
+                widget.pdfTitle ?? 'Тайлан харах',
+                style: const TextStyle(
+                  fontSize: 15, // adjust size here
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              backgroundColor: const Color(0xFF00CCCC),
+            )
+            : null; // Set to null when in landscape mode
+    // --- FIX END ---
+
     // Debug logs confirming file status (as seen in your output)
     // print('PDF Path: ${widget.pdfPath}');
     // print('File Exists: $fileExists');
 
     return Scaffold(
-      appBar: AppBar(
-        // 2. Use the provided title or a default Mongolian text
-        title: Text(widget.pdfTitle ?? 'Тайлан харах'), // View Report
-        backgroundColor: Color(0xFF00CCCC),
-      ),
+      // --- APPLY FIX ---
+      appBar: appBarWidget, // Use the conditionally defined AppBar
       // Set the background color here or rely on the theme's background color
       backgroundColor: Colors.white,
       body: Stack(

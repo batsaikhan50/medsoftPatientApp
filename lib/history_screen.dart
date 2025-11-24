@@ -103,6 +103,8 @@ class _HistoryScreenState extends State<HistoryScreen> {
   bool _isLoading = true;
   String? _errorMessage;
 
+  int _selectedYear = DateTime.now().year;
+
   @override
   void initState() {
     super.initState();
@@ -172,24 +174,35 @@ class _HistoryScreenState extends State<HistoryScreen> {
 
     try {
       // Use current year for the year parameter
-      final currentYear = DateTime.now().year.toString();
+      final yearString = _selectedYear.toString();
       final historyResponse = await _historyDAO.getHistory(
-        currentYear,
+        yearString,
         _selectedHistoryType!.key,
         _selectedTenant!.tenantName,
       );
 
-      if (historyResponse.success && historyResponse.data != null) {
-        _historyData =
-            (historyResponse.data!)
-                .map((e) => HistoryColumn.fromJson(e as Map<String, dynamic>))
-                .toList();
+      if (historyResponse.success) {
+        if (historyResponse.data != null) {
+          _historyData =
+              (historyResponse.data!)
+                  .map((e) => HistoryColumn.fromJson(e as Map<String, dynamic>))
+                  .toList();
+        } else {
+          // If success is true but data is null, show 'Дата олдсонгүй'
+          _errorMessage = 'Дата олдсонгүй'; // Data not found
+        }
+      } else if (!historyResponse.success && historyResponse.data == null) {
+        _errorMessage = 'Дата олдсонгүй';
       } else {
+        // If success is false, treat it as a failure to fetch history
         throw Exception('Өвчтөний түүхийг татаж чадсангүй.'); // Failed to fetch patient history
       }
     } catch (e) {
-      _errorMessage =
-          'Түүхийн өгөгдлийг татахад алдаа гарлаа: ${e.toString()}'; // Error fetching history data
+      // Catch any exceptions (including the thrown one above)
+      if (_errorMessage == null || _errorMessage!.isEmpty) {
+        _errorMessage =
+            'Түүхийн өгөгдлийг татахад алдаа гарлаа: ${e.toString()}'; // Error fetching history data
+      }
     } finally {
       setState(() {
         _isLoading = false;
@@ -219,40 +232,53 @@ class _HistoryScreenState extends State<HistoryScreen> {
   }
 
   // history_screen.dart
-  Widget _buildTenantDropdown() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-      child: DropdownButtonFormField<HistoryTenant>(
-        // **FIX: Add isExpanded: true to prevent overflow inside the Dropdown's internal Row**
-        isExpanded: true, // <--- ADD THIS LINE
-        decoration: const InputDecoration(
-          labelText: 'Түрээслэгч сонгох', // Select Tenant
-          border: OutlineInputBorder(),
-        ),
-        initialValue: _selectedTenant,
-        items:
-            _tenants.map((tenant) {
-              // Also ensure the Text widget inside the DropdownMenuItem is constrained,
-              // though isExpanded: true often handles this.
-              return DropdownMenuItem<HistoryTenant>(
-                value: tenant,
-                // Use Flexible or a fixed width if truncation is not desired,
-                // but usually the default Text behavior with isExpanded is fine.
-                child: Text(tenant.fullName, overflow: TextOverflow.ellipsis),
-              );
-            }).toList(),
-        onChanged: (HistoryTenant? newValue) {
-          setState(() {
-            _selectedTenant = newValue;
-            if (_selectedTenant != null && _selectedHistoryType != null) {
-              _fetchHistory();
-            }
-          });
-        },
-        hint: const Text('Түрээслэгч сонгоно уу'), // Select a tenant
-      ),
-    );
-  }
+  // Widget _buildTenantDropdown() {
+  //   final platform = Theme.of(context).platform;
+  //   final orientation = MediaQuery.of(context).orientation;
+  //   final shortestSide = MediaQuery.of(context).size.shortestSide;
+
+  //   // 2. Define conditions for applying extra top padding
+  //   // Must be in Landscape mode AND must be an iPhone/Compact iOS Device (shortestSide < 600)
+  //   final isLandscape = orientation == Orientation.landscape;
+  //   final isCompactIOS = platform == TargetPlatform.iOS && shortestSide < 600;
+  //   final double extraTopMargin = isLandscape && isCompactIOS ? 10.0 : 0.0;
+
+  //   return Padding(
+  //     padding: EdgeInsets.fromLTRB(16.0, 8.0 + extraTopMargin, 16.0, 8.0), // <--- FIX APPLIED HERE
+  //     child: DropdownButtonFormField<HistoryTenant>(
+  //       isExpanded: true,
+
+  //       // Use standard, non-conditional InputDecoration
+  //       decoration: const InputDecoration(
+  //         labelText: 'Түрээслэгч сонгох', // Select Tenant
+  //         border: OutlineInputBorder(),
+  //         // Keep contentPadding standard unless internal padding is also required
+  //         // contentPadding: EdgeInsets.fromLTRB(12.0, 12.0, 12.0, 12.0),
+  //       ),
+  //       initialValue: _selectedTenant,
+  //       items:
+  //           _tenants.map((tenant) {
+  //             // Also ensure the Text widget inside the DropdownMenuItem is constrained,
+  //             // though isExpanded: true often handles this.
+  //             return DropdownMenuItem<HistoryTenant>(
+  //               value: tenant,
+  //               // Use Flexible or a fixed width if truncation is not desired,
+  //               // but usually the default Text behavior with isExpanded is fine.
+  //               child: Text(tenant.fullName, overflow: TextOverflow.ellipsis),
+  //             );
+  //           }).toList(),
+  //       onChanged: (HistoryTenant? newValue) {
+  //         setState(() {
+  //           _selectedTenant = newValue;
+  //           if (_selectedTenant != null && _selectedHistoryType != null) {
+  //             _fetchHistory();
+  //           }
+  //         });
+  //       },
+  //       hint: const Text('Түрээслэгч сонгоно уу'), // Select a tenant
+  //     ),
+  //   );
+  // }
 
   Widget _buildHistoryTypeButtons() {
     return SizedBox(
@@ -354,18 +380,20 @@ class _HistoryScreenState extends State<HistoryScreen> {
       // await OpenFilex.open(file.path);
 
       // Option B: Navigate to a custom PDF viewer widget
-      Navigator.of(
-        context,
-      ).push(MaterialPageRoute(builder: (context) => PdfViewerScreen(pdfPath: file.path)));
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            'Тайланг амжилттай нээлээ.', // Report successfully opened.
-          ),
-          backgroundColor: Colors.green,
+      Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (context) => PdfViewerScreen(pdfTitle: filename, pdfPath: file.path),
         ),
       );
+
+      // ScaffoldMessenger.of(context).showSnackBar(
+      //   const SnackBar(
+      //     content: Text(
+      //       'Тайланг амжилттай нээлээ.', // Report successfully opened.
+      //     ),
+      //     backgroundColor: Colors.green,
+      //   ),
+      // );
     } catch (e) {
       throw Exception('PDF-ийг нээхэд алдаа гарлаа: $e'); // Error opening PDF.
     }
@@ -380,9 +408,11 @@ class _HistoryScreenState extends State<HistoryScreen> {
     await file.writeAsBytes(pdfBytes, flush: true);
 
     // 3. Navigate to the PDF viewer screen (Assuming this class exists)
-    Navigator.of(
-      context,
-    ).push(MaterialPageRoute(builder: (context) => PdfViewerScreen(pdfPath: file.path)));
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => PdfViewerScreen(pdfTitle: filename, pdfPath: file.path),
+      ),
+    );
   }
 
   Future<void> _handlePrint(List<HistoryCellData> row) async {
@@ -466,15 +496,23 @@ class _HistoryScreenState extends State<HistoryScreen> {
         tenantName,
       );
       if (pdfBytes.isNotEmpty) {
+        final now = DateTime.now();
+        final formatted =
+            '${now.year}.'
+            '${now.month.toString().padLeft(2, '0')}.'
+            '${now.day.toString().padLeft(2, '0')} '
+            '${now.hour.toString().padLeft(2, '0')}:'
+            '${now.minute.toString().padLeft(2, '0')}';
         // Use the helper to save and open the PDF
-        await _openPdfViewer(pdfBytes, '${historyKey}_$printId');
 
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Тайланг амжилттай нээлээ.'), // Report successfully opened.
-            backgroundColor: Colors.green,
-          ),
-        );
+        await _openPdfViewer(pdfBytes, '${historyKey}_${tenantName}_$formatted');
+
+        // ScaffoldMessenger.of(context).showSnackBar(
+        //   const SnackBar(
+        //     content: Text('Тайланг амжилттай нээлээ.'), // Report successfully opened.
+        //     backgroundColor: Colors.green,
+        //   ),
+        // );
       } else {
         // This handles cases where the API returns success (200) but an empty body.
         throw Exception('Серверээс PDF өгөгдөл ирсэнгүй (Хоосон файл).');
@@ -635,30 +673,153 @@ class _HistoryScreenState extends State<HistoryScreen> {
     );
   }
 
+  // Widget _buildYearDropdown() {
+  //   final currentYear = DateTime.now().year;
+  //   // Generate a list of years, e.g., current year and the previous 5 years
+  //   final years = List<int>.generate(
+  //     6,
+  //     (index) => currentYear - index,
+  //   ); // e.g., 2025, 2024, ..., 2020
+
+  //   return Padding(
+  //     padding: const EdgeInsets.fromLTRB(16.0, 8.0, 16.0, 8.0),
+  //     child: DropdownButtonFormField<int>(
+  //       isExpanded: true,
+  //       decoration: const InputDecoration(
+  //         labelText: 'Он сонгох', // Select Year
+  //         border: OutlineInputBorder(),
+  //       ),
+  //       // Use _selectedYear (an int) as the initial value
+  //       initialValue: _selectedYear,
+  //       items:
+  //           years.map((year) {
+  //             return DropdownMenuItem<int>(value: year, child: Text(year.toString()));
+  //           }).toList(),
+  //       onChanged: (int? newValue) {
+  //         setState(() {
+  //           // Update the selected year
+  //           _selectedYear = newValue!;
+  //           // Fetch history data for the new year
+  //           if (_selectedTenant != null && _selectedHistoryType != null) {
+  //             _fetchHistory();
+  //           }
+  //         });
+  //       },
+  //       hint: const Text('Он сонгоно уу'), // Select a year
+  //     ),
+  //   );
+  // }
+
+  Widget _buildSelectionRow() {
+    final currentYear = DateTime.now().year;
+    // Generate a list of years, e.g., current year and the previous 5 years
+    final years = List<int>.generate(6, (index) => currentYear - index);
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16.0, 8.0, 16.0, 8.0), // Standard padding for the row
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // 1. Year Dropdown (Takes a fixed, smaller width)
+          SizedBox(
+            width: 100, // Give the year dropdown a fixed width
+            child: DropdownButtonFormField<int>(
+              isExpanded: true,
+              decoration: const InputDecoration(
+                labelText: 'Он', // Year
+                border: OutlineInputBorder(),
+                contentPadding: EdgeInsets.fromLTRB(12.0, 12.0, 12.0, 12.0),
+              ),
+              initialValue: _selectedYear,
+              items:
+                  years.map((year) {
+                    return DropdownMenuItem<int>(value: year, child: Text(year.toString()));
+                  }).toList(),
+              onChanged: (int? newValue) {
+                setState(() {
+                  _selectedYear = newValue!;
+                  if (_selectedTenant != null && _selectedHistoryType != null) {
+                    _fetchHistory();
+                  }
+                });
+              },
+            ),
+          ),
+
+          const SizedBox(width: 8.0), // Spacer between fields
+          // 2. Tenant Dropdown (Takes remaining space using Expanded)
+          Expanded(
+            child: DropdownButtonFormField<HistoryTenant>(
+              isExpanded: true,
+              decoration: const InputDecoration(
+                labelText: 'Түрээслэгч сонгох', // Select Tenant
+                border: OutlineInputBorder(),
+                contentPadding: EdgeInsets.fromLTRB(12.0, 12.0, 12.0, 12.0),
+              ),
+              initialValue: _selectedTenant,
+              items:
+                  _tenants.map((tenant) {
+                    return DropdownMenuItem<HistoryTenant>(
+                      value: tenant,
+                      child: Text(tenant.fullName, overflow: TextOverflow.ellipsis),
+                    );
+                  }).toList(),
+              onChanged: (HistoryTenant? newValue) {
+                setState(() {
+                  _selectedTenant = newValue;
+                  if (_selectedTenant != null && _selectedHistoryType != null) {
+                    _fetchHistory();
+                  }
+                });
+              },
+              hint: const Text('Түрээслэгч сонгоно уу'), // Select a tenant
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      // appBar: AppBar(
-      //   title: const Text('Өвчний Түүх', style: TextStyle(color: Colors.white)), // Patient History
-      //   backgroundColor: Colors.blue,
-      // ),
+    // 1. Get the current orientation and screen width
+    final orientation = MediaQuery.of(context).orientation;
+    final screenWidth = MediaQuery.of(context).size.width;
+
+    // 2. Define the constraint width: 600.0 only in landscape
+    final double? maxWidth = orientation == Orientation.landscape ? 700.0 : null;
+
+    // 3. Use Center and ConstrainedBox/SizedBox to apply the max width
+    final Widget content = Scaffold(
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: <Widget>[
           // 1. Tenant Dropdown
-          _buildTenantDropdown(),
+          _buildSelectionRow(),
 
           const Divider(height: 1),
 
           // 2. History Type Buttons
           _availableHistory.isNotEmpty ? _buildHistoryTypeButtons() : const SizedBox.shrink(),
 
+          // const Divider(height: 1),
+          // _buildYearDropdown(),
           const Divider(height: 1),
-
           if (_errorMessage != null)
             Padding(
               padding: const EdgeInsets.all(16.0),
-              child: Text(_errorMessage!, style: const TextStyle(color: Colors.red)),
+              child: Text(
+                _errorMessage!,
+                // Remove 'const' from TextStyle and its properties to allow runtime comparison
+                style: TextStyle(
+                  // Conditional color based on the message content
+                  color: _errorMessage == 'Дата олдсонгүй' ? Colors.black : Colors.redAccent,
+                  fontWeight:
+                      _errorMessage == 'Дата олдсонгүй' ? FontWeight.normal : FontWeight.bold,
+                ),
+                // Conditional alignment based on the message content
+                textAlign: _errorMessage == 'Дата олдсонгүй' ? TextAlign.center : TextAlign.start,
+              ),
             )
           else if (_isLoading)
             const Expanded(
@@ -687,6 +848,16 @@ class _HistoryScreenState extends State<HistoryScreen> {
               ),
             ),
         ],
+      ),
+    );
+
+    // 4. Apply the width constraint using Center and ConstrainedBox
+    return Center(
+      child: ConstrainedBox(
+        constraints: BoxConstraints(
+          maxWidth: maxWidth ?? screenWidth, // Use 600 or the screen width
+        ),
+        child: content,
       ),
     );
   }
