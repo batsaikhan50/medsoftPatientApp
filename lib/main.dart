@@ -9,6 +9,7 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:http/http.dart' as http;
 // import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:medsoft_patient/api/auth_dao.dart';
+import 'package:medsoft_patient/api/home_dao.dart';
 import 'package:medsoft_patient/api/map_dao.dart';
 import 'package:medsoft_patient/claim_qr.dart';
 import 'package:medsoft_patient/constants.dart';
@@ -153,9 +154,11 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
 
   final _authDao = AuthDAO();
   final _mapDao = MapDAO();
+  final _homeDao = HomeDAO();
   // String? _fcmToken;
 
   int _selectedIndex = 0;
+  String? _historyKeyFromHome;
 
   final List<String> _locationHistory = [];
   Map<String, dynamic> sharedPreferencesData = {};
@@ -267,6 +270,10 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
   void _onItemTapped(int index) {
     setState(() {
       _selectedIndex = index;
+      if (index != 3) {
+        _historyKeyFromHome = null;
+      }
+
       switch (index) {
         case 0:
           appBarCaption = 'Медсофт';
@@ -296,7 +303,7 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
       case 2:
         return const QrScanScreen();
       case 3:
-        return const HistoryScreen();
+        return HistoryScreen(initialHistoryKey: _historyKeyFromHome);
       case 4:
         return ProfileScreen(onGuideTap: _navigateToGuideScreen, onLogoutTap: _logOut);
       default:
@@ -463,7 +470,8 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
 
       if (response.statusCode == 200) {
         debugPrint('API Response data: ${response.data}');
-        if (response.statusCode == 200 && response.data!['success'] == true) {
+        // 🚨 ЗААВАР 1: API хариуны 'success' талбарыг зөв шалгах
+        if (response.data is Map<String, dynamic> && response.success == true) {
           roomInfo = response.data;
 
           if (roomInfo is Map<String, dynamic> &&
@@ -499,7 +507,7 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
 
             setState(() {
               _isLoading = false;
-              _errorMessage = null;
+              _errorMessage = null; // Clear error on success
             });
             debugPrint('Room fetch success! Navigating...');
           } else {
@@ -513,13 +521,13 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
             );
           }
         } else {
+          // 🚨 ЗААВАР 1: API хариуны 'message' талбарыг зөв авах
           setState(() {
             _isLoading = false;
-            _errorMessage =
-                response.data!['message'] ??
-                'Өрөөний мэдээлэл татахад алдаа гарлаа: Амжилтгүй хүсэлт.';
+            // 'data' нь null биш гэж үзвэл data!['message']-г ашиглана
+            _errorMessage = response.message ?? 'Алдаа: Мэдээлэл авах боломжгүй байна.';
           });
-          debugPrint('API success false: ${response.data!['message']}');
+          debugPrint('API success false: ${response.message}');
         }
       } else {
         setState(() {
@@ -538,6 +546,25 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
       debugPrint('Exception during fetchRoom: $e');
     }
     debugPrint('fetchRoom finished. _isLoading: $_isLoading, _errorMessage: $_errorMessage');
+
+    // 🚨 ЗААВАР 2: SnackBar логикийг тааруулж өөрчлөх
+    if (_errorMessage != null && mounted) {
+      // API-ийн жишээ хариу дахь мессежтэй тааруулсан
+      final isCallError = _errorMessage! == 'Дуудлага байхгүй';
+
+      // 'Дуудлага байхгүй' бол хар дэвсгэр, цагаан текст болгосон.
+      final backgroundColor = isCallError ? Colors.black : Colors.red;
+
+      // Текст бүх тохиолдолд цагаан
+      final textColor = Colors.white;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          backgroundColor: backgroundColor,
+          content: Text(_errorMessage!, style: TextStyle(color: textColor)),
+        ),
+      );
+    }
   }
 
   Future<void> _methodCallHandler(MethodCall call) async {
@@ -652,41 +679,28 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
   Widget _buildLocationBody() {
     return Column(
       children: [
-        // Top Half: NewsFeedWidget (70% of space)
+        // Top Half: NewsFeedWidget
         const Expanded(
-          flex: 4, // Represents 70% (7 out of 10 total flex points)
+          flex: 4, // Represents 40%
           child: NewsFeedWidget(),
         ),
 
-        // Divider
         const Divider(height: 1, thickness: 1),
 
-        // Bottom Half: Map Button (30% of space)
+        // Bottom Half: Home Buttons Grid (including the map button)
         Expanded(
-          flex: 6, // Represents 30% (3 out of 10 total flex points)
-          child: Center(
-            child: ElevatedButton.icon(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF00CCCC),
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-              ),
-              onPressed:
-                  _isLoading
-                      ? null
-                      : () async {
-                        setState(() => _isLoading = true);
-                        await fetchRoom();
-                      },
-              icon: const Icon(Icons.map),
-              label: Text(
-                _isLoading ? 'Түр хүлээнэ үү...' : 'Газрын зураг харах',
-                style: const TextStyle(fontSize: 18),
-              ),
-            ),
-          ),
+          flex: 7, // Represents 60%
+          child: _buildHomeButtonsGrid(),
         ),
       ],
+    );
+  }
+
+  // And the helper method (if you choose to use it):
+  Widget _buildHomeButtonsGrid() {
+    return _HomeButtonsGrid(
+      // Pass the fetchRoom method as the required callback
+      onMapTap: fetchRoom,
     );
   }
 
@@ -814,6 +828,176 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
           ),
           const SizedBox(height: 10),
         ],
+      ),
+    );
+  }
+}
+
+// Add the new _HomeButtonsGrid widget
+class _HomeButtonsGrid extends StatefulWidget {
+  // 1. Define the callback function signature
+  final VoidCallback onMapTap;
+
+  const _HomeButtonsGrid({required this.onMapTap, super.key});
+
+  @override
+  State<_HomeButtonsGrid> createState() => _HomeButtonsGridState();
+}
+// In main.dart
+
+class _HomeButtonsGridState extends State<_HomeButtonsGrid> {
+  // Use the actual DAO provided in home_dao.dart
+  final _homeDao = HomeDAO();
+
+  // The list will hold maps where 'icon' is a String name and 'navigate' is the destination
+  List<Map<String, String>> _buttons = [];
+  bool _isLoading = true;
+  String? _errorMessage;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchButtons();
+  }
+
+  Future<void> _fetchButtons() async {
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+
+    try {
+      final apiResponse = await _homeDao.getHomeButtons();
+
+      if (apiResponse.success && apiResponse.data != null) {
+        _buttons =
+            (apiResponse.data as List<dynamic>).map((e) => Map<String, String>.from(e)).toList();
+      }
+    } catch (e) {
+      _errorMessage = 'Учирсан алдаа: ${e.toString()}.';
+      debugPrint('Error fetching home buttons: $e');
+    } finally {
+      // 🎯 FIX: Always insert the map button at index 0, regardless of API response.
+      _buttons.insert(0, {"label": "Газрын зураг харах", "icon": "Map", "navigate": "map"});
+
+      setState(() {
+        _isLoading = false;
+      });
+    }
+  }
+
+  void _handleNavigation(String navigateTo, String label) async {
+    // Logic for navigation based on 'navigate' value
+    debugPrint('Navigating to: $navigateTo');
+
+    // Get the state of the parent MyHomePage widget
+    final parentState = context.findAncestorStateOfType<_MyHomePageState>();
+    if (parentState == null) return;
+
+    // ❌ The 'map' logic was REMOVED from here because it is now handled
+    //    directly in the 'build' method's ElevatedButton logic for the map button.
+
+    if (navigateTo == 'order') {
+      // Navigate to TimeOrderScreen (BottomNav index 1) by changing the index
+      parentState._onItemTapped(1);
+    } else if (navigateTo.startsWith('/history')) {
+      // 1. Extract the historyKey
+      final uri = Uri.parse(navigateTo);
+      final historyKey = uri.queryParameters['historyKey'];
+
+      // 2. Set the key in the parent's state
+      parentState.setState(() {
+        parentState._historyKeyFromHome = historyKey;
+      });
+
+      // 3. Change the tab index
+      parentState._onItemTapped(3);
+
+      debugPrint('History Key set in parent state and tab switched: $historyKey');
+    } else if (navigateTo.startsWith('map')) {
+      widget.onMapTap();
+    }
+  }
+  // Simple mapping from icon name string to an actual IconData
+  // Since Dart doesn't allow dynamic lookup of static Icon properties,
+  // we must keep the mapping for the strings provided by the API (like 'InsertInvitation').
+
+  IconData _getIconData(String iconName) {
+    // The API uses capitalized names, so we map them to the corresponding Flutter Icons
+    switch (iconName) {
+      case 'InsertInvitation':
+        return Icons.insert_invitation;
+      case 'Medication':
+        return Icons.medication;
+      case 'Biotech':
+        return Icons.biotech;
+      case 'SensorOccupied':
+        return Icons.sensor_occupied;
+      case 'Vaccines':
+        return Icons.vaccines;
+      case 'Map':
+        return Icons.map;
+      default:
+        return Icons.help_outline;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_isLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    if (_errorMessage != null) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Text(
+            'Алдаа: $_errorMessage',
+            textAlign: TextAlign.center,
+            style: const TextStyle(color: Colors.red),
+          ),
+        ),
+      );
+    }
+
+    return Padding(
+      padding: const EdgeInsets.all(8.0),
+      child: GridView.builder(
+        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: 2, // 2 columns
+          crossAxisSpacing: 10.0,
+          mainAxisSpacing: 10.0,
+          childAspectRatio: 1.5, // Adjust aspect ratio for better button sizing
+        ),
+        itemCount: _buttons.length,
+        itemBuilder: (context, index) {
+          final buttonData = _buttons[index];
+          final label = buttonData['label']!;
+          final navigateTo = buttonData['navigate']!;
+          final iconData = _getIconData(buttonData['icon']!);
+
+          return ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.white,
+              foregroundColor: Colors.black,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+                side: const BorderSide(color: Colors.black, width: 1), // <-- outline
+              ),
+              padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
+            ),
+            onPressed: () => _handleNavigation(navigateTo, label),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(iconData, size: 30),
+                const SizedBox(height: 8),
+                Text(label, textAlign: TextAlign.center, style: const TextStyle(fontSize: 14)),
+              ],
+            ),
+          );
+        },
       ),
     );
   }

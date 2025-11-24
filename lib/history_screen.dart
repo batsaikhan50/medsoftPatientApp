@@ -85,7 +85,9 @@ class HistoryCellData {
 // --- History Screen Implementation ---
 
 class HistoryScreen extends StatefulWidget {
-  const HistoryScreen({super.key});
+  final String? initialHistoryKey; // <-- NEW FIELD
+
+  const HistoryScreen({super.key, this.initialHistoryKey}); // <-- UPDATED CONSTRUCTOR
 
   @override
   State<HistoryScreen> createState() => _HistoryScreenState();
@@ -111,7 +113,6 @@ class _HistoryScreenState extends State<HistoryScreen> {
     _fetchInitialData();
   }
 
-  // Function to fetch tenants and available history types
   Future<void> _fetchInitialData() async {
     setState(() {
       _isLoading = true;
@@ -138,7 +139,27 @@ class _HistoryScreenState extends State<HistoryScreen> {
             (availableResponse.data!)
                 .map((e) => HistoryAvailable.fromJson(e as Map<String, dynamic>))
                 .toList();
-        _selectedHistoryType = _availableHistory.isNotEmpty ? _availableHistory.first : null;
+
+        // --- FIX START: Logic to select initial history type ---
+        if (widget.initialHistoryKey != null) {
+          // Attempt to find the matching type using the key from the navigation argument
+          final matchingType = _availableHistory.firstWhere(
+            (type) => type.key == widget.initialHistoryKey,
+            // If no match is found, use the first available type as a fallback,
+            // otherwise, set it to null.
+            orElse:
+                () =>
+                    _availableHistory.isNotEmpty
+                        ? _availableHistory.first
+                        : null as HistoryAvailable,
+          );
+
+          _selectedHistoryType = matchingType;
+        } else {
+          // Fallback: If no initial key is provided, select the first available type
+          _selectedHistoryType = _availableHistory.isNotEmpty ? _availableHistory.first : null;
+        }
+        // --- FIX END ---
       } else {
         throw Exception(
           'Боломжит түүхийн төрлүүдийг татаж чадсангүй.',
@@ -150,6 +171,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
         await _fetchHistory();
       } else {
         setState(() {
+          // If no selections were made, stop loading
           _isLoading = false;
         });
       }
