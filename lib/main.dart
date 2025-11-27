@@ -132,7 +132,6 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
 
   final _authDao = AuthDAO();
   final _mapDao = MapDAO();
-  // final _homeDao = HomeDAO();
 
   int _selectedIndex = 0;
   String? _historyKeyFromHome;
@@ -146,21 +145,11 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
   bool _isDialogShowing = false;
   String appBarCaption = 'Медсофт';
 
-  late final List<Widget> _widgetOptions;
-
   @override
   void initState() {
     super.initState();
     _fcmService = FCMService();
     _initServices();
-
-    _widgetOptions = <Widget>[
-      _buildLocationBody(), // Index 0: Home/Location
-      const TimeOrderScreen(), // Index 1: Time Order
-      const QrScanScreen(), // Index 2: QR Scanner
-      HistoryScreen(initialHistoryKey: _historyKeyFromHome), // Index 3: History
-      ProfileScreen(onGuideTap: _navigateToGuideScreen, onLogoutTap: _logOut), // Index 4: Profile
-    ];
 
     Future<void> saveScannedToken(String token) async {
       final prefs = await SharedPreferences.getInstance();
@@ -255,23 +244,6 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
       }
     });
   }
-
-  // Widget _buildSelectedBody() {
-  //   switch (_selectedIndex) {
-  //     case 0:
-  //       return _buildLocationBody();
-  //     case 1:
-  //       return const TimeOrderScreen();
-  //     case 2:
-  //       return const QrScanScreen();
-  //     case 3:
-  //       return HistoryScreen(initialHistoryKey: _historyKeyFromHome);
-  //     case 4:
-  //       return ProfileScreen(onGuideTap: _navigateToGuideScreen, onLogoutTap: _logOut);
-  //     default:
-  //       return _buildLocationBody();
-  //   }
-  // }
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
@@ -661,15 +633,20 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
                 ),
               ],
             );
+    debugPrint('_historyKeyFromHome: $_historyKeyFromHome');
+    final List<Widget> widgetOptions = <Widget>[
+      _buildLocationBody(),
+      const TimeOrderScreen(),
+      const QrScanScreen(),
+
+      HistoryScreen(key: ValueKey(_historyKeyFromHome), initialHistoryKey: _historyKeyFromHome),
+      ProfileScreen(onGuideTap: _navigateToGuideScreen, onLogoutTap: _logOut),
+    ];
 
     return Scaffold(
       appBar: appBarWidget,
       drawer: _buildDrawer(),
-      body: IndexedStack(
-        // Use IndexedStack here
-        index: _selectedIndex,
-        children: _widgetOptions,
-      ),
+      body: IndexedStack(index: _selectedIndex, children: widgetOptions),
 
       bottomNavigationBar: BottomNavigationBar(
         type: BottomNavigationBarType.fixed,

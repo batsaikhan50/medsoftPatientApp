@@ -99,6 +99,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
   }
 
   Future<void> _fetchInitialData() async {
+    debugPrint('widget.initialHistoryKey: ${widget.initialHistoryKey}');
     setState(() {
       _isLoading = true;
       _errorMessage = null;
