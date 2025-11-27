@@ -26,7 +26,7 @@ class _ClaimQRScreenState extends State<ClaimQRScreen> {
 
       Navigator.pushAndRemoveUntil(
         context,
-        MaterialPageRoute(builder: (_) => const MyHomePage(title: 'Дуудлагын жагсаалт')),
+        MaterialPageRoute(builder: (_) => const MyHomePage()),
         (route) => false,
       );
     } else {
@@ -106,9 +106,7 @@ class _ClaimQRScreenState extends State<ClaimQRScreen> {
                       : () {
                         Navigator.pushReplacement(
                           context,
-                          MaterialPageRoute(
-                            builder: (_) => const MyHomePage(title: 'Дуудлагын жагсаалт'),
-                          ),
+                          MaterialPageRoute(builder: (_) => const MyHomePage()),
                         );
                       },
               style: ElevatedButton.styleFrom(

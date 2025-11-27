@@ -78,9 +78,9 @@ class _PdfViewerScreenState extends State<PdfViewerScreen> {
               child: PDFView(
                 filePath: widget.pdfPath,
                 enableSwipe: true,
-                swipeHorizontal: true,
+                swipeHorizontal: false, // Change this to FALSE for vertical scrolling
                 autoSpacing: true,
-                pageFling: true,
+                pageFling: false, // Change this to FALSE for continuous scrolling
                 backgroundColor: Colors.grey[700],
 
                 onError: (error) {

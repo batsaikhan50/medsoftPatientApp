@@ -393,19 +393,13 @@ class _LoginScreenState extends State<LoginScreen> with WidgetsBindingObserver {
         debugPrint("Login successful — calling wait API with savedToken: $savedToken");
         await _authDao.waitQR(savedToken);
         if (!mounted) return;
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (context) => MyHomePage(title: 'Дуудлагын жагсаалт')),
-        );
+        Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => MyHomePage()));
         return;
       }
 
       setState(() => _isLoading = false);
       if (!mounted) return;
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (context) => MyHomePage(title: 'Дуудлагын жагсаалт')),
-      );
+      Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => MyHomePage()));
     } else {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setBool('isLoggedIn', false);

@@ -109,7 +109,7 @@ class MyApp extends StatelessWidget {
     debugPrint('isGotUsername: $isGotUsername');
 
     if (isLoggedIn && isGotMedsoftToken && isGotUsername) {
-      return const MyHomePage(title: 'Дуудлагын жагсаалт');
+      return const MyHomePage();
     } else {
       debugPrint('globalFCMToken in _getInitialScreen: $globalFCMToken');
       return LoginScreen(fcmToken: globalFCMToken);
@@ -118,8 +118,7 @@ class MyApp extends StatelessWidget {
 }
 
 class MyHomePage extends StatefulWidget {
-  const MyHomePage({super.key, required this.title});
-  final String title;
+  const MyHomePage({super.key});
 
   @override
   State<MyHomePage> createState() => _MyHomePageState();
