@@ -39,7 +39,6 @@ class _QrScanScreenState extends State<QrScanScreen> {
 
   @override
   void dispose() {
-    // 2. Reset orientation to allow all directions when the screen is disposed
     SystemChrome.setPreferredOrientations([
       DeviceOrientation.portraitUp,
       DeviceOrientation.landscapeLeft,
@@ -48,14 +47,8 @@ class _QrScanScreenState extends State<QrScanScreen> {
     controller?.dispose();
     super.dispose();
   }
-  // @override
-  // void dispose() {
-  //   controller?.dispose();
-  //   super.dispose();
-  // }
 
   Future<void> _handleScannedToken(String url) async {
-    // try {
     Uri uri = Uri.parse(url);
     String? token;
     if (uri.pathSegments.length >= 2 && uri.pathSegments[0] == "qr") {
@@ -65,7 +58,6 @@ class _QrScanScreenState extends State<QrScanScreen> {
     if (token == null) {
       debugPrint("Invalid QR format");
 
-      // Ensure camera resumes even on invalid local format
       if (controller != null) await controller!.resumeCamera();
       setState(() => isScanned = false);
       return;
@@ -86,34 +78,21 @@ class _QrScanScreenState extends State<QrScanScreen> {
     } else {
       debugPrint("Wait API failed: ${response.statusCode}");
 
-      // --- FIX: Camera Unfreeze and Error Handling ---
+      final errorMessage = "Error: Status Code ${response.message}";
 
-      final errorMessage = "Error: Status Code ${response.message}"; // Fallback message
-
-      // 1. Show SnackBar with the error message
       if (mounted) {
         ScaffoldMessenger.of(
           context,
         ).showSnackBar(SnackBar(content: Text(errorMessage), backgroundColor: Colors.red));
       }
 
-      // 2. Unfreeze the Camera and Reset State
       if (controller != null) {
-        // Use the non-null assertion operator (!) to satisfy the analyzer
         await controller!.resumeCamera();
         debugPrint("Camera resumed after API failure.");
       }
 
-      // Reset the flag to allow rescanning
       setState(() => isScanned = false);
     }
-    // } catch (e) {
-    //   debugPrint("Error handling QR: $e");
-
-    //   // Ensure camera resumes on any unexpected error
-    //   if (controller != null) await controller!.resumeCamera();
-    //   setState(() => isScanned = false);
-    // }
   }
 
   void _onQRViewCreated(QRViewController ctrl) {
@@ -133,16 +112,11 @@ class _QrScanScreenState extends State<QrScanScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // Determine the size of the square cutout area
     final screenWidth = MediaQuery.of(context).size.width;
     final screenHeight = MediaQuery.of(context).size.height;
 
-    // Calculate scan area based on a percentage of the smaller dimension,
-    // but cap it at a maximum value (e.g., 350.0) to prevent it from
-    // becoming too large on tablets/iPads.
     final maxScanArea = 350.0;
-    final proportionalSize =
-        (screenWidth < screenHeight ? screenWidth : screenHeight) * 0.9; // 75% of the smallest side
+    final proportionalSize = (screenWidth < screenHeight ? screenWidth : screenHeight) * 0.9;
 
     final scanArea = proportionalSize < maxScanArea ? proportionalSize : maxScanArea;
 
@@ -157,13 +131,13 @@ class _QrScanScreenState extends State<QrScanScreen> {
                 key: qrKey,
                 onQRViewCreated: _onQRViewCreated,
                 overlay: QrScannerOverlayShape(
-                  borderColor: const Color(0xFF00CCCC), // The color of the corner borders
-                  borderRadius: 15, // Slightly increased corner radius
-                  borderLength: 50, // Significantly increased border length
-                  borderWidth: 15, // Significantly increased border thickness
-                  cutOutSize: scanArea, // Size of the central cutout area
-                  // Changed to white background
-                  overlayColor: const Color(0xFFFDF7FE), // Background color outside the cutout area
+                  borderColor: const Color(0xFF00CCCC),
+                  borderRadius: 15,
+                  borderLength: 50,
+                  borderWidth: 15,
+                  cutOutSize: scanArea,
+
+                  overlayColor: const Color(0xFFFDF7FE),
                 ),
               ),
             ),

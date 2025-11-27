@@ -147,11 +147,21 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
   bool _isDialogShowing = false;
   String appBarCaption = 'Медсофт';
 
+  late final List<Widget> _widgetOptions;
+
   @override
   void initState() {
     super.initState();
     _fcmService = FCMService();
     _initServices();
+
+    _widgetOptions = <Widget>[
+      _buildLocationBody(), // Index 0: Home/Location
+      const TimeOrderScreen(), // Index 1: Time Order
+      const QrScanScreen(), // Index 2: QR Scanner
+      HistoryScreen(initialHistoryKey: _historyKeyFromHome), // Index 3: History
+      ProfileScreen(onGuideTap: _navigateToGuideScreen, onLogoutTap: _logOut), // Index 4: Profile
+    ];
 
     Future<void> saveScannedToken(String token) async {
       final prefs = await SharedPreferences.getInstance();
@@ -247,22 +257,22 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
     });
   }
 
-  Widget _buildSelectedBody() {
-    switch (_selectedIndex) {
-      case 0:
-        return _buildLocationBody();
-      case 1:
-        return const TimeOrderScreen();
-      case 2:
-        return const QrScanScreen();
-      case 3:
-        return HistoryScreen(initialHistoryKey: _historyKeyFromHome);
-      case 4:
-        return ProfileScreen(onGuideTap: _navigateToGuideScreen, onLogoutTap: _logOut);
-      default:
-        return _buildLocationBody();
-    }
-  }
+  // Widget _buildSelectedBody() {
+  //   switch (_selectedIndex) {
+  //     case 0:
+  //       return _buildLocationBody();
+  //     case 1:
+  //       return const TimeOrderScreen();
+  //     case 2:
+  //       return const QrScanScreen();
+  //     case 3:
+  //       return HistoryScreen(initialHistoryKey: _historyKeyFromHome);
+  //     case 4:
+  //       return ProfileScreen(onGuideTap: _navigateToGuideScreen, onLogoutTap: _logOut);
+  //     default:
+  //       return _buildLocationBody();
+  //   }
+  // }
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
@@ -656,7 +666,11 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
     return Scaffold(
       appBar: appBarWidget,
       drawer: _buildDrawer(),
-      body: _buildSelectedBody(),
+      body: IndexedStack(
+        // Use IndexedStack here
+        index: _selectedIndex,
+        children: _widgetOptions,
+      ),
 
       bottomNavigationBar: BottomNavigationBar(
         type: BottomNavigationBarType.fixed,

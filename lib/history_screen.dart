@@ -513,7 +513,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
         return SingleChildScrollView(
           scrollDirection: Axis.horizontal,
 
-          child: SizedBox(width: constraints.maxWidth, child: Center(child: tableWidget)),
+          child: Center(child: tableWidget),
         );
       },
     );
@@ -583,7 +583,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
             child: DropdownButtonFormField<HistoryTenant>(
               isExpanded: true,
               decoration: const InputDecoration(
-                labelText: 'Түрээслэгч сонгох',
+                labelText: 'Эмнэлэг сонгох',
                 border: OutlineInputBorder(),
                 contentPadding: EdgeInsets.fromLTRB(12.0, 12.0, 12.0, 12.0),
               ),
