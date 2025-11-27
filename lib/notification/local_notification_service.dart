@@ -3,24 +3,17 @@ import 'package:flutter_app_badger/flutter_app_badger.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
 class LocalNotificationService {
-  // --- 1. SINGLETON PATTERN ---
-  // Private constructor
   LocalNotificationService._internal();
 
-  // Singleton instance
   static final LocalNotificationService _instance = LocalNotificationService._internal();
 
-  // Factory constructor to return the singleton instance
   factory LocalNotificationService() => _instance;
-  // --------------------------
 
-  // Internal plugin instance
   final FlutterLocalNotificationsPlugin _flutterLocalNotificationsPlugin =
       FlutterLocalNotificationsPlugin();
 
   FlutterLocalNotificationsPlugin get plugin => _flutterLocalNotificationsPlugin;
 
-  // --- 2. ANDROID CHANNEL SETUP (Critical for Android 8+) ---
   static const String _channelId = 'medsoft_channel_id';
   static const String _channelName = 'Медсофт Мэдэгдэл';
   static const String _channelDescription = 'Системээс гарах болон бусад чухал мэдэгдлүүд';
@@ -31,11 +24,9 @@ class LocalNotificationService {
     description: _channelDescription,
     importance: Importance.max,
   );
-  // --------------------------
 
   bool _isInitialized = false;
 
-  /// Initializes the local notification settings for Android and iOS, and creates the Android channel.
   Future<void> initializeNotifications() async {
     if (_isInitialized) {
       debugPrint("🔔 Local notifications already initialized.");
@@ -54,7 +45,6 @@ class LocalNotificationService {
       iOS: iOSSettings,
     );
 
-    // Initialize plugin with settings and callback for notification taps
     await _flutterLocalNotificationsPlugin.initialize(
       settings,
       onDidReceiveNotificationResponse: (NotificationResponse response) {
@@ -62,7 +52,6 @@ class LocalNotificationService {
       },
     );
 
-    // CRITICAL: Create Android Notification Channel
     await _flutterLocalNotificationsPlugin
         .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()
         ?.createNotificationChannel(_androidChannel);
@@ -73,17 +62,16 @@ class LocalNotificationService {
 
   Future<void> clearAppBadge() async {
     if (await FlutterAppBadger.isAppBadgeSupported()) {
-      FlutterAppBadger.removeBadge(); // This clears the badge count
+      FlutterAppBadger.removeBadge();
       debugPrint("App badge cleared.");
     } else {
       debugPrint("App badge not supported on this device.");
     }
   }
 
-  /// Shows a notification specific to the logout use case.
   Future<void> showLogoutNotification() async {
     const AndroidNotificationDetails androidDetails = AndroidNotificationDetails(
-      _channelId, // Use the defined channel ID
+      _channelId,
       _channelName,
       channelDescription: _channelDescription,
       importance: Importance.max,
@@ -98,7 +86,7 @@ class LocalNotificationService {
     );
 
     await _flutterLocalNotificationsPlugin.show(
-      0, // Using ID 0 for a specific system alert like logout
+      0,
       'Системээс гарсан байна.',
       'Ахин нэвтэрнэ үү.',
       notificationDetails,

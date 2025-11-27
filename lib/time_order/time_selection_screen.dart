@@ -1,10 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:medsoft_patient/api/time_order_dao.dart';
 import 'package:intl/intl.dart';
-import 'package:marquee/marquee.dart';
+import 'package:medsoft_patient/api/time_order_dao.dart';
 
-// --- Огноо харьцуулах өргөтгөл ---
-// DateTime обьектуудыг цагийн бүрэлдэхүүн хэсэггүйгээр харьцуулах.
 extension DateOnlyCompare on DateTime {
   bool isSameDay(DateTime other) {
     return year == other.year && month == other.month && day == other.day;
@@ -14,25 +11,22 @@ extension DateOnlyCompare on DateTime {
     return year == other.year && month == other.month;
   }
 
-  // Харьцуулалт хийхэд зориулж огноог өдрийн эхлэлээр хэвийн болгох
   DateTime toNormalizedDate() {
     return DateTime(year, month, day);
   }
 }
-// -----------------------------------
 
-// Цагийн Слот-ын өгөгдлийн бүтэц
 class TimeSlot {
   final String id;
   final DateTime startTime;
-  // final DateTime endTime;
+
   final String date;
   final bool isAvailable;
 
   TimeSlot({
     required this.id,
     required this.startTime,
-    // required this.endTime,
+
     required this.date,
     required this.isAvailable,
   });
@@ -45,9 +39,9 @@ class TimeSelectionScreen extends StatefulWidget {
   final String tenant;
   final String branchId;
   final String tasagId;
-  final String tasagName; // Харуулах зорилгоор
+  final String tasagName;
   final String? employeeId;
-  final String? doctorName; // Харуулах зорилгоор
+  final String? doctorName;
   final List<dynamic> timeData;
 
   const TimeSelectionScreen({
@@ -74,39 +68,32 @@ class _TimeSelectionScreenState extends State<TimeSelectionScreen> {
   String? _error;
   TimeSlot? _selectedTimeSlot;
 
-  // Хуанлийн төлөв
   DateTime _currentMonth = DateTime.now().toNormalizedDate();
   DateTime _selectedDate = DateTime.now().toNormalizedDate();
 
-  // API түлхүүрүүдэд "YYYY.MM.DD" форматаар слотуудтай огноог хадгална
   Set<String> _targetDates = {};
 
-  // Бүх цагийн слотуудыг огноогоор нь бүлэглэсэн жагсаалт
   Map<String, List<TimeSlot>> _groupedTimeSlots = {};
 
   @override
   void initState() {
     super.initState();
-    // Call the new processing function with the data passed from the widget
+
     _processTimeSlots(widget.timeData);
   }
 
-  // API түлхүүрүүдэд зориулж огнооны мөрийг тогтмол форматлах туслах функц
   String _formatDateToApi(DateTime date) {
     return DateFormat('yyyy.MM.dd').format(date);
   }
 
-  // Төлөвийг харуулах зорилгоор огнооны мөрийг форматлах туслах функц
   String _formatDateToDisplay(DateTime date) {
     return DateFormat('yyyy оны M сарын d').format(date);
   }
 
-  // --- Хуанлийн удирдлагын аргууд ---
   void _goToPrevMonth() {
     final now = DateTime.now().toNormalizedDate();
     final prevMonth = DateTime(_currentMonth.year, _currentMonth.month - 1, 1).toNormalizedDate();
 
-    // Одоогийн сараас өмнөх сар руу шилжихийг хориглох
     if (prevMonth.isBefore(DateTime(now.year, now.month, 1))) {
       return;
     }
@@ -126,21 +113,19 @@ class _TimeSelectionScreenState extends State<TimeSelectionScreen> {
     final normalizedDay = day.toNormalizedDate();
     final now = DateTime.now().toNormalizedDate();
 
-    // 1. Тухайн өдөр өнгөрсөн эсэхийг шалгах
     if (normalizedDay.isBefore(now)) {
       return;
     }
 
     setState(() {
       _selectedDate = normalizedDay;
-      _selectedTimeSlot = null; // Огноо солигдоход сонголтыг цэвэрлэх
+      _selectedTimeSlot = null;
     });
   }
 
-  // -----------------------------------
   void _processTimeSlots(List<dynamic> data) {
     setState(() {
-      _isLoading = false; // Set loading to false immediately as data is present
+      _isLoading = false;
       _error = null;
       _timeSlots = [];
       _groupedTimeSlots = {};
@@ -149,46 +134,31 @@ class _TimeSelectionScreenState extends State<TimeSelectionScreen> {
 
     final List<TimeSlot> loadedSlots = [];
 
-    // 1. Огнооны обьектуудын жагсаалтаар давтах
     for (var dateData in data) {
-      // Use the passed-in 'data' list
       final String dateString = dateData['targetDate'] as String;
       final List<dynamic> timesList = dateData['times'] as List<dynamic>;
 
-      // Слоттой огноог нэмэх
       _targetDates.add(dateString);
 
-      // 2. Цагийн обьектуудын жагсаалтаар давтах
       for (var timeData in timesList) {
         final String timeString = timeData['time'] as String;
         bool isAvailable = timeData['available'] as bool;
 
-        // --- ТУРШИЛТЫН ҮНЭЛГЭЭ: Боломжгүй слотуудыг симуляц хийх ---
         if (timeString == '09:00' || timeString == '14:00' || timeString == '10:30') {
-          isAvailable = false; // Туршилтанд зориулж зарим цагийг боломжгүй болгох
+          isAvailable = false;
         }
-        // ---------------------------------------------------
 
-        // 3. Огноо ба цагийг нэгтгэж бүрэн DateTime обьект үүсгэх
         final String dateTimeStartString =
             '${dateString.replaceAll('.', '-')}'
             ' $timeString';
 
         try {
           final DateTime startTime = DateTime.parse(dateTimeStartString);
-          // Слот бүрийг 15 минут гэж үзэх
-          // final DateTime endTime = startTime.add(const Duration(minutes: 15));
 
           final String slotId = '$dateTimeStartString-${widget.employeeId}';
 
           loadedSlots.add(
-            TimeSlot(
-              id: slotId,
-              startTime: startTime,
-              // endTime: endTime,
-              date: dateString,
-              isAvailable: isAvailable, // Боломжит байдлын төлөвийг хадгалах
-            ),
+            TimeSlot(id: slotId, startTime: startTime, date: dateString, isAvailable: isAvailable),
           );
         } catch (e) {
           debugPrint('Слот-ын огноо/цагийг задлахад алдаа гарлаа: $dateTimeStartString. Алдаа: $e');
@@ -198,12 +168,10 @@ class _TimeSelectionScreenState extends State<TimeSelectionScreen> {
 
     _timeSlots = loadedSlots;
 
-    // Слотуудыг огноогоор нь бүлэглэх
     for (var slot in _timeSlots) {
       _groupedTimeSlots.putIfAbsent(slot.date, () => []).add(slot);
     }
 
-    // Хэрэв боломжтой бол сонгосон огноог эхний зорилтот өдөр, үгүй бол өнөөдрөөр тохируулах
     final todayApiFormat = _formatDateToApi(DateTime.now());
     if (_targetDates.contains(todayApiFormat)) {
       _selectedDate = DateTime.now().toNormalizedDate();
@@ -226,24 +194,20 @@ class _TimeSelectionScreenState extends State<TimeSelectionScreen> {
     final firstDayOfMonth = DateTime(_currentMonth.year, _currentMonth.month, 1);
     final lastDayOfMonth = DateTime(_currentMonth.year, _currentMonth.month + 1, 0);
 
-    // Dart's DateTime.weekday: 1=Mon, 7=Sun. Даваа гаригаас өмнөх хоосон зайг 0 болгох.
     final leadingEmptyDays = firstDayOfMonth.weekday == 7 ? 6 : firstDayOfMonth.weekday - 1;
 
     final List<Widget> dayWidgets = [];
 
-    // 1. Эхний хоосон нүднүүдийг нэмэх
     for (int i = 0; i < leadingEmptyDays; i++) {
       dayWidgets.add(const SizedBox.shrink());
     }
 
-    // 2. Өдөрүүдийн дугаарыг нэмэх
     for (int i = 1; i <= lastDayOfMonth.day; i++) {
       final day = DateTime(_currentMonth.year, _currentMonth.month, i).toNormalizedDate();
       final isPast = day.isBefore(now);
       final isSelected = day.isSameDay(_selectedDate);
       final hasSlots = _targetDates.contains(_formatDateToApi(day));
 
-      // Өнгө ба дарж болох эсэхийг тодорхойлох
       Color color = Colors.transparent;
       Color textColor = isPast ? Colors.grey.shade400 : Colors.black87;
 
@@ -251,11 +215,9 @@ class _TimeSelectionScreenState extends State<TimeSelectionScreen> {
         color = Colors.blue.shade500;
         textColor = Colors.white;
       } else if (hasSlots && !isPast) {
-        // Боломжит слотуудтай өдрүүдийг тодруулах
         color = Colors.green.shade100;
       }
 
-      // Өдрийн товчлуур
       dayWidgets.add(
         GestureDetector(
           onTap: isPast ? null : () => _onDaySelected(day),
@@ -285,19 +247,10 @@ class _TimeSelectionScreenState extends State<TimeSelectionScreen> {
       );
     }
 
-    const List<String> weekDays = [
-      'Да',
-      'Мя',
-      'Лха',
-      'Пү',
-      'Ба',
-      'Бя',
-      'Ня',
-    ]; // Да, Мя, Лха, Пү, Ба, Бя, Ня
+    const List<String> weekDays = ['Да', 'Мя', 'Лха', 'Пү', 'Ба', 'Бя', 'Ня'];
 
     return Column(
       children: [
-        // Сар ба навигацийн толгой
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
           child: Row(
@@ -312,7 +265,7 @@ class _TimeSelectionScreenState extends State<TimeSelectionScreen> {
               Builder(
                 builder: (context) {
                   final formattedDate = DateFormat('MMMM yyyy', 'mn').format(_currentMonth);
-                  // Эхний үсгийг томруулах
+
                   final capitalizedText =
                       formattedDate.isNotEmpty
                           ? formattedDate.substring(0, 1).toUpperCase() + formattedDate.substring(1)
@@ -335,7 +288,6 @@ class _TimeSelectionScreenState extends State<TimeSelectionScreen> {
           ),
         ),
 
-        // Ажлын өдөрүүдийн шошго
         GridView.count(
           crossAxisCount: 7,
           shrinkWrap: true,
@@ -353,30 +305,158 @@ class _TimeSelectionScreenState extends State<TimeSelectionScreen> {
                   .toList(),
         ),
 
-        // Өдөрүүдийн сүлжээ
         GridView.count(
           crossAxisCount: 7,
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
           mainAxisSpacing: 5.0,
           crossAxisSpacing: 5.0,
-          childAspectRatio: 1.0, // Дөрвөлжин нүд
+          childAspectRatio: 1.0,
           children: dayWidgets,
         ),
       ],
     );
   }
 
+  Widget _buildBodyContent(
+    List<TimeSlot> selectedSlots,
+    bool isTargetDay,
+    bool isPast,
+    String statusMessage,
+    TextStyle statusStyle,
+    BuildContext context,
+  ) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildCalendar(),
+        const Divider(height: 24),
+
+        Center(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 8.0),
+            child: Text(statusMessage, style: statusStyle),
+          ),
+        ),
+        const SizedBox(height: 16),
+
+        if (isTargetDay && selectedSlots.isNotEmpty && !isPast)
+          GridView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 3,
+              mainAxisSpacing: 5,
+              crossAxisSpacing: 0,
+              childAspectRatio: 2.5,
+            ),
+            itemCount: selectedSlots.length,
+            itemBuilder: (context, index) {
+              final slot = selectedSlots[index];
+              final bool enabled = slot.isAvailable;
+              final isSelected = _selectedTimeSlot?.id == slot.id;
+
+              return ActionChip(
+                label: Text(
+                  DateFormat('HH:mm').format(slot.startTime),
+                  style: TextStyle(
+                    color:
+                        enabled
+                            ? (isSelected ? Colors.white : Colors.black87)
+                            : Colors.grey.shade600,
+                    fontWeight: FontWeight.bold,
+                    decoration: enabled ? null : TextDecoration.lineThrough,
+                  ),
+                ),
+                backgroundColor:
+                    enabled
+                        ? (isSelected ? Colors.blue.shade500 : Colors.grey.shade200)
+                        : Colors.grey.shade400,
+                onPressed:
+                    enabled
+                        ? () {
+                          setState(() {
+                            _selectedTimeSlot = isSelected ? null : slot;
+                          });
+                        }
+                        : null,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  side:
+                      isSelected
+                          ? BorderSide(color: Colors.blue.shade700, width: 2)
+                          : BorderSide.none,
+                ),
+              );
+            },
+          )
+        else if (_timeSlots.isEmpty && !_isLoading)
+          Center(child: Text('Сонгосон эмчид боломжит цаг олдсонгүй')),
+
+        ElevatedButton(
+          onPressed:
+              _selectedTimeSlot != null && !_isConfirming
+                  ? () async {
+                    setState(() {
+                      _isConfirming = true;
+                    });
+
+                    final body = {
+                      "tenant": widget.tenant,
+                      "branchId": widget.branchId,
+                      "tasagId": widget.tasagId,
+                      "employeeId": widget.employeeId,
+                      "targetDate": _formatDateToApi(_selectedTimeSlot!.startTime),
+                      "targetTime": DateFormat('HH:mm').format(_selectedTimeSlot!.startTime),
+                    };
+
+                    final response = await _dao.confirmOrder(body);
+
+                    setState(() {
+                      _isConfirming = false;
+                    });
+
+                    if (mounted) {
+                      if (response.success) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Цаг амжилттай захиалагдлаа.'),
+                            backgroundColor: Colors.green,
+                          ),
+                        );
+
+                        Navigator.of(context).pop(true);
+                      } else {
+                        final errorMessage =
+                            response.message ??
+                            'Цаг баталгаажуулахад алдаа гарлаа. Дахин оролдоно уу.';
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text(errorMessage), backgroundColor: Colors.red),
+                        );
+                      }
+                    }
+                  }
+                  : null,
+          style: ElevatedButton.styleFrom(minimumSize: const Size.fromHeight(50)),
+          child:
+              _isConfirming
+                  ? const CircularProgressIndicator(color: Colors.white, strokeWidth: 3)
+                  : const Text('Баталгаажуулах'),
+        ),
+
+        const SizedBox(height: 250),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    // Төлөвийн мэдээллийн логик
     final selectedDateApiFormat = _formatDateToApi(_selectedDate);
     final bool isTargetDay = _targetDates.contains(selectedDateApiFormat);
 
     String statusMessage;
     TextStyle statusStyle;
 
-    // Сонгосон огноо өнгөрсөн эсэхийг шалгах
     final bool isPast = _selectedDate.isBefore(DateTime.now().toNormalizedDate());
 
     if (isPast) {
@@ -391,9 +471,8 @@ class _TimeSelectionScreenState extends State<TimeSelectionScreen> {
       statusStyle = const TextStyle(color: Colors.red, fontWeight: FontWeight.bold);
     }
 
-    // Сонгосон өдрийн слотуудыг шүүх (Боломжгүй слотуудыг оруулан)
     final selectedSlots = _groupedTimeSlots[_formatDateToApi(_selectedDate)] ?? [];
-    // Энэ функц нь одоо ганц форматлагдсан мөрийн оронд өгөгдлийн жагсаалтыг буцаана.
+
     Map<String, String?> getTitleDetails() {
       return {'tasag': widget.tasagName, 'doctor': widget.doctorName};
     }
@@ -403,52 +482,44 @@ class _TimeSelectionScreenState extends State<TimeSelectionScreen> {
       final tasag = details['tasag'];
       final doctor = details['doctor'];
 
-      // Эмчийг харуулах эсэхийг тодорхойлох
       final bool showDoctor = doctor != null && doctor.isNotEmpty;
 
       return Column(
-        // ЧУХАЛ: Бүх баганын агуулгыг зүүн талд зэрэгцүүлэх, гэхдээ доорх нөхцөлтөөр давуу эрх олгоно
         crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min, // Босоо зайг хамгийн багаар авах
+        mainAxisSize: MainAxisSize.min,
         children: [
-          // 1. Үндсэн гарчиг (Төвлөрсөн)
           SizedBox(
-            // Боломжит гарчгийн зайг дүүргэхийн тулд double.infinity-г ашиглах
             width: double.infinity,
             child: Padding(
-              // Хүрээний ирмэг эсвэл боломжит дүрс тэмдэгтэй мөргөлдөхөөс сэргийлж баруун талд зай авах
               padding: const EdgeInsets.only(right: 35.0),
               child: const Text(
-                'Цаг сонгох', // Үндсэн гарчиг
-                textAlign: TextAlign.center, // Боломжит зай дотор текстийг төвлөрүүлэх
+                'Цаг сонгох',
+                textAlign: TextAlign.center,
                 style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: Colors.white),
               ),
             ),
           ),
 
-          const SizedBox(height: 4), // Жижиг тусгаарлагч
-          // 2. Тасаг ба Эмчийн дэлгэрэнгүй мэдээлэл (Нөхцөлт зэрэгцүүлэлт)
+          const SizedBox(height: 4),
+
           showDoctor
               ? Text(
-                // Хэрэв эмч байгаа бол зүүн талд зэрэгцүүлэх
                 'Тасаг: $tasag | Эмч: $doctor',
                 style: const TextStyle(
                   fontWeight: FontWeight.normal,
-                  fontSize: 14, // Дэлгэрэнгүй мэдээллийн мөрийн жижиг үсгийн хэмжээ
-                  color: Colors.white70, // Хоёрдогч мэдээллийн хувьд бага зэрэг бүдэг өнгө
+                  fontSize: 14,
+                  color: Colors.white70,
                 ),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
               )
               : SizedBox(
-                // Хэрэв эмч байхгүй бол төвлөрүүлэхийн тулд SizedBox ашиглах
                 width: double.infinity,
                 child: Padding(
-                  // Үндсэн гарчигтай ижил баруун зайг ашиглах
                   padding: const EdgeInsets.only(right: 35.0),
                   child: Text(
                     'Тасаг: $tasag',
-                    textAlign: TextAlign.center, // Тасгийн нэрийг төвлөрүүлэх
+                    textAlign: TextAlign.center,
                     style: const TextStyle(
                       fontWeight: FontWeight.normal,
                       fontSize: 14,
@@ -460,22 +531,15 @@ class _TimeSelectionScreenState extends State<TimeSelectionScreen> {
         ],
       );
     }
-    // ... _TimeSelectionScreenState-ийн build метод дотор:
 
-    // ...
+    final double screenWidth = MediaQuery.of(context).size.width;
+    const double kTabletBreakpoint = 600.0;
 
-    // final String titleText = getAppBarTitle();
     return Scaffold(
       appBar: AppBar(
-        // 💥 Энд тусгай виджетийг ашиглах 💥
         title: buildTitleWidget(context),
-
-        // Агуулга өөрчлөгдөхөд үсрэхээс сэргийлж тогтмол өндрийг тохируулах
         toolbarHeight: 80,
-
-        // Гарчгийг AppBar-ын өндөр дотор босоо чиглэлд төвлөрүүлэхийг баталгаажуулах
         centerTitle: true,
-
         backgroundColor: const Color(0xFF00CCCC),
       ),
       body:
@@ -490,152 +554,28 @@ class _TimeSelectionScreenState extends State<TimeSelectionScreen> {
               )
               : SingleChildScrollView(
                 padding: const EdgeInsets.all(16.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // 1. Хуанли
-                    _buildCalendar(),
-                    const Divider(height: 24),
-
-                    // 2. Төлөвийн текст
-                    Center(
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 8.0),
-                        child: Text(statusMessage, style: statusStyle),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-
-                    // 3. Цагийн Слот-ын сүлжээ (3 багана)
-                    if (isTargetDay && selectedSlots.isNotEmpty && !isPast)
-                      GridView.builder(
-                        shrinkWrap: true,
-                        physics: const NeverScrollableScrollPhysics(),
-                        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                          crossAxisCount: 3,
-                          mainAxisSpacing: 5,
-                          crossAxisSpacing: 0,
-                          childAspectRatio: 2.5, // Чипний хэмжээний харьцааг тохируулах
-                        ),
-                        itemCount: selectedSlots.length,
-                        itemBuilder: (context, index) {
-                          final slot = selectedSlots[index];
-                          final bool enabled = slot.isAvailable;
-                          final isSelected = _selectedTimeSlot?.id == slot.id;
-
-                          return ActionChip(
-                            label: Text(
-                              DateFormat(
-                                'HH:mm',
-                              ).format(slot.startTime), // Зөвхөн эхлэх цагийг харуулах
-                              style: TextStyle(
-                                color:
-                                    enabled
-                                        ? (isSelected ? Colors.white : Colors.black87)
-                                        : Colors.grey.shade600,
-                                fontWeight: FontWeight.bold,
-                                decoration: enabled ? null : TextDecoration.lineThrough,
-                              ),
+                child: Center(
+                  child:
+                      screenWidth > kTabletBreakpoint
+                          ? ConstrainedBox(
+                            constraints: const BoxConstraints(maxWidth: kTabletBreakpoint),
+                            child: _buildBodyContent(
+                              selectedSlots,
+                              isTargetDay,
+                              isPast,
+                              statusMessage,
+                              statusStyle,
+                              context,
                             ),
-                            backgroundColor:
-                                enabled
-                                    ? (isSelected ? Colors.blue.shade500 : Colors.grey.shade200)
-                                    : Colors
-                                        .grey
-                                        .shade400, // Боломжгүй слотуудад зориулсан ялгаатай саарал өнгө
-                            onPressed:
-                                enabled
-                                    ? () {
-                                      setState(() {
-                                        _selectedTimeSlot = isSelected ? null : slot;
-                                      });
-                                    }
-                                    : null, // Боломжгүй бол disable хийх
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(8),
-                              side:
-                                  isSelected
-                                      ? BorderSide(color: Colors.blue.shade700, width: 2)
-                                      : BorderSide.none,
-                            ),
-                          );
-                        },
-                      )
-                    else if (_timeSlots.isEmpty && !_isLoading)
-                      Center(child: Text('Сонгосон эмчид боломжит цаг олдсонгүй')),
-
-                    // 4. Баталгаажуулах товчлуур
-                    // const SizedBox(height: 10),
-                    // time_selection_screen.dart (Confirmation Button Widget)
-                    // time_selection_screen.dart (Confirmation Button Widget onPressed)
-                    ElevatedButton(
-                      onPressed:
-                          _selectedTimeSlot != null && !_isConfirming
-                              ? () async {
-                                setState(() {
-                                  _isConfirming = true;
-                                });
-
-                                // 1. Prepare the API body (same as before)
-                                final body = {
-                                  "tenant": widget.tenant,
-                                  "branchId": widget.branchId,
-                                  "tasagId": widget.tasagId,
-                                  "employeeId": widget.employeeId,
-                                  "targetDate": _formatDateToApi(_selectedTimeSlot!.startTime),
-                                  "targetTime": DateFormat(
-                                    'HH:mm',
-                                  ).format(_selectedTimeSlot!.startTime),
-                                };
-
-                                // 2. Call the API
-                                final response = await _dao.confirmOrder(body);
-
-                                // Update loading state immediately after API call
-                                setState(() {
-                                  _isConfirming = false;
-                                });
-
-                                if (mounted) {
-                                  // 3. Show SnackBar based on success/failure
-                                  if (response.success) {
-                                    // SUCCESS Logic: Show SnackBar, then pop (and pass true)
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      const SnackBar(
-                                        content: Text(
-                                          'Цаг амжилттай захиалагдлаа.',
-                                        ), // Order successfully confirmed
-                                        backgroundColor: Colors.green,
-                                      ),
-                                    );
-
-                                    // 4. Pop the screen ONLY on success
-                                    Navigator.of(context).pop(true);
-                                  } else {
-                                    // FAILURE Logic: Show SnackBar, DO NOT POP (remain on screen)
-                                    final errorMessage =
-                                        response.message ??
-                                        'Цаг баталгаажуулахад алдаа гарлаа. Дахин оролдоно уу.';
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      SnackBar(
-                                        content: Text(errorMessage),
-                                        backgroundColor: Colors.red,
-                                      ),
-                                    );
-                                    // We do not pop here, so the user can try again or select a different slot.
-                                  }
-                                }
-                              }
-                              : null,
-                      style: ElevatedButton.styleFrom(minimumSize: const Size.fromHeight(50)),
-                      child:
-                          _isConfirming
-                              ? const CircularProgressIndicator(color: Colors.white, strokeWidth: 3)
-                              : const Text('Баталгаажуулах'),
-                    ),
-
-                    const SizedBox(height: 250),
-                  ],
+                          )
+                          : _buildBodyContent(
+                            selectedSlots,
+                            isTargetDay,
+                            isPast,
+                            statusMessage,
+                            statusStyle,
+                            context,
+                          ),
                 ),
               ),
     );

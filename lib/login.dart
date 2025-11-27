@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -11,7 +10,7 @@ import 'package:medsoft_patient/reset_password.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class LoginScreen extends StatefulWidget {
-  final String? fcmToken; // 🔸 receive it here
+  final String? fcmToken;
   const LoginScreen({super.key, this.fcmToken});
 
   @override
@@ -26,7 +25,6 @@ class _LoginScreenState extends State<LoginScreen> with WidgetsBindingObserver {
   final TextEditingController _usernameController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   final TextEditingController _passwordCheckController = TextEditingController();
-  // final TextEditingController _regNoController = TextEditingController();
   final TextEditingController _regNoNumberController = TextEditingController();
   final TextEditingController _firstnameController = TextEditingController();
   final TextEditingController _lastnameController = TextEditingController();
@@ -99,7 +97,7 @@ class _LoginScreenState extends State<LoginScreen> with WidgetsBindingObserver {
     _passwordController.dispose();
     _passwordCheckController.dispose();
     _regNoNumberController.dispose();
-    // _regNoFocus.dispose();
+
     _firstnameFocus.dispose();
     _lastnameFocus.dispose();
     _codeController.dispose();
@@ -191,11 +189,6 @@ class _LoginScreenState extends State<LoginScreen> with WidgetsBindingObserver {
   void initState() {
     super.initState();
 
-    // final shortestSide = MediaQuery.of(context).size.shortestSide;
-    // debugPrint('shortestSide : $shortestSide');
-    // Check if the current context has a size available (it usually does in initState of a State)
-
-    // Orientation setup (safe inside post-frame callback)
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final shortestSide = MediaQuery.of(context).size.shortestSide;
       debugPrint('shortestSide : $shortestSide');
@@ -238,11 +231,6 @@ class _LoginScreenState extends State<LoginScreen> with WidgetsBindingObserver {
       _updatePasswordRules();
     });
 
-    // _regNoController.addListener(() {
-    //   setState(() {});
-    //   _validateRegNo();
-    // });
-
     _regNoNumberController.addListener(() {
       setState(() {});
       _validateRegNo();
@@ -269,7 +257,6 @@ class _LoginScreenState extends State<LoginScreen> with WidgetsBindingObserver {
   }
 
   void _validateRegNo() {
-    // final regNo = _regNoController.text.trim().toUpperCase();
     final firstLetter = _regNoFirstLetter ?? '';
     final secondLetter = _regNoSecondLetter ?? '';
     final numberPart = _regNoNumberController.text.trim();
@@ -295,7 +282,6 @@ class _LoginScreenState extends State<LoginScreen> with WidgetsBindingObserver {
     final passwordMatchError = _validatePasswordMatch(password, _passwordCheckController.text);
     final rules = _validatePasswordRules(password);
 
-    // ⚠️ UPDATED logic to combine letters and number field for validation
     final firstLetter = _regNoFirstLetter ?? '';
     final secondLetter = _regNoSecondLetter ?? '';
     final numberPart = _regNoNumberController.text.trim();
@@ -322,7 +308,6 @@ class _LoginScreenState extends State<LoginScreen> with WidgetsBindingObserver {
   Future<void> _register() async {
     setState(() => _isLoading = true);
 
-    // ⚠️ UPDATED: Combine the parts for the 'regNo' field in the body
     final regNo =
         (_regNoFirstLetter ?? '') + (_regNoSecondLetter ?? '') + _regNoNumberController.text;
 
@@ -330,7 +315,7 @@ class _LoginScreenState extends State<LoginScreen> with WidgetsBindingObserver {
       'username': _usernameController.text,
       'password': _passwordController.text,
       'passwordConfirm': _passwordCheckController.text,
-      'regNo': regNo, // ⚠️ UPDATED
+      'regNo': regNo,
       'firstname': _firstnameController.text,
       'lastname': _lastnameController.text,
       'type': 'patient',
@@ -432,25 +417,25 @@ class _LoginScreenState extends State<LoginScreen> with WidgetsBindingObserver {
     }
   }
 
-  Future<void> _loadSharedPreferencesData() async {
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-    Map<String, dynamic> data = {};
+  // Future<void> _loadSharedPreferencesData() async {
+  //   SharedPreferences prefs = await SharedPreferences.getInstance();
+  //   Map<String, dynamic> data = {};
 
-    Set<String> allKeys = prefs.getKeys();
-    for (String key in allKeys) {
-      if (key == 'isLoggedIn') {
-        data[key] = prefs.getBool(key);
-      } else {
-        debugPrint("trouble key: $key");
-        data[key] = prefs.getString(key) ?? 'null';
-      }
-    }
+  //   Set<String> allKeys = prefs.getKeys();
+  //   for (String key in allKeys) {
+  //     if (key == 'isLoggedIn') {
+  //       data[key] = prefs.getBool(key);
+  //     } else {
+  //       debugPrint("trouble key: $key");
+  //       data[key] = prefs.getString(key) ?? 'null';
+  //     }
+  //   }
 
-    setState(() {
-      username = prefs.getString('Username');
-      sharedPreferencesData = data;
-    });
-  }
+  //   setState(() {
+  //     username = prefs.getString('Username');
+  //     sharedPreferencesData = data;
+  //   });
+  // }
 
   Map<String, bool> _validatePasswordRules(String password) {
     return {
@@ -475,22 +460,14 @@ class _LoginScreenState extends State<LoginScreen> with WidgetsBindingObserver {
   void didChangeDependencies() {
     super.didChangeDependencies();
 
-    // Calculate the necessary screen metrics inside a method that runs on dependency change
     final screenWidth = MediaQuery.of(context).size.width;
     const double maxToggleWidth = 500.0;
     final toggleWidth = screenWidth > maxToggleWidth ? maxToggleWidth : screenWidth - 32;
     final newKnobWidth = (toggleWidth - 8) / 2;
     final newTargetPosition = _selectedToggleIndex == 1 ? newKnobWidth : 0.0;
 
-    // Crucial: Only update if the knobWidth has changed significantly
-    // OR if the current position is not the target position.
-    // This correctly snaps the position right after an orientation change.
     if (_dragPosition != newTargetPosition) {
-      // We use a temporary variable for comparison to ensure we only call setState once.
-      // If the widget was snapped before (at 0 or the old knobWidth), it must snap to the new target.
-      // Calling setState here ensures the widget rebuilds with the corrected _dragPosition.
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        // Use setState to ensure the build method runs with the corrected position.
         if (mounted) {
           setState(() {
             _dragPosition = newTargetPosition;
@@ -509,12 +486,8 @@ class _LoginScreenState extends State<LoginScreen> with WidgetsBindingObserver {
     final knobWidth = (toggleWidth - 8) / 2;
     debugPrint("Knob width: $knobWidth");
 
-    // The snap logic must be moved to didChangeDependencies, so we only need the target here.
     final double targetPosition = _selectedToggleIndex == 1 ? knobWidth : 0.0;
 
-    // The current position uses _dragPosition for the actual drag movement,
-    // and targetPosition for the snapped location.
-    // We MUST keep this logic for the dragging to work!
     final double currentKnobPosition =
         (_dragPosition > 0 && _dragPosition < knobWidth) ? _dragPosition : targetPosition;
 
@@ -525,20 +498,19 @@ class _LoginScreenState extends State<LoginScreen> with WidgetsBindingObserver {
           onHorizontalDragUpdate: (details) {
             setState(() {
               _dragPosition += details.delta.dx;
-              // Clamping is necessary to keep the drag within bounds
+
               _dragPosition = _dragPosition.clamp(0, knobWidth);
             });
           },
           onHorizontalDragEnd: (_) {
             setState(() {
-              // Snap to the closest side after dragging ends
               if (_dragPosition < (knobWidth / 2)) {
                 _selectedToggleIndex = 0;
-                // Reset _dragPosition to 0 after snap for consistency
+
                 _dragPosition = 0;
               } else {
                 _selectedToggleIndex = 1;
-                // Reset _dragPosition to knobWidth after snap for consistency
+
                 _dragPosition = knobWidth;
               }
             });
@@ -546,7 +518,6 @@ class _LoginScreenState extends State<LoginScreen> with WidgetsBindingObserver {
           onTapDown: (details) {
             final dx = details.localPosition.dx;
             setState(() {
-              // Tap directly sets the index and the drag position (which will be used as the target)
               if (dx < toggleWidth / 2) {
                 _selectedToggleIndex = 0;
                 _dragPosition = 0;
@@ -568,7 +539,7 @@ class _LoginScreenState extends State<LoginScreen> with WidgetsBindingObserver {
                 AnimatedPositioned(
                   duration: const Duration(milliseconds: 200),
                   curve: Curves.easeOut,
-                  left: currentKnobPosition, // Now using the correct position
+                  left: currentKnobPosition,
                   top: 0,
                   bottom: 0,
                   width: knobWidth,
@@ -583,7 +554,7 @@ class _LoginScreenState extends State<LoginScreen> with WidgetsBindingObserver {
                     ),
                   ),
                 ),
-                // ... (Labels remain the same)
+
                 Row(
                   children: List.generate(2, (index) {
                     final label = index == 0 ? 'Нэвтрэх' : 'Бүртгүүлэх';
@@ -657,7 +628,7 @@ class _LoginScreenState extends State<LoginScreen> with WidgetsBindingObserver {
             displayDoneButton: false,
           ),
           KeyboardActionsItem(
-            focusNode: _regNoLetterFocus, // The 8-digit number field
+            focusNode: _regNoLetterFocus,
             displayArrows: false,
             displayDoneButton: false,
           ),
@@ -704,7 +675,7 @@ class _LoginScreenState extends State<LoginScreen> with WidgetsBindingObserver {
       focusNode: _regNoLetterFocus,
       decoration: InputDecoration(
         isDense: true,
-        // ⬅️ FIX: Increased vertical padding to match the height of 'Овог' field (vertical: 15)
+
         contentPadding: const EdgeInsets.symmetric(horizontal: 4, vertical: 15),
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
       ),
@@ -730,16 +701,10 @@ class _LoginScreenState extends State<LoginScreen> with WidgetsBindingObserver {
   }
 
   Widget _buildLoginForm() {
-    // final isTablet = MediaQuery.of(context).size.shortestSide >= 600;
-    // final screenWidth = MediaQuery.of(context).size.width;
-    // final contentWidth = isTablet ? screenWidth * 0.5 : double.infinity;
     final isTablet = MediaQuery.of(context).size.shortestSide >= 600;
-    // Let's use the toggle's max width for content on large screens
+
     const double maxToggleWidth = 500.0;
 
-    // The contentWidth should be at least maxToggleWidth to prevent clipping.
-    // However, since we are only using this BoxConstrains for the overall content width,
-    // let's adjust it to use the fixed max width instead of 50% screen width.
     final contentWidth = isTablet ? maxToggleWidth : double.infinity;
     return SingleChildScrollView(
       controller: _scrollController,
@@ -964,38 +929,10 @@ class _LoginScreenState extends State<LoginScreen> with WidgetsBindingObserver {
 
                 if (_selectedToggleIndex == 1) const SizedBox(height: 10),
 
-                // if (_selectedToggleIndex == 1)
-                //   TextFormField(
-                //     controller: _regNoController,
-                //     focusNode: _regNoFocus,
-                //     textInputAction: TextInputAction.next,
-                //     decoration: InputDecoration(
-                //       labelText: 'Регистрын дугаар',
-                //       prefixIcon: const Icon(Icons.badge),
-                //       suffixIcon:
-                //           _regNoController.text.isNotEmpty
-                //               ? IconButton(
-                //                 icon: const Icon(Icons.clear),
-                //                 onPressed: () {
-                //                   _regNoController.clear();
-                //                 },
-                //               )
-                //               : null,
-                //       border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                //       errorText: _regNoValidationError,
-                //     ),
-                //     onChanged: (value) {
-                //       _regNoController.value = _regNoController.value.copyWith(
-                //         text: value.toUpperCase(),
-                //         selection: TextSelection.collapsed(offset: value.length),
-                //       );
-                //     },
-                //   ),
                 if (_selectedToggleIndex == 1)
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Manually add the Label
                       const Text(
                         'Регистрын дугаар',
                         style: TextStyle(
@@ -1006,13 +943,11 @@ class _LoginScreenState extends State<LoginScreen> with WidgetsBindingObserver {
                       ),
                       const SizedBox(height: 4),
 
-                      // Input Row
                       Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          // First Letter Picker
                           Expanded(
-                            flex: 2, // Stable width for the letter
+                            flex: 2,
                             child: _buildRegNoLetterPicker(
                               currentValue: _regNoFirstLetter,
                               onChanged: (String? newValue) {
@@ -1023,11 +958,11 @@ class _LoginScreenState extends State<LoginScreen> with WidgetsBindingObserver {
                               },
                             ),
                           ),
-                          // ⬅️ FIX: Small 4-pixel gap to prevent border collision
+
                           const SizedBox(width: 4),
-                          // Second Letter Picker
+
                           Expanded(
-                            flex: 2, // Stable width for the letter
+                            flex: 2,
                             child: _buildRegNoLetterPicker(
                               currentValue: _regNoSecondLetter,
                               onChanged: (String? newValue) {
@@ -1038,10 +973,10 @@ class _LoginScreenState extends State<LoginScreen> with WidgetsBindingObserver {
                               },
                             ),
                           ),
-                          // ⬅️ FIX: Small 4-pixel gap
+
                           const SizedBox(width: 4),
                           Expanded(
-                            flex: 5, // Keep the stable flex ratio
+                            flex: 5,
                             child: TextFormField(
                               controller: _regNoNumberController,
                               focusNode: _regNoFocus,
@@ -1051,9 +986,9 @@ class _LoginScreenState extends State<LoginScreen> with WidgetsBindingObserver {
                               inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                               decoration: InputDecoration(
                                 hintText: '8 оронтой тоо',
-                                counterText: '', // Hides the counter
+                                counterText: '',
                                 isDense: true,
-                                // ⬅️ FIX: Use the same increased vertical padding (vertical: 15)
+
                                 contentPadding: const EdgeInsets.symmetric(
                                   horizontal: 10,
                                   vertical: 15,
@@ -1075,7 +1010,7 @@ class _LoginScreenState extends State<LoginScreen> with WidgetsBindingObserver {
                           ),
                         ],
                       ),
-                      // Manually add the Error Text
+
                       if (_regNoValidationError != null)
                         Padding(
                           padding: const EdgeInsets.only(top: 8.0, left: 12.0),

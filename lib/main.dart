@@ -1,13 +1,10 @@
 import 'dart:async';
-import 'dart:convert';
 
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
-import 'package:http/http.dart' as http;
-// import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:medsoft_patient/api/auth_dao.dart';
 import 'package:medsoft_patient/api/home_dao.dart';
 import 'package:medsoft_patient/api/map_dao.dart';
@@ -28,27 +25,15 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uni_links/uni_links.dart';
 
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
-// String? globalFCMToken;
-// Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
-//   await Firebase.initializeApp();
-//   debugPrint("🔔 Background message: ${message.messageId}");
-// }
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp();
 
-  // Use the moved background handler from fcm_token.dart (not fcm_service.dart)
   FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
 
-  // --- NEW FCM INITIALIZATION LOGIC ---
-  // final fcmService = FCMService();
-  // await fcmService
-  //     .initFCM(); // This calls _localNotificationService.initializeNotifications() and sets globalFCMToken
-  // --- END NEW FCM INITIALIZATION LOGIC ---
-
-  // Since globalFCMToken is now set, we can rely on it being available
-  // when MyApp builds its initial screen.
+  final fcmService = FCMService();
+  await fcmService.initFCM();
 
   runApp(const MyApp());
 }
@@ -63,15 +48,9 @@ class MyApp extends StatelessWidget {
         GlobalMaterialLocalizations.delegate,
         GlobalWidgetsLocalizations.delegate,
         GlobalCupertinoLocalizations.delegate,
-        // Add specific delegate for Mongolian if available,
-        // but flutter_localizations should handle 'mn' for date/time.
       ],
 
-      // 2. DEFINE SUPPORTED LOCALES
-      supportedLocales: const [
-        Locale('en', ''), // English
-        Locale('mn', ''), // Mongolian (mn) <-- REQUIRED
-      ],
+      supportedLocales: const [Locale('en', ''), Locale('mn', '')],
 
       debugShowCheckedModeBanner: false,
       navigatorKey: navigatorKey,
@@ -154,8 +133,7 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
 
   final _authDao = AuthDAO();
   final _mapDao = MapDAO();
-  final _homeDao = HomeDAO();
-  // String? _fcmToken;
+  // final _homeDao = HomeDAO();
 
   int _selectedIndex = 0;
   String? _historyKeyFromHome;
@@ -175,7 +153,6 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
     _fcmService = FCMService();
     _initServices();
 
-    // _initFCM();
     Future<void> saveScannedToken(String token) async {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString('scannedToken', token);
@@ -222,7 +199,6 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       final prefs = await SharedPreferences.getInstance();
       if (prefs.getBool('isLoggedIn') == true) {
-        // _initializeNotifications();
         _loadSharedPreferencesData();
         _sendXMedsoftTokenToAppDelegate();
         platform.setMethodCallHandler(_methodCallHandler);
@@ -233,32 +209,9 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
   }
 
   Future<void> _initServices() async {
-    // Initialize both FCM and Local Notifications
     await _localNotificationService.initializeNotifications();
     await _fcmService.initFCM();
   }
-  // Future<void> _initFCM() async {
-  //   debugPrint("HERE------------------------------");
-  //   FirebaseMessaging messaging = FirebaseMessaging.instance;
-
-  //   // iOS permission
-  //   await messaging.requestPermission(alert: true, badge: true, sound: true);
-
-  //   // Get device token
-  //   // String? token = await messaging.getToken();
-  //   globalFCMToken = await messaging.getToken();
-  //   debugPrint("✅ FCM Token: $globalFCMToken");
-
-  //   // ✅ Subscribe to broadcast topic "all"
-  //   await messaging.subscribeToTopic('all');
-  //   await messaging.unsubscribeFromTopic('all');
-  //   debugPrint("📡 Subscribed to topic 'all'");
-
-  //   // Foreground listener
-  //   FirebaseMessaging.onMessage.listen((RemoteMessage message) {
-  //     debugPrint('📬 Foreground message: ${message.notification?.title}');
-  //   });
-  // }
 
   @override
   void dispose() {
@@ -285,7 +238,7 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
           appBarCaption = 'QR код уншигч';
           break;
         case 3:
-          appBarCaption = 'Өвчний түүх';
+          appBarCaption = 'Түүх';
           break;
         case 4:
           appBarCaption = 'Профайл';
@@ -413,14 +366,6 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
                     debugPrint("currentRoomId: ${prefs.getString('currentRoomId')}");
 
                     debugPrint("URL: ${Uri.parse("${Constants.appUrl}/room/done")}");
-                    // final response = await http.post(
-                    //   Uri.parse("${Constants.appUrl}/room/done"),
-                    //   headers: {
-                    //     'Authorization': 'Bearer $token',
-                    //     'Content-Type': 'application/json',
-                    //   },
-                    //   body: json.encode({'roomId': currentRoomId}),
-                    // );
 
                     final response = await _mapDao.acceptDoneRequest({'roomId': currentRoomId});
 
@@ -470,7 +415,7 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
 
       if (response.statusCode == 200) {
         debugPrint('API Response data: ${response.data}');
-        // 🚨 ЗААВАР 1: API хариуны 'success' талбарыг зөв шалгах
+
         if (response.data is Map<String, dynamic> && response.success == true) {
           roomInfo = response.data;
 
@@ -507,7 +452,7 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
 
             setState(() {
               _isLoading = false;
-              _errorMessage = null; // Clear error on success
+              _errorMessage = null;
             });
             debugPrint('Room fetch success! Navigating...');
           } else {
@@ -521,10 +466,9 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
             );
           }
         } else {
-          // 🚨 ЗААВАР 1: API хариуны 'message' талбарыг зөв авах
           setState(() {
             _isLoading = false;
-            // 'data' нь null биш гэж үзвэл data!['message']-г ашиглана
+
             _errorMessage = response.message ?? 'Алдаа: Мэдээлэл авах боломжгүй байна.';
           });
           debugPrint('API success false: ${response.message}');
@@ -547,15 +491,11 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
     }
     debugPrint('fetchRoom finished. _isLoading: $_isLoading, _errorMessage: $_errorMessage');
 
-    // 🚨 ЗААВАР 2: SnackBar логикийг тааруулж өөрчлөх
     if (_errorMessage != null && mounted) {
-      // API-ийн жишээ хариу дахь мессежтэй тааруулсан
       final isCallError = _errorMessage! == 'Дуудлага байхгүй';
 
-      // 'Дуудлага байхгүй' бол хар дэвсгэр, цагаан текст болгосон.
       final backgroundColor = isCallError ? Colors.black : Colors.red;
 
-      // Текст бүх тохиолдолд цагаан
       final textColor = Colors.white;
 
       ScaffoldMessenger.of(context).showSnackBar(
@@ -608,20 +548,6 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
     });
   }
 
-  // void _initializeNotifications() async {
-  //   const AndroidInitializationSettings androidSettings = AndroidInitializationSettings('app_icon');
-  //   const DarwinInitializationSettings iOSSettings = DarwinInitializationSettings(
-  //     requestAlertPermission: true,
-  //     requestBadgePermission: true,
-  //     requestSoundPermission: true,
-  //   );
-  //   final InitializationSettings settings = InitializationSettings(
-  //     android: androidSettings,
-  //     iOS: iOSSettings,
-  //   );
-  //   await flutterLocalNotificationsPlugin.initialize(settings);
-  // }
-
   Future<void> _sendXMedsoftTokenToAppDelegate() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     try {
@@ -655,67 +581,31 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
     }
   }
 
-  // Future<void> _showNotification() async {
-  //   const AndroidNotificationDetails androidDetails = AndroidNotificationDetails(
-  //     'medsoft_channel_id',
-  //     'Медсофт Мэдэгдэл',
-  //     channelDescription: 'Системээс гарах болон бусад чухал мэдэгдлүүд',
-  //     importance: Importance.max,
-  //     priority: Priority.high,
-  //     showWhen: false,
-  //   );
-  //   const DarwinNotificationDetails iOSDetails = DarwinNotificationDetails(badgeNumber: 1);
-  //   const NotificationDetails notificationDetails = NotificationDetails(
-  //     android: androidDetails,
-  //     iOS: iOSDetails,
-  //   );
-  //   await flutterLocalNotificationsPlugin.show(
-  //     0,
-  //     'Системээс гарсан байна.',
-  //     'Ахин нэвтэрнэ үү.',
-  //     notificationDetails,
-  //   );
-  // }
   Widget _buildLocationBody() {
     return Column(
       children: [
-        // Top Half: NewsFeedWidget
-        const Expanded(
-          flex: 4, // Represents 40%
-          child: NewsFeedWidget(),
-        ),
-        // 🎯 ШИНЭ ГАРЧИГ ХЭСЭГ: "Үйлчилгээ"
+        const Expanded(flex: 4, child: NewsFeedWidget()),
+
         Padding(
           padding: const EdgeInsets.only(top: 0.0, bottom: 8.0, left: 16.0, right: 16.0),
           child: Row(
             children: [
-              // 1. Гарчиг текст
-              const Text(
-                'Үйлчилгээ', // <<--- ГАРЧИГ: "Үйлчилгээ"
-                style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
-              ),
+              const Text('Үйлчилгээ', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
 
               const SizedBox(width: 8),
-              // 2. Зураас
+
               Expanded(child: Divider(color: Colors.grey, height: 1, thickness: 1)),
             ],
           ),
         ),
-        // Bottom Half: Home Buttons Grid (including the map button)
-        Expanded(
-          flex: 7, // Represents 60%
-          child: _buildHomeButtonsGrid(),
-        ),
+
+        Expanded(flex: 7, child: _buildHomeButtonsGrid()),
       ],
     );
   }
 
-  // And the helper method (if you choose to use it):
   Widget _buildHomeButtonsGrid() {
-    return _HomeButtonsGrid(
-      // Pass the fetchRoom method as the required callback
-      onMapTap: fetchRoom,
-    );
+    return _HomeButtonsGrid(onMapTap: fetchRoom);
   }
 
   @override
@@ -723,7 +613,7 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
     final platform = Theme.of(context).platform;
     final orientation = MediaQuery.of(context).orientation;
     final shortestSide = MediaQuery.of(context).size.shortestSide;
-    final isHistoryScreen = appBarCaption == 'Өвчний түүх';
+    final isHistoryScreen = appBarCaption == 'Түүх';
     final isLandscape = orientation == Orientation.landscape;
     debugPrint('screenWidth: $shortestSide, orientation: $orientation, platform: $platform');
     final isCompactIOS = platform == TargetPlatform.iOS && shortestSide < 600;
@@ -847,23 +737,18 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
   }
 }
 
-// Add the new _HomeButtonsGrid widget
 class _HomeButtonsGrid extends StatefulWidget {
-  // 1. Define the callback function signature
   final VoidCallback onMapTap;
 
-  const _HomeButtonsGrid({required this.onMapTap, super.key});
+  const _HomeButtonsGrid({required this.onMapTap});
 
   @override
   State<_HomeButtonsGrid> createState() => _HomeButtonsGridState();
 }
-// In main.dart
 
 class _HomeButtonsGridState extends State<_HomeButtonsGrid> {
-  // Use the actual DAO provided in home_dao.dart
   final _homeDao = HomeDAO();
 
-  // The list will hold maps where 'icon' is a String name and 'navigate' is the destination
   List<Map<String, String>> _buttons = [];
   bool _isLoading = true;
   String? _errorMessage;
@@ -891,7 +776,6 @@ class _HomeButtonsGridState extends State<_HomeButtonsGrid> {
       _errorMessage = 'Учирсан алдаа: ${e.toString()}.';
       debugPrint('Error fetching home buttons: $e');
     } finally {
-      // 🎯 FIX: Always insert the map button at index 0, regardless of API response.
       _buttons.insert(0, {"label": "Газрын зураг харах", "icon": "Map", "navigate": "map"});
 
       setState(() {
@@ -901,30 +785,21 @@ class _HomeButtonsGridState extends State<_HomeButtonsGrid> {
   }
 
   void _handleNavigation(String navigateTo, String label) async {
-    // Logic for navigation based on 'navigate' value
     debugPrint('Navigating to: $navigateTo');
 
-    // Get the state of the parent MyHomePage widget
     final parentState = context.findAncestorStateOfType<_MyHomePageState>();
     if (parentState == null) return;
 
-    // ❌ The 'map' logic was REMOVED from here because it is now handled
-    //    directly in the 'build' method's ElevatedButton logic for the map button.
-
     if (navigateTo == 'order') {
-      // Navigate to TimeOrderScreen (BottomNav index 1) by changing the index
       parentState._onItemTapped(1);
     } else if (navigateTo.startsWith('/history')) {
-      // 1. Extract the historyKey
       final uri = Uri.parse(navigateTo);
       final historyKey = uri.queryParameters['historyKey'];
 
-      // 2. Set the key in the parent's state
       parentState.setState(() {
         parentState._historyKeyFromHome = historyKey;
       });
 
-      // 3. Change the tab index
       parentState._onItemTapped(3);
 
       debugPrint('History Key set in parent state and tab switched: $historyKey');
@@ -932,9 +807,6 @@ class _HomeButtonsGridState extends State<_HomeButtonsGrid> {
       widget.onMapTap();
     }
   }
-  // Simple mapping from icon name string to an actual IconData
-  // Since Dart doesn't allow dynamic lookup of static Icon properties,
-  // we must keep the mapping for the strings provided by the API (like 'InsertInvitation').
 
   IconData _getIconData(String iconName) {
     switch (iconName) {
@@ -974,14 +846,18 @@ class _HomeButtonsGridState extends State<_HomeButtonsGrid> {
       );
     }
 
-    return Padding(
+    final shortestSide = MediaQuery.of(context).size.shortestSide;
+    final isTablet = shortestSide >= 600.0;
+    const double maxWidth = 500.0;
+
+    final gridContent = Padding(
       padding: const EdgeInsets.all(8.0),
       child: GridView.builder(
         gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: 2, // 2 columns
+          crossAxisCount: 2,
           crossAxisSpacing: 10.0,
           mainAxisSpacing: 10.0,
-          childAspectRatio: 1.6, // 💡 Өндрийг багасгахын тулд 1.5-аас 2.0 болгож өөрчлөв
+          childAspectRatio: 1.6,
         ),
         itemCount: _buttons.length,
         itemBuilder: (context, index) {
@@ -994,10 +870,7 @@ class _HomeButtonsGridState extends State<_HomeButtonsGrid> {
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.white,
               foregroundColor: Colors.black,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-                // side: const BorderSide(color: Colors.black, width: 0.3), // <-- outline
-              ),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
               elevation: 0.5,
               padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 10),
             ),
@@ -1014,5 +887,16 @@ class _HomeButtonsGridState extends State<_HomeButtonsGrid> {
         },
       ),
     );
+
+    if (isTablet) {
+      return Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: maxWidth),
+          child: gridContent,
+        ),
+      );
+    } else {
+      return gridContent;
+    }
   }
 }

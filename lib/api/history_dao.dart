@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:medsoft_patient/api/base_dao.dart';
 import 'package:medsoft_patient/constants.dart';
 
-//Өвчний түүхийн DAO
+//Түүхийн DAO
 class HistoryDAO extends BaseDAO {
   //Дуудах боломжтой тайлангууд аваа
   Future<ApiResponse<List<dynamic>>> getHistoryTenants() {
@@ -32,19 +32,12 @@ class HistoryDAO extends BaseDAO {
   }
 
   //Тайлан хэвлэх
-  Future<Uint8List> printHistoryRaw(
-    // <-- CHANGE RETURN TYPE
-    String id,
-    String historyKey,
-    String actionKey,
-    String tenant,
-  ) {
+  Future<Uint8List> printHistoryRaw(String id, String historyKey, String actionKey, String tenant) {
     debugPrint(
       'Printing history: $id, historyKey: $historyKey, actionKey: $actionKey, tenantName: $tenant',
     );
 
     return getRaw(
-      // <-- CHANGE METHOD CALL
       '${Constants.appUrl}/history/print?id=$id&historyKey=$historyKey&actionKey=$actionKey&tenant=$tenant',
       config: const RequestConfig(headerType: HeaderType.bearerToken),
     );

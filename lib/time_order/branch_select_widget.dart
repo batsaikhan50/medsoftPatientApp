@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-// Adjust this import path if needed
 import 'package:medsoft_patient/time_order/time_order_screen.dart';
 
 class BranchSelectionModal extends StatelessWidget {
@@ -17,11 +16,6 @@ class BranchSelectionModal extends StatelessWidget {
     required this.launchUrlCallback,
   });
 
-  // Placeholder function for launching URLs
-  // void _launchUrl(String url) {
-  //   debugPrint('Attempting to launch URL/Phone: $url');
-  // }
-
   Widget _buildItemChild(DropdownItem item) {
     final bool isBranchWithLogo = item.logoUrl != null && item.logoUrl!.isNotEmpty;
     final bool isBranchUnavailable = isBranchWithLogo && !item.isAvailable;
@@ -36,7 +30,7 @@ class BranchSelectionModal extends StatelessWidget {
           isUnavailableBranch
               ? null
               : () {
-                onBranchSelected(item); // Call the selection callback
+                onBranchSelected(item);
               },
       child: Opacity(
         opacity: isBranchUnavailable ? 0.8 : 1.0,
@@ -54,7 +48,6 @@ class BranchSelectionModal extends StatelessWidget {
             child: Stack(
               fit: StackFit.expand,
               children: [
-                // 1. Full-width Image (Banner)
                 ColorFiltered(
                   colorFilter:
                       isBranchUnavailable
@@ -94,7 +87,6 @@ class BranchSelectionModal extends StatelessWidget {
                   ),
                 ),
 
-                // 2. Overlayed Text Container (at the bottom)
                 Positioned(
                   bottom: 0,
                   left: 0,
@@ -117,13 +109,12 @@ class BranchSelectionModal extends StatelessWidget {
                           maxLines: 1,
                         ),
                         const SizedBox(height: 4),
-                        // Phones and Facebook links logic...
+
                         if ((item.phones != null && item.phones!.isNotEmpty) ||
                             (item.facebook != null && item.facebook!.isNotEmpty))
                           Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              // A. Phones (Using Wrap for multiple lines)
                               if (item.phones != null && item.phones!.isNotEmpty)
                                 Wrap(
                                   spacing: 8.0,
@@ -149,7 +140,6 @@ class BranchSelectionModal extends StatelessWidget {
                                 ),
                               const SizedBox(height: 8),
 
-                              // B. Facebook
                               if (item.facebook != null && item.facebook!.isNotEmpty)
                                 Row(
                                   mainAxisAlignment: MainAxisAlignment.end,
@@ -195,7 +185,6 @@ class BranchSelectionModal extends StatelessWidget {
                   ),
                 ),
 
-                // 3. UNAVAILABLE CAPTION (Mongolian Text)
                 if (isBranchUnavailable)
                   Positioned(
                     top: 8,
@@ -217,7 +206,6 @@ class BranchSelectionModal extends StatelessWidget {
                     ),
                   ),
 
-                // 4. CLICKABLE INDICATOR (Pulsing Animation)
                 if (isBranchAvailable)
                   const Positioned(top: 50, right: 50, child: PulsingClickIndicator()),
               ],
@@ -230,9 +218,8 @@ class BranchSelectionModal extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // This widget now only contains the scrollable list of branches
     return Container(
-      padding: const EdgeInsets.all(16.0).copyWith(top: 0), // Remove top padding to match Stack
+      padding: const EdgeInsets.all(16.0).copyWith(top: 0),
       child: ListView.builder(
         itemCount: branches.length,
         itemBuilder: (context, index) {

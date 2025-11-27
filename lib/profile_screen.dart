@@ -82,10 +82,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
           // ... save other fields as needed
         }
       } else {
-        print('Error checking DAN status: ${danResponse.message}');
+        debugPrint('Error checking DAN status: ${danResponse.message}');
       }
     } catch (e) {
-      print('Exception during DAN info download: $e');
+      debugPrint('Exception during DAN info download: $e');
     }
 
     return {
@@ -124,7 +124,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         width: size,
         height: size,
         decoration: BoxDecoration(
-          color: Colors.blueAccent.withOpacity(0.8),
+          color: Colors.blueAccent.withValues(alpha: 0.8),
           shape: BoxShape.circle,
         ),
         child: Center(
@@ -146,7 +146,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           height: size,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
-            border: Border.all(color: Colors.blueAccent.withOpacity(0.8), width: 2),
+            border: Border.all(color: Colors.blueAccent.withValues(alpha: 0.8), width: 2),
           ),
           child: ClipOval(
             child: Image.memory(
@@ -159,7 +159,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ),
         );
       } catch (e) {
-        print("Error decoding image: $e");
+        debugPrint("Error decoding image: $e");
         return initialsAvatar(initials);
       }
     }
@@ -167,19 +167,19 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   // Helper for the initials avatar fallback
-  Widget _initialsAvatar(String initials) {
-    return Container(
-      width: 80,
-      height: 80,
-      decoration: BoxDecoration(color: Colors.blueAccent.withOpacity(0.8), shape: BoxShape.circle),
-      child: Center(
-        child: Text(
-          initials.isEmpty ? '?' : initials,
-          style: const TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: Colors.white),
-        ),
-      ),
-    );
-  }
+  // Widget _initialsAvatar(String initials) {
+  //   return Container(
+  //     width: 80,
+  //     height: 80,
+  //     decoration: BoxDecoration(color: Colors.blueAccent.withOpacity(0.8), shape: BoxShape.circle),
+  //     child: Center(
+  //       child: Text(
+  //         initials.isEmpty ? '?' : initials,
+  //         style: const TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: Colors.white),
+  //       ),
+  //     ),
+  //   );
+  // }
 
   Widget _buildInfoRow(
     BuildContext context,

@@ -8,8 +8,6 @@ class TimeOrderDAO extends BaseDAO {
     return get<List<dynamic>>(
       '${Constants.appUrl}/order/hospitals',
       config: const RequestConfig(headerType: HeaderType.bearerToken),
-      // transform:
-      //     (json) => (json['data'] as List).map((item) => item as Map<String, dynamic>).toList(),
     );
   }
 
@@ -18,8 +16,6 @@ class TimeOrderDAO extends BaseDAO {
     return get<List<dynamic>>(
       '${Constants.appUrl}/order/branch?tenant=$tenant',
       config: const RequestConfig(headerType: HeaderType.bearerToken),
-      // transform:
-      //     (json) => (json['data'] as List).map((item) => item as Map<String, dynamic>).toList(),
     );
   }
 
@@ -28,8 +24,6 @@ class TimeOrderDAO extends BaseDAO {
     return get<List<dynamic>>(
       '${Constants.appUrl}/order/tasag?tenant=$tenant&branchId=$branchId',
       config: const RequestConfig(headerType: HeaderType.bearerToken),
-      // transform:
-      //     (json) => (json['data'] as List).map((item) => item as Map<String, dynamic>).toList(),
     );
   }
 
@@ -38,8 +32,6 @@ class TimeOrderDAO extends BaseDAO {
     return get<List<dynamic>>(
       '${Constants.appUrl}/order/employee?tenant=$tenant&branchId=$branchId&tasagId=$tasagId',
       config: const RequestConfig(headerType: HeaderType.bearerToken),
-      // transform:
-      //     (json) => (json['data'] as List).map((item) => item as Map<String, dynamic>).toList(),
     );
   }
 
@@ -49,8 +41,6 @@ class TimeOrderDAO extends BaseDAO {
       '${Constants.appUrl}/order/times',
       body: body,
       config: const RequestConfig(headerType: HeaderType.bearerAndJson),
-      // transform:
-      //     (json) => (json['data'] as List).map((item) => item as Map<String, dynamic>).toList(),
     );
   }
 
@@ -60,8 +50,6 @@ class TimeOrderDAO extends BaseDAO {
       '${Constants.appUrl}/order/confirm',
       body: body,
       config: const RequestConfig(headerType: HeaderType.bearerAndJson),
-      // transform:
-      //     (json) => (json['data'] as List).map((item) => item as Map<String, dynamic>).toList(),
     );
   }
 }
