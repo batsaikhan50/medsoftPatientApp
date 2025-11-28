@@ -147,59 +147,69 @@ class NewsFeedWidget extends StatelessWidget {
                   final response = snapshot.data!;
                   final item = response.data;
 
-                  return Stack(
-                    children: [
-                      SingleChildScrollView(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            if (item["image"] != null)
-                              ClipRRect(
-                                borderRadius: const BorderRadius.vertical(top: Radius.circular(10)),
-                                child: Image.memory(_decodeBase64(item["image"])),
+                  // 1. Define the Radius once
+                  const double dialogRadius = 30.0;
+
+                  return ClipRRect(
+                    // <-- ADD ClipRRect HERE
+                    borderRadius: BorderRadius.circular(
+                      dialogRadius,
+                    ), // Use the same radius as the image/dialog
+                    child: Stack(
+                      children: [
+                        SingleChildScrollView(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              // The image itself can now use the full width
+                              if (item["image"] != null) Image.memory(_decodeBase64(item["image"])),
+
+                              // REMOVED ClipRRect from the image here
+                              // since the outer ClipRRect handles it for the whole dialog.
+                              // If you want the image to have a different radius, keep the ClipRRect above.
+                              // However, for a consistent look, removing it here is usually better.
+                              const SizedBox(height: 12),
+
+                              Padding(
+                                padding: const EdgeInsets.symmetric(horizontal: 16),
+                                child: Text(
+                                  item["title"] ?? "",
+                                  style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                                ),
                               ),
 
-                            const SizedBox(height: 12),
+                              const SizedBox(height: 10),
 
-                            Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 16),
-                              child: Text(
-                                item["title"] ?? "",
-                                style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                              Padding(
+                                padding: const EdgeInsets.symmetric(horizontal: 16),
+                                child: Html(data: '${item["mergedValues"] ?? "No content"}'),
                               ),
-                            ),
 
-                            const SizedBox(height: 10),
-
-                            Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 16),
-                              child: Html(data: '${item["mergedValues"] ?? "No content"}'),
-                            ),
-
-                            const SizedBox(height: 20),
-                          ],
-                        ),
-                      ),
-
-                      Positioned(
-                        top: 10.0,
-                        right: 10.0,
-                        child: Container(
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: Colors.black38,
-                            border: Border.all(color: Colors.white, width: 2.0),
-                          ),
-                          child: IconButton(
-                            icon: const Icon(Icons.close, size: 24),
-                            color: Colors.white,
-                            onPressed: () {
-                              Navigator.of(context).pop();
-                            },
+                              const SizedBox(height: 20),
+                            ],
                           ),
                         ),
-                      ),
-                    ],
+
+                        Positioned(
+                          top: 10.0,
+                          right: 10.0,
+                          child: Container(
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: Colors.black38,
+                              border: Border.all(color: Colors.white, width: 2.0),
+                            ),
+                            child: IconButton(
+                              icon: const Icon(Icons.close, size: 24),
+                              color: Colors.white,
+                              onPressed: () {
+                                Navigator.of(context).pop();
+                              },
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
                   );
                 },
               ),
