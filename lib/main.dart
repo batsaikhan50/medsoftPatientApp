@@ -32,8 +32,8 @@ void main() async {
 
   FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
 
-  // final fcmService = FCMService();
-  // await fcmService.initFCM();
+  final fcmService = FCMService();
+  await fcmService.initFCM();
 
   runApp(const MyApp());
 }
