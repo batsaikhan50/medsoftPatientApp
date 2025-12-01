@@ -8,6 +8,7 @@ class ClaimQRScreen extends StatefulWidget {
 
   @override
   State<ClaimQRScreen> createState() => _ClaimQRScreenState();
+
 }
 
 class _ClaimQRScreenState extends State<ClaimQRScreen> {
