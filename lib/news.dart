@@ -60,7 +60,7 @@ class NewsFeedWidget extends StatelessWidget {
                   final item = news[index];
 
                   return GestureDetector(
-                    onTap: () => _openNewsDetail(context, item["_id"], blogDAO),
+                    onTap: () => _openNewsDetail(context, item["blogId"], blogDAO),
                     child: Padding(
                       padding: const EdgeInsets.all(12),
                       child: Card(

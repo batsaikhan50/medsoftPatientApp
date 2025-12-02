@@ -8,7 +8,6 @@ class ClaimQRScreen extends StatefulWidget {
 
   @override
   State<ClaimQRScreen> createState() => _ClaimQRScreenState();
-
 }
 
 class _ClaimQRScreenState extends State<ClaimQRScreen> {
@@ -43,6 +42,21 @@ class _ClaimQRScreenState extends State<ClaimQRScreen> {
         context,
       ).showSnackBar(SnackBar(content: Text(errorMessage), backgroundColor: Colors.red));
     }
+  }
+
+  Future<void> _deny() async {
+    setState(() => _isLoading = true);
+
+    final response = await _authDao.denyQR(widget.token);
+    if (!mounted) return;
+
+    if (response.success) {
+      debugPrint("Deny success: ${response.message}");
+    } else {
+      debugPrint("Deny failed: ${response.statusCode} - ${response.message}");
+    }
+
+    Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const MyHomePage()));
   }
 
   @override
@@ -105,10 +119,7 @@ class _ClaimQRScreenState extends State<ClaimQRScreen> {
                   _isLoading
                       ? null
                       : () {
-                        Navigator.pushReplacement(
-                          context,
-                          MaterialPageRoute(builder: (_) => const MyHomePage()),
-                        );
+                        Future.microtask(() => _deny()); // Call the new _deny method
                       },
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.red,

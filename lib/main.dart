@@ -219,21 +219,26 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
   }
 
   void _onItemTapped(int index) {
+    if (index == 2) {
+      Navigator.push(context, MaterialPageRoute(builder: (context) => const QrScanScreen())).then((
+        _,
+      ) {
+        debugPrint("Returned from QR Screen");
+      });
+      return;
+    }
+
     setState(() {
       _selectedIndex = index;
       if (index != 3) {
         _historyKeyFromHome = null;
       }
-
       switch (index) {
         case 0:
           appBarCaption = 'Медсофт';
           break;
         case 1:
           appBarCaption = 'Цаг захиалга';
-          break;
-        case 2:
-          appBarCaption = 'QR код уншигч';
           break;
         case 3:
           appBarCaption = 'Түүх';
@@ -637,8 +642,8 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
     final List<Widget> widgetOptions = <Widget>[
       _buildLocationBody(),
       const TimeOrderScreen(),
-      const QrScanScreen(),
-
+      // const QrScanScreen(),
+      const SizedBox(),
       HistoryScreen(key: ValueKey(_historyKeyFromHome), initialHistoryKey: _historyKeyFromHome),
       ProfileScreen(onGuideTap: _navigateToGuideScreen, onLogoutTap: _logOut),
     ];

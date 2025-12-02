@@ -37,6 +37,14 @@ class AuthDAO extends BaseDAO {
     );
   }
 
+  // QR татгалзах
+  Future<ApiResponse<String>> denyQR(String token) {
+    return get<String>(
+      '${Constants.appUrl}/qr/cancel?id=$token',
+      config: const RequestConfig(headerType: HeaderType.bearerToken),
+    );
+  }
+
   //Нууц үг сэргээх OTP илгээх
   Future<ApiResponse<void>> sendResetPassOTP(Map<String, dynamic> body) {
     return post<void>(
