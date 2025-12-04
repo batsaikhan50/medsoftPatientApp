@@ -575,8 +575,10 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
   }
 
   Widget _buildLocationBody() {
-    final shortestSide = MediaQuery.of(context).size.shortestSide;
-    final orientation = MediaQuery.of(context).orientation;
+    final mediaQuery = MediaQuery.of(context);
+    final orientation = mediaQuery.orientation;
+    final shortestSide = mediaQuery.size.shortestSide;
+    final platform = Theme.of(context).platform;
     const double tabletBreakpoint = 600.0;
 
     final isTabletLandscape =
@@ -587,8 +589,14 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
 
     final applyLandscapeLayout = isTabletLandscape || isPhoneLandscape;
 
+    final isCompactIOS = platform == TargetPlatform.iOS && shortestSide < tabletBreakpoint;
+    final isLandscape = orientation == Orientation.landscape;
+    final double? maxWidth = isCompactIOS && isLandscape ? 700.0 : null;
+
+    Widget content;
+
     if (applyLandscapeLayout) {
-      return Row(
+      content = Row(
         children: [
           const Expanded(child: NewsFeedWidget(isVerticalScroll: true)),
 
@@ -596,7 +604,7 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
             child: Column(
               children: [
                 Padding(
-                  padding: const EdgeInsets.only(top: 0.0, bottom: 8.0, left: 16.0, right: 16.0),
+                  padding: const EdgeInsets.only(top: 8.0, bottom: 8.0, left: 16.0, right: 16.0),
                   child: Row(
                     children: [
                       const Text(
@@ -616,7 +624,7 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
         ],
       );
     } else {
-      return Column(
+      content = Column(
         children: [
           const Expanded(flex: 4, child: NewsFeedWidget()),
 
@@ -639,6 +647,14 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
           Expanded(flex: 7, child: _buildHomeButtonsGrid()),
         ],
       );
+    }
+
+    if (maxWidth != null) {
+      return Center(
+        child: ConstrainedBox(constraints: BoxConstraints(maxWidth: maxWidth), child: content),
+      );
+    } else {
+      return content;
     }
   }
 
