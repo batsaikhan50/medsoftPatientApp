@@ -32,8 +32,8 @@ void main() async {
 
   FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
 
-  final fcmService = FCMService();
-  await fcmService.initFCM();
+  // final fcmService = FCMService();
+  // await fcmService.initFCM();
 
   runApp(const MyApp());
 }
@@ -560,11 +560,11 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
     SharedPreferences prefs = await SharedPreferences.getInstance();
 
     prefs.clear();
-    try {
-      await platform.invokeMethod('stopLocationUpdates');
-    } on PlatformException catch (e) {
-      debugPrint("Failed to stop location updates: '${e.message}'.");
-    }
+    // try {
+    //   await platform.invokeMethod('stopLocationUpdates');
+    // } on PlatformException catch (e) {
+    //   debugPrint("Failed to stop location updates: '${e.message}'.");
+    // }
     if (mounted) {
       debugPrint('globalFCMToken at logout: $globalFCMToken');
       Navigator.pushReplacement(

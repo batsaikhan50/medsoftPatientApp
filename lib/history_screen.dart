@@ -299,12 +299,19 @@ class _HistoryScreenState extends State<HistoryScreen> {
     return cellWithId.props['id'] as String?;
   }
 
+  String sanitizeFilename(String name) {
+    return name.replaceAll(RegExp(r'[<>:"/\\|?* ]'), '_');
+  }
+
   Future<void> _openPdfViewer(Uint8List pdfBytes, String filename) async {
     final tempDir = await getTemporaryDirectory();
-    final file = File('${tempDir.path}/$filename.pdf');
-
+    final safeName = sanitizeFilename(filename);
+    final file = File('${tempDir.path}/$safeName.pdf');
     await file.writeAsBytes(pdfBytes, flush: true);
+
     if (!mounted) return;
+
+    debugPrint('file.path: ${file.path}');
 
     Navigator.of(context).push(
       MaterialPageRoute(

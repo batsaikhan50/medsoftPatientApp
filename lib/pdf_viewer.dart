@@ -83,7 +83,7 @@ class _PdfViewerScreenState extends State<PdfViewerScreen> {
                 pageFling: true,
                 pageSnap: true,
                 backgroundColor: Colors.grey[700],
-
+                fitPolicy: FitPolicy.BOTH,
                 onError: (error) {
                   debugPrint('PDF RENDER ERROR: ${error.toString()}');
                   setState(() {

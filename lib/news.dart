@@ -50,7 +50,7 @@ class NewsFeedWidget extends StatelessWidget {
               return Padding(
                 padding: const EdgeInsets.only(left: 16, right: 16, bottom: 10),
                 // Use a fixed aspect ratio for cards in the vertical list to maintain size consistency
-                child: _buildNewsCard(context, item, blogDAO, 2.0),
+                child: _buildNewsCard(context, item, blogDAO, 2.05),
               );
             },
           );
@@ -122,7 +122,7 @@ class NewsFeedWidget extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Expanded(
-          flex: 3,
+          flex: 5,
           child: ClipRRect(
             borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
             child: Image.memory(_decodeBase64(item["image"]), fit: BoxFit.cover),
