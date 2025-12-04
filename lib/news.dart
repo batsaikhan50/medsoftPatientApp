@@ -48,7 +48,7 @@ class NewsFeedWidget extends StatelessWidget {
             itemBuilder: (context, index) {
               final item = news[index];
               return Padding(
-                padding: const EdgeInsets.only(left: 16, right: 16, bottom: 20),
+                padding: const EdgeInsets.only(left: 16, right: 16, bottom: 10),
                 // Use a fixed aspect ratio for cards in the vertical list to maintain size consistency
                 child: _buildNewsCard(context, item, blogDAO, 2.0),
               );

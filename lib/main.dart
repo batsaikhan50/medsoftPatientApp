@@ -32,8 +32,8 @@ void main() async {
 
   FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
 
-  // final fcmService = FCMService();
-  // await fcmService.initFCM();
+  final fcmService = FCMService();
+  await fcmService.initFCM();
 
   runApp(const MyApp());
 }
@@ -149,11 +149,11 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
   void initState() {
     super.initState();
 
-    SystemChrome.setPreferredOrientations([
-      DeviceOrientation.portraitUp,
-      DeviceOrientation.landscapeLeft,
-      DeviceOrientation.landscapeRight,
-    ]);
+    // SystemChrome.setPreferredOrientations([
+    //   DeviceOrientation.portraitUp,
+    //   DeviceOrientation.landscapeLeft,
+    //   DeviceOrientation.landscapeRight,
+    // ]);
 
     _fcmService = FCMService();
     _initServices();
@@ -935,7 +935,7 @@ class _HomeButtonsGridState extends State<_HomeButtonsGrid> {
         crossAxisCount: 2,
         crossAxisSpacing: 10.0,
         mainAxisSpacing: 10.0,
-        childAspectRatio: 1.8,
+        childAspectRatio: 1.7,
       ),
       itemCount: _buttons.length,
       itemBuilder: (context, index) {
@@ -943,6 +943,19 @@ class _HomeButtonsGridState extends State<_HomeButtonsGrid> {
         final label = buttonData['label']!;
         final navigateTo = buttonData['navigate']!;
         final iconData = _getIconData(buttonData['icon']!);
+
+        const int maxChars = 36;
+        String displayedLabel = label;
+
+        if (label.length > maxChars) {
+          // Truncate the string to the first (maxChars - 3) characters,
+          // leaving room for '...'
+          displayedLabel = '${label.substring(0, maxChars - 3)}...';
+        }
+
+        // Optional: Dynamically adjust font size for constrained views (from previous suggestion)
+        final double baseFontSize = 14.0;
+        final double constrainedFontSize = (isTablet || isLandscape) ? 12.0 : baseFontSize;
 
         return ElevatedButton(
           style: ElevatedButton.styleFrom(
@@ -958,7 +971,16 @@ class _HomeButtonsGridState extends State<_HomeButtonsGrid> {
             children: [
               Icon(iconData, size: 30),
               const SizedBox(height: 8),
-              Text(label, textAlign: TextAlign.center, style: const TextStyle(fontSize: 14)),
+              Text(
+                // Use the truncated label
+                displayedLabel,
+                textAlign: TextAlign.center,
+                // Using the dynamic font size to improve fit further
+                style: TextStyle(fontSize: constrainedFontSize),
+                maxLines: 2, // Added to prevent overflow if the word-wrapping is still tight
+                overflow:
+                    TextOverflow.ellipsis, // Fallback for very long single words or tight layouts
+              ),
             ],
           ),
         );
