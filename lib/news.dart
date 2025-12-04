@@ -7,7 +7,9 @@ import 'package:flutter_html/flutter_html.dart';
 import 'package:medsoft_patient/api/blog_dao.dart';
 
 class NewsFeedWidget extends StatelessWidget {
-  const NewsFeedWidget({super.key});
+  final bool isVerticalScroll; // Added parameter to control scroll direction
+
+  const NewsFeedWidget({super.key, this.isVerticalScroll = false}); // Default to horizontal scroll
 
   @override
   Widget build(BuildContext context) {
@@ -17,7 +19,9 @@ class NewsFeedWidget extends StatelessWidget {
 
     const double tabletBreakpoint = 600.0;
 
-    final double viewportFraction = shortestSide >= tabletBreakpoint ? 0.5 : 0.8;
+    // Use a smaller viewportFraction for horizontal scroll on phones/portrait tablets
+    final double viewportFraction =
+        shortestSide >= tabletBreakpoint && !isVerticalScroll ? 0.5 : 0.8;
 
     return FutureBuilder(
       future: blogDAO.getAllNews(),
@@ -34,8 +38,40 @@ class NewsFeedWidget extends StatelessWidget {
           return const Center(child: Text("Мэдээ олдсонгүй"));
         }
 
+        Widget newsList;
+
+        if (isVerticalScroll) {
+          // New: Vertical ListView for tablet landscape mode
+          newsList = ListView.builder(
+            itemCount: news.length,
+            // Add vertical padding/margin to cards for ListView
+            itemBuilder: (context, index) {
+              final item = news[index];
+              return Padding(
+                padding: const EdgeInsets.only(left: 16, right: 16, bottom: 20),
+                // Use a fixed aspect ratio for cards in the vertical list to maintain size consistency
+                child: _buildNewsCard(context, item, blogDAO, 2.0),
+              );
+            },
+          );
+        } else {
+          // Existing: Horizontal PageView.builder for phone/portrait tablet mode
+          newsList = PageView.builder(
+            itemCount: news.length,
+            controller: PageController(viewportFraction: viewportFraction),
+            itemBuilder: (context, index) {
+              final item = news[index];
+              return Padding(
+                padding: const EdgeInsets.all(12),
+                child: _buildNewsCard(context, item, blogDAO, null),
+              );
+            },
+          );
+        }
+
         return Column(
           children: [
+            // The header 'Мэдээ мэдээлэл'
             Padding(
               padding: const EdgeInsets.only(top: 8.0, bottom: 8.0, left: 16.0, right: 16.0),
               child: Row(
@@ -44,78 +80,75 @@ class NewsFeedWidget extends StatelessWidget {
                     'Мэдээ мэдээлэл',
                     style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
                   ),
-
                   const SizedBox(width: 8),
-
                   Expanded(child: Divider(color: Colors.grey, height: 1, thickness: 1)),
                 ],
               ),
             ),
 
-            Expanded(
-              child: PageView.builder(
-                itemCount: news.length,
-                controller: PageController(viewportFraction: viewportFraction),
-                itemBuilder: (context, index) {
-                  final item = news[index];
-
-                  return GestureDetector(
-                    onTap: () => _openNewsDetail(context, item["blogId"], blogDAO),
-                    child: Padding(
-                      padding: const EdgeInsets.all(12),
-                      child: Card(
-                        elevation: 0.5,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                        child: Column(
-                          mainAxisSize: MainAxisSize.max,
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            Expanded(
-                              flex: 3,
-                              child: ClipRRect(
-                                borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
-                                child: Image.memory(
-                                  _decodeBase64(item["image"]),
-                                  fit: BoxFit.cover,
-                                ),
-                              ),
-                            ),
-
-                            Expanded(
-                              flex: 3,
-                              child: Container(
-                                decoration: BoxDecoration(
-                                  color: Colors.white,
-                                  borderRadius: BorderRadius.vertical(bottom: Radius.circular(16)),
-                                ),
-                                child: Padding(
-                                  padding: const EdgeInsets.symmetric(horizontal: 12),
-                                  child: Center(
-                                    child: Text(
-                                      item["title"] ?? "",
-                                      maxLines: 7,
-                                      overflow: TextOverflow.ellipsis,
-                                      textAlign: TextAlign.center,
-                                      style: const TextStyle(
-                                        fontSize: 18,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  );
-                },
-              ),
-            ),
+            // The news list (Page View or List View)
+            Expanded(child: newsList),
           ],
         );
       },
+    );
+  }
+
+  // Helper function to build the news card for both PageView and ListView
+  Widget _buildNewsCard(
+    BuildContext context,
+    Map<String, dynamic> item,
+    BlogDAO blogDAO,
+    double? aspectRatio,
+  ) {
+    return GestureDetector(
+      onTap: () => _openNewsDetail(context, item["blogId"], blogDAO),
+      child: Card(
+        elevation: 0.5,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        child:
+            aspectRatio != null
+                ? AspectRatio(aspectRatio: aspectRatio, child: _buildCardContent(item))
+                : _buildCardContent(item),
+      ),
+    );
+  }
+
+  // Helper function to build the card content (Image and Title)
+  Widget _buildCardContent(Map<String, dynamic> item) {
+    return Column(
+      mainAxisSize: MainAxisSize.max,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Expanded(
+          flex: 3,
+          child: ClipRRect(
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+            child: Image.memory(_decodeBase64(item["image"]), fit: BoxFit.cover),
+          ),
+        ),
+        Expanded(
+          flex: 3,
+          child: Container(
+            decoration: const BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.vertical(bottom: Radius.circular(16)),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              child: Center(
+                child: Text(
+                  item["title"] ?? "",
+                  maxLines: 7,
+                  overflow: TextOverflow.ellipsis,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 

@@ -148,6 +148,13 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
   @override
   void initState() {
     super.initState();
+
+    SystemChrome.setPreferredOrientations([
+      DeviceOrientation.portraitUp,
+      DeviceOrientation.landscapeLeft,
+      DeviceOrientation.landscapeRight,
+    ]);
+
     _fcmService = FCMService();
     _initServices();
 
@@ -568,26 +575,71 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
   }
 
   Widget _buildLocationBody() {
-    return Column(
-      children: [
-        const Expanded(flex: 4, child: NewsFeedWidget()),
+    final shortestSide = MediaQuery.of(context).size.shortestSide;
+    final orientation = MediaQuery.of(context).orientation;
+    const double tabletBreakpoint = 600.0;
 
-        Padding(
-          padding: const EdgeInsets.only(top: 0.0, bottom: 8.0, left: 16.0, right: 16.0),
-          child: Row(
-            children: [
-              const Text('Үйлчилгээ', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
+    final isTabletLandscape =
+        shortestSide >= tabletBreakpoint && orientation == Orientation.landscape;
 
-              const SizedBox(width: 8),
+    final isPhoneLandscape =
+        shortestSide < tabletBreakpoint && orientation == Orientation.landscape;
 
-              Expanded(child: Divider(color: Colors.grey, height: 1, thickness: 1)),
-            ],
+    final applyLandscapeLayout = isTabletLandscape || isPhoneLandscape;
+
+    if (applyLandscapeLayout) {
+      return Row(
+        children: [
+          const Expanded(child: NewsFeedWidget(isVerticalScroll: true)),
+
+          Expanded(
+            child: Column(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.only(top: 0.0, bottom: 8.0, left: 16.0, right: 16.0),
+                  child: Row(
+                    children: [
+                      const Text(
+                        'Үйлчилгээ',
+                        style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(child: Divider(color: Colors.grey, height: 1, thickness: 1)),
+                    ],
+                  ),
+                ),
+
+                Expanded(child: _buildHomeButtonsGrid()),
+              ],
+            ),
           ),
-        ),
+        ],
+      );
+    } else {
+      return Column(
+        children: [
+          const Expanded(flex: 4, child: NewsFeedWidget()),
 
-        Expanded(flex: 7, child: _buildHomeButtonsGrid()),
-      ],
-    );
+          Padding(
+            padding: const EdgeInsets.only(top: 0.0, bottom: 8.0, left: 16.0, right: 16.0),
+            child: Row(
+              children: [
+                const Text(
+                  'Үйлчилгээ',
+                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+                ),
+
+                const SizedBox(width: 8),
+
+                Expanded(child: Divider(color: Colors.grey, height: 1, thickness: 1)),
+              ],
+            ),
+          ),
+
+          Expanded(flex: 7, child: _buildHomeButtonsGrid()),
+        ],
+      );
+    }
   }
 
   Widget _buildHomeButtonsGrid() {
@@ -642,7 +694,7 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
     final List<Widget> widgetOptions = <Widget>[
       _buildLocationBody(),
       const TimeOrderScreen(),
-      // const QrScanScreen(),
+
       const SizedBox(),
       HistoryScreen(key: ValueKey(_historyKeyFromHome), initialHistoryKey: _historyKeyFromHome),
       ProfileScreen(onGuideTap: _navigateToGuideScreen, onLogoutTap: _logOut),
@@ -810,6 +862,7 @@ class _HomeButtonsGridState extends State<_HomeButtonsGrid> {
       case 'Medication':
         return Icons.medication;
       case 'Biotech':
+      case 'biotech':
         return Icons.biotech;
       case 'SensorOccupied':
         return Icons.sensor_occupied;
@@ -841,9 +894,15 @@ class _HomeButtonsGridState extends State<_HomeButtonsGrid> {
       );
     }
 
+    const double maxWidth = 700.0;
+
     final shortestSide = MediaQuery.of(context).size.shortestSide;
     final isTablet = shortestSide >= 600.0;
-    const double maxWidth = 500.0;
+
+    final orientation = MediaQuery.of(context).orientation;
+    final isLandscape = orientation == Orientation.landscape;
+
+    final shouldConstrainWidth = isTablet || isLandscape;
 
     final gridContent = Padding(
       padding: const EdgeInsets.all(8.0),
@@ -883,7 +942,7 @@ class _HomeButtonsGridState extends State<_HomeButtonsGrid> {
       ),
     );
 
-    if (isTablet) {
+    if (shouldConstrainWidth) {
       return Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: maxWidth),

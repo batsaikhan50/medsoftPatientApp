@@ -964,6 +964,11 @@ class _PulsingClickIndicatorState extends State<PulsingClickIndicator>
 
   @override
   void dispose() {
+    SystemChrome.setPreferredOrientations([
+      DeviceOrientation.portraitUp,
+      DeviceOrientation.landscapeLeft,
+      DeviceOrientation.landscapeRight,
+    ]);
     _controller.dispose();
     super.dispose();
   }
