@@ -931,39 +931,38 @@ class _HomeButtonsGridState extends State<_HomeButtonsGrid> {
 
     final gridContent = GridView.builder(
       padding: EdgeInsets.symmetric(horizontal: 10),
-        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: 2,
-          crossAxisSpacing: 10.0,
-          mainAxisSpacing: 10.0,
-          childAspectRatio: 1.6
-        ),
-        itemCount: _buttons.length,
-        itemBuilder: (context, index) {
-          final buttonData = _buttons[index];
-          final label = buttonData['label']!;
-          final navigateTo = buttonData['navigate']!;
-          final iconData = _getIconData(buttonData['icon']!);
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 2,
+        crossAxisSpacing: 10.0,
+        mainAxisSpacing: 10.0,
+        childAspectRatio: 1.8,
+      ),
+      itemCount: _buttons.length,
+      itemBuilder: (context, index) {
+        final buttonData = _buttons[index];
+        final label = buttonData['label']!;
+        final navigateTo = buttonData['navigate']!;
+        final iconData = _getIconData(buttonData['icon']!);
 
-          return ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.white,
-              foregroundColor: Colors.black,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-              elevation: 0.5,
-              padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 10),
-            ),
-            onPressed: () => _handleNavigation(navigateTo, label),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(iconData, size: 30),
-                const SizedBox(height: 8),
-                Text(label, textAlign: TextAlign.center, style: const TextStyle(fontSize: 14)),
-              ],
-            ),
-          );
-        },
-
+        return ElevatedButton(
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Colors.white,
+            foregroundColor: Colors.black,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            elevation: 0.5,
+            padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 10),
+          ),
+          onPressed: () => _handleNavigation(navigateTo, label),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(iconData, size: 30),
+              const SizedBox(height: 8),
+              Text(label, textAlign: TextAlign.center, style: const TextStyle(fontSize: 14)),
+            ],
+          ),
+        );
+      },
     );
 
     if (shouldConstrainWidth) {
