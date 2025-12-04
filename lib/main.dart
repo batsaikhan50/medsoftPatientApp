@@ -948,7 +948,7 @@ class _HomeButtonsGridState extends State<_HomeButtonsGrid> {
           style: ElevatedButton.styleFrom(
             backgroundColor: Colors.white,
             foregroundColor: Colors.black,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
             elevation: 0.5,
             padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 10),
           ),
