@@ -106,6 +106,7 @@ class NewsFeedWidget extends StatelessWidget {
       child: Card(
         elevation: 0.5,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        margin: EdgeInsets.zero,
         child:
             aspectRatio != null
                 ? AspectRatio(aspectRatio: aspectRatio, child: _buildCardContent(item))

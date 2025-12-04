@@ -32,8 +32,8 @@ void main() async {
 
   FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
 
-  final fcmService = FCMService();
-  await fcmService.initFCM();
+  // final fcmService = FCMService();
+  // await fcmService.initFCM();
 
   runApp(const MyApp());
 }
@@ -560,11 +560,11 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
     SharedPreferences prefs = await SharedPreferences.getInstance();
 
     prefs.clear();
-    try {
-      await platform.invokeMethod('stopLocationUpdates');
-    } on PlatformException catch (e) {
-      debugPrint("Failed to stop location updates: '${e.message}'.");
-    }
+    // try {
+    //   await platform.invokeMethod('stopLocationUpdates');
+    // } on PlatformException catch (e) {
+    //   debugPrint("Failed to stop location updates: '${e.message}'.");
+    // }
     if (mounted) {
       debugPrint('globalFCMToken at logout: $globalFCMToken');
       Navigator.pushReplacement(
@@ -841,6 +841,15 @@ class _HomeButtonsGridState extends State<_HomeButtonsGrid> {
     } finally {
       _buttons.insert(0, {"label": "Газрын зураг харах", "icon": "Map", "navigate": "map"});
 
+      //test
+      // _buttons.addAll([
+      //   {"label": "Эмийн жор", "icon": "Medication", "navigate": "/history?historyKey=prescription"},
+      //   {"label": "Лаборатори", "icon": "Biotech", "navigate": "/history?historyKey=laboratory"},
+      //   {"label": "Рентген зураг", "icon": "SensorOccupied", "navigate": "/history?historyKey=xray"},
+      //   {"label": "Вакцин", "icon": "Vaccines", "navigate": "/history?historyKey=vaccine"},
+      //   {"label": "Эмчийн цаг", "icon": "InsertInvitation", "navigate": "order"},
+      //   {"label": "Даатгал", "icon": "HelpOutline", "navigate": "/history?historyKey=insurance"},
+      // ]);
       setState(() {
         _isLoading = false;
       });
@@ -920,14 +929,13 @@ class _HomeButtonsGridState extends State<_HomeButtonsGrid> {
 
     final shouldConstrainWidth = isTablet || isLandscape;
 
-    final gridContent = Padding(
-      padding: const EdgeInsets.all(8.0),
-      child: GridView.builder(
+    final gridContent = GridView.builder(
+      padding: EdgeInsets.symmetric(horizontal: 10),
         gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
           crossAxisCount: 2,
           crossAxisSpacing: 10.0,
           mainAxisSpacing: 10.0,
-          childAspectRatio: 1.6,
+          childAspectRatio: 1.6
         ),
         itemCount: _buttons.length,
         itemBuilder: (context, index) {
@@ -955,7 +963,7 @@ class _HomeButtonsGridState extends State<_HomeButtonsGrid> {
             ),
           );
         },
-      ),
+
     );
 
     if (shouldConstrainWidth) {
