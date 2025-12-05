@@ -33,7 +33,7 @@ class LocalNotificationService {
       return;
     }
 
-    const AndroidInitializationSettings androidSettings = AndroidInitializationSettings('app_icon');
+    const AndroidInitializationSettings androidSettings = AndroidInitializationSettings('@mipmap/ic_launcher');
     const DarwinInitializationSettings iOSSettings = DarwinInitializationSettings(
       requestAlertPermission: true,
       requestBadgePermission: true,

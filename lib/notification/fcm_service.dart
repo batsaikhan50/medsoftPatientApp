@@ -90,10 +90,23 @@ class FCMService {
     debugPrint("------------------ END OF FULL MESSAGE ------------------");
 
     if (message.notification != null) {
+      const AndroidNotificationDetails androidDetails = AndroidNotificationDetails(
+        'medsoft_channel_id',
+        'Медсофт Мэдэгдэл',
+        channelDescription: 'Системээс гарах болон бусад чухал мэдэгдлүүд',
+        importance: Importance.max,
+        priority: Priority.high,
+      );
+
       const iOSDetails = DarwinNotificationDetails(
         presentAlert: true,
         presentSound: true,
         presentBadge: false,
+      );
+      
+      const NotificationDetails notificationDetails = NotificationDetails(
+        android: androidDetails,
+        iOS: iOSDetails,
       );
 
       debugPrint("🔔 FF Push noti TITLE: ${message.notification!.title}");
@@ -103,7 +116,7 @@ class FCMService {
         message.notification.hashCode,
         message.notification!.title,
         message.notification!.body,
-        const NotificationDetails(iOS: iOSDetails),
+        notificationDetails,
         payload: 'deep_link_data',
       );
     }
