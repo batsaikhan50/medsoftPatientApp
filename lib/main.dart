@@ -34,7 +34,7 @@ void main() async {
 
   final fcmService = FCMService();
   await fcmService.initFCM();
-
+  //test auto pull
   runApp(const MyApp());
 }
 
