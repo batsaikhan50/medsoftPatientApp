@@ -125,7 +125,7 @@ class _WebViewScreenState extends State<WebViewScreen> {
         onPressed: onPressed,
         style: ElevatedButton.styleFrom(
           backgroundColor: Colors.white,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(2.5)),
           elevation: 2,
           padding: const EdgeInsets.symmetric(horizontal: 12),
           alignment: Alignment.centerLeft,
@@ -170,26 +170,32 @@ class _WebViewScreenState extends State<WebViewScreen> {
               ? Stack(
                 children: [
                   WebViewWidget(controller: _controller),
-
                   Positioned(
-                    top: 16,
-                    right: 16,
-                    child: _buildActionButton(
-                      icon: Icons.refresh,
-                      label: 'Refresh',
-                      onPressed: () {
-                        _controller.reload();
-                      },
+                    top: 10,
+                    right: 60, // Adjusted for spacing
+                    child: SizedBox(
+                      width: 110,
+                      child: _buildActionButton(
+                        icon: Icons.refresh,
+                        label: 'Refresh',
+                        onPressed: () {
+                          _controller.reload();
+                        },
+                      ),
                     ),
                   ),
 
+                  // Updated 'Байршил илгээх' button
                   Positioned(
                     bottom: 24,
-                    right: 90,
-                    child: _buildActionButton(
-                      icon: Icons.send,
-                      label: 'Байршил илгээх',
-                      onPressed: _sendLocation,
+                    right: 60, // Starts 30 from the right
+                    child: SizedBox( // <--- Wrap with SizedBox for fixed width
+                      width: 170, // <--- Set a wider width (e.g., 200)
+                      child: _buildActionButton(
+                        icon: Icons.send,
+                        label: 'Байршил илгээх',
+                        onPressed: _sendLocation,
+                      ),
                     ),
                   ),
                 ],
