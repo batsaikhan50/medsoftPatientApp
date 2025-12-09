@@ -38,7 +38,7 @@ import flutter_local_notifications  // <-- ADDED: Necessary for plugin methods
     )
 
     flutterChannel?.setMethodCallHandler { [weak self] (call, result) in
-      if call.method == "getLastLocation" {now map shoed up ad runtime error fixed but. app is not asking for location permission and always permission. i need app to ask it same logic ass this AppDelegate.swift's
+      if call.method == "getLastLocation" {
         self?.getLastLocation(result: result)
       } else if call.method == "sendLocationToAPIByButton" {
         self?.sendLocationToAPIByButton(result: result)
