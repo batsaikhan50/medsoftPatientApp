@@ -695,27 +695,56 @@ class _LoginScreenState extends State<LoginScreen> with WidgetsBindingObserver {
   }
 
   Widget _buildLoginForm() {
-    final isTablet = MediaQuery.of(context).size.shortestSide >= 600;
+    final mediaQuery = MediaQuery.of(context);
+    final screenHeight = mediaQuery.size.height;
+
+    // Check for "tablet" size (usually screens with shortest side >= 600 logical pixels)
+    final isTablet = mediaQuery.size.shortestSide >= 600;
 
     const double maxToggleWidth = 500.0;
+    const double standardHorizontalPadding = 16.0;
 
-    final contentWidth = isTablet ? maxToggleWidth : double.infinity;
+    // 1. Calculate Vertical Margin:
+    // - On phones, use a larger margin (e.g., 64.0) to visually push the form down.
+    // - On tablets/foldables, use a smaller, symmetric margin (e.g., 32.0) to enable clean centering.
+    double verticalMargin = isTablet ? 32.0 : 64.0;
+
+    final bottomInset = mediaQuery.viewInsets.bottom;
+    final bottomPadding = bottomInset > 0
+        ? bottomInset + 16.0 // Keyboard is up: Use keyboard height + buffer
+        : verticalMargin;    // Keyboard is down: Use the calculated margin (symmetric with top).
+
+    // 3. Calculate Total Vertical Padding:
+    final totalVerticalPadding = verticalMargin + bottomPadding;
+
+    // 4. Calculate Content Minimum Height for Vertical Centering:
+    // Use the *effective* height of the screen visible to the SingleChildScrollView
+    final double effectiveScreenHeight = screenHeight -
+        mediaQuery.padding.top -   // Safe Area Top (Status Bar)
+        mediaQuery.padding.bottom; // Safe Area Bottom (Nav Bar)
+
+    // The minHeight must be the effective screen height minus the total vertical padding.
+    final double minContentHeight = effectiveScreenHeight - totalVerticalPadding;
+
+
     return SingleChildScrollView(
       controller: _scrollController,
       padding: EdgeInsets.only(
-        left: 16,
-        right: 16,
-        top:
-            MediaQuery.of(context).size.shortestSide >= 600
-                ? MediaQuery.of(context).size.height * 0.15
-                : 70,
-        bottom: MediaQuery.of(context).viewInsets.bottom + 32,
+        left: standardHorizontalPadding,
+        right: standardHorizontalPadding,
+        top: verticalMargin, // Uses 64.0 on phones, 32.0 on tablets/foldables
+        bottom: bottomPadding,
       ),
+
       keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
 
       child: Center(
         child: ConstrainedBox(
-          constraints: BoxConstraints(maxWidth: contentWidth),
+          constraints: BoxConstraints(
+            maxWidth: isTablet ? maxToggleWidth : double.infinity,
+            // Use the new, robust minimum height calculation.
+            minHeight: minContentHeight.clamp(0.0, double.infinity),
+          ),
           child: Form(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.center,
@@ -1078,9 +1107,10 @@ class _LoginScreenState extends State<LoginScreen> with WidgetsBindingObserver {
 
                 if (_selectedToggleIndex == 1) const SizedBox(height: 20),
 
+                if (_errorMessage.isNotEmpty) const SizedBox(height: 10),
                 if (_errorMessage.isNotEmpty)
                   Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 10),
+                    padding: const EdgeInsets.symmetric(vertical: 0),
                     child: Text(_errorMessage, style: const TextStyle(color: Colors.red)),
                   ),
 
@@ -1145,4 +1175,5 @@ class _LoginScreenState extends State<LoginScreen> with WidgetsBindingObserver {
       ),
     );
   }
+
 }
