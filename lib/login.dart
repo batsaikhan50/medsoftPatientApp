@@ -695,6 +695,7 @@ class _LoginScreenState extends State<LoginScreen> with WidgetsBindingObserver {
   }
 
   Widget _buildLoginForm() {
+
     final mediaQuery = MediaQuery.of(context);
     final screenHeight = mediaQuery.size.height;
 
@@ -704,38 +705,30 @@ class _LoginScreenState extends State<LoginScreen> with WidgetsBindingObserver {
     const double maxToggleWidth = 500.0;
     const double standardHorizontalPadding = 16.0;
 
-    // 1. Calculate Vertical Margin:
-    // - On phones, use a larger margin (e.g., 64.0) to visually push the form down.
-    // - On tablets/foldables, use a smaller, symmetric margin (e.g., 32.0) to enable clean centering.
-    double verticalMargin = isTablet ? 32.0 : 64.0;
+    // The safe area height available for the content (excluding status/nav bar)
+    final double safeHeight = screenHeight -
+        mediaQuery.padding.top -
+        mediaQuery.padding.bottom;
 
-    final bottomInset = mediaQuery.viewInsets.bottom;
-    final bottomPadding = bottomInset > 0
-        ? bottomInset + 16.0 // Keyboard is up: Use keyboard height + buffer
-        : verticalMargin;    // Keyboard is down: Use the calculated margin (symmetric with top).
+    // 1. Determine if the keyboard is active
+    final bool isKeyboardVisible = mediaQuery.viewInsets.bottom > 0;
 
-    // 3. Calculate Total Vertical Padding:
-    final totalVerticalPadding = verticalMargin + bottomPadding;
+    // 2. Define vertical padding for the entire scroll view
+    const double verticalPadding = 32.0; // Consistent top/bottom padding when keyboard is down
 
-    // 4. Calculate Content Minimum Height for Vertical Centering:
-    // Use the *effective* height of the screen visible to the SingleChildScrollView
-    final double effectiveScreenHeight = screenHeight -
-        mediaQuery.padding.top -   // Safe Area Top (Status Bar)
-        mediaQuery.padding.bottom; // Safe Area Bottom (Nav Bar)
-
-    // The minHeight must be the effective screen height minus the total vertical padding.
-    final double minContentHeight = effectiveScreenHeight - totalVerticalPadding;
+    // 3. The minimum height the content needs to be to force vertical centering
+    // Only apply this minHeight when the keyboard is NOT visible.
+    final double minContentHeight = isKeyboardVisible
+        ? 0.0 // Allow content to be its natural size when scrolling (keyboard up)
+        : safeHeight - (verticalPadding * 2); // Center when keyboard is down
 
 
     return SingleChildScrollView(
       controller: _scrollController,
-      padding: EdgeInsets.only(
-        left: standardHorizontalPadding,
-        right: standardHorizontalPadding,
-        top: verticalMargin, // Uses 64.0 on phones, 32.0 on tablets/foldables
-        bottom: bottomPadding,
-      ),
-
+      // Apply consistent vertical padding. The bottom padding will be handled by
+      // the Column's contents (using a Spacer) when keyboard is NOT visible,
+      // and by the system when the keyboard IS visible.
+      padding: const EdgeInsets.symmetric(horizontal: standardHorizontalPadding),
       keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
 
       child: Center(
@@ -747,6 +740,10 @@ class _LoginScreenState extends State<LoginScreen> with WidgetsBindingObserver {
           ),
           child: Form(
             child: Column(
+
+              mainAxisAlignment: isKeyboardVisible
+                  ? MainAxisAlignment.start // Start from top when keyboard is visible
+                  : MainAxisAlignment.center, // Center when keyboard is closed
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 Image.asset('assets/icon/logoTransparent.png', height: 150),
