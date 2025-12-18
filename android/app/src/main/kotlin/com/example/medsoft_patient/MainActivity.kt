@@ -1,9 +1,7 @@
-// In android/app/src/main/kotlin/com/example/medsoft_patient/MainActivity.kt
-
 package com.example.medsoft_patient
 
 import android.Manifest
-import android.app.AlertDialog // NEW IMPORT
+import android.app.AlertDialog
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
@@ -11,7 +9,7 @@ import android.content.IntentFilter
 import android.content.SharedPreferences
 import android.content.pm.PackageManager
 import android.location.Location
-import android.net.Uri // NEW IMPORT
+import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.provider.Settings // NEW IMPORT
@@ -133,18 +131,17 @@ class MainActivity : FlutterActivity() {
     // NEW: Dialog for when permission is permanently denied (Don't Ask Again)
     private fun showInitialPermissionDeniedDialog() {
         val builder = AlertDialog.Builder(this)
-        builder.setTitle("Location Permission Required")
+        builder.setTitle("Байршил тогтоох зөвшөөрөл шаардлагатай")
         builder.setMessage(
-            "Location access is essential for this feature. It appears you have previously " +
-                "denied this permission. Please go to Settings to manually enable location access for the app."
+            "Энэ функцийг ашиглахад байршил тогтоох хандалт зайлшгүй шаардлагатай. Та өмнө нь энэ зөвшөөрлийг цуцалсан байна. Тохиргоо руу орж апп-д байршлын хандалтыг гараар идэвхжүүлнэ үү."
         )
-        builder.setPositiveButton("Open Settings") { _, _ ->
+        builder.setPositiveButton("Тохиргоо нээх") { _, _ ->
             val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
             val uri = Uri.fromParts("package", packageName, null)
             intent.data = uri
             startActivity(intent)
         }
-        builder.setNegativeButton("Cancel") { dialog, _ ->
+        builder.setNegativeButton("Цуцлах") { dialog, _ ->
             dialog.dismiss()
             Log.e("MainActivity", "Initial location permission permanently denied by user.")
         }
@@ -154,19 +151,17 @@ class MainActivity : FlutterActivity() {
     // Dialog to guide the user to the Settings screen to grant "Allow all the time"
     private fun showBackgroundLocationDialog() {
         val builder = AlertDialog.Builder(this)
-        builder.setTitle("Location Permission Needed")
+        builder.setTitle("Байршил тогтоох зөвшөөрөл шаардлагатай")
         builder.setMessage(
-            "To provide accurate location updates while the app is closed, " +
-                "we need 'Allow all the time' location access. Please open Settings " +
-                "and change the permission from 'Allow only while using the app' to 'Allow all the time'."
+            "Апп хаалттай байх үед байршлыг үнэн зөв тогтоохын тулд 'Үргэлж зөвшөөрөх' хандалт шаардлагатай. Тохиргоо руу орж зөвшөөрлийг 'Зөвхөн апп-ыг ашиглах үед' гэснээс 'Үргэлж зөвшөөрөх' болгож өөрчилнө үү."
         )
-        builder.setPositiveButton("Open Settings") { _, _ ->
+        builder.setPositiveButton("Тохиргоо нээх") { _, _ ->
             val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
             val uri = Uri.fromParts("package", packageName, null)
             intent.data = uri
             startActivity(intent)
         }
-        builder.setNegativeButton("Cancel") { dialog, _ ->
+        builder.setNegativeButton("Цуцлах") { dialog, _ ->
             dialog.dismiss()
             Log.e("MainActivity", "Background location permission denied by user. Service started, but will be limited by OS.")
             // Start the service with limited permission (Foreground only)
@@ -286,40 +281,19 @@ class MainActivity : FlutterActivity() {
         }
     }
 
-    override fun onRequestPermissionsResult(
-        requestCode: Int,
-        permissions: Array<out String>,
-        grantResults: IntArray
-    ) {
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
-
-        if (requestCode == LOCATION_PERMISSION_REQUEST_CODE) {
-            // Check if ACCESS_FINE_LOCATION was granted
-            val fineLocationGranted = grantResults.isNotEmpty() &&
-                permissions.indexOf(Manifest.permission.ACCESS_FINE_LOCATION)
-                    .let { if (it != -1) grantResults[it] == PackageManager.PERMISSION_GRANTED else false }
-
-            if (fineLocationGranted) {
-                // Foreground permission was granted, now check for (and prompt for) Background Location
-                checkBackgroundLocationPermissionAndStartService()
-            } else {
-                Log.e("MainActivity", "Location permission denied. Cannot start service.")
-            }
-        }
-    }
-
-
     private fun stopLocationUpdates() {
         val intent = Intent(this, LocationService::class.java)
         stopService(intent)
-        Log.d("MainActivity", "Location updates stopped.")
     }
 
     private fun sendLocationToAPI(location: Location) {
         val medsoftToken = xMedsoftToken
         val roomId = currentRoomId
 
-        if (medsoftToken == null || roomId == null) return
+        if (medsoftToken == null || roomId == null) {
+            Log.e("MainActivity", "Token or RoomId not available")
+            return
+        }
 
         val client = OkHttpClient()
         val url = "https://app.medsoft.care/api/location/save/patient"
@@ -341,32 +315,31 @@ class MainActivity : FlutterActivity() {
         CoroutineScope(Dispatchers.IO).launch {
             try {
                 client.newCall(request).execute().use { response ->
-                    val responseBody = response.body?.string()
-
-                    if (response.isSuccessful && responseBody != null) {
-                        try {
-                            val json = JSONObject(responseBody)
-                            val arrivedData = json.optJSONObject("data")
-                            if (arrivedData != null) {
-                                val arrivedInFifty = arrivedData.optBoolean("arrivedInFifty", false)
-
-                                if (arrivedInFifty) {
-                                    CoroutineScope(Dispatchers.Main).launch {
-                                        channel.invokeMethod("arrivedInFiftyReached", mapOf("arrivedInFifty" to true))
-                                    }
-                                }
-                            }
-                        } catch (e: Exception) {
-                            Log.e("MainActivity", "Failed to parse JSON for updates: $e")
-                        }
-                    } else if (response.code == 401 || response.code == 403) {
-                        CoroutineScope(Dispatchers.Main).launch {
-                            channel.invokeMethod("navigateToLogin", null)
-                        }
+                    if (response.isSuccessful) {
+                        Log.d("MainActivity", "Location sent successfully")
+                    } else {
+                        Log.e("MainActivity", "Failed to send location: ${response.code}")
                     }
                 }
             } catch (e: IOException) {
-                Log.e("MainActivity", "Error making POST request: $e")
+                Log.e("MainActivity", "Error sending location: ${e.message}")
+            }
+        }
+    }
+
+    override fun onRequestPermissionsResult(
+        requestCode: Int,
+        permissions: Array<out String>,
+        grantResults: IntArray
+    ) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+
+        if (requestCode == LOCATION_PERMISSION_REQUEST_CODE) {
+            if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                // Foreground permission granted, now check background
+                checkBackgroundLocationPermissionAndStartService()
+            } else {
+                Log.e("MainActivity", "Location permission denied by user.")
             }
         }
     }

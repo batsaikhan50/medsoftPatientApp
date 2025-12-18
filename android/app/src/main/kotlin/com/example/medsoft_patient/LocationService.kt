@@ -116,7 +116,7 @@ class LocationService : Service() {
     private fun createNotificationChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val serviceChannel = NotificationChannel(
-                CHANNEL_ID, "Location Service Channel", NotificationManager.IMPORTANCE_LOW
+                CHANNEL_ID, "Байршил тогтоох үйлчилгээ", NotificationManager.IMPORTANCE_LOW
             )
             val manager = getSystemService(NotificationManager::class.java)
             manager.createNotificationChannel(serviceChannel)
@@ -124,8 +124,8 @@ class LocationService : Service() {
     }
 
     private fun getNotification(): Notification {
-        return NotificationCompat.Builder(this, CHANNEL_ID).setContentTitle("Location Tracking")
-            .setContentText("Patient location is being tracked in background.")
+        return NotificationCompat.Builder(this, CHANNEL_ID).setContentTitle("Байршил тогтоох")
+            .setContentText("Өвчтөний байршлыг далд горимд хянаж байна.")
             .setSmallIcon(android.R.drawable.ic_menu_compass)
             .setPriority(NotificationCompat.PRIORITY_LOW).build()
     }
