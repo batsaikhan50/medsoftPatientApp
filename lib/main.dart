@@ -17,6 +17,7 @@ import 'package:medsoft_patient/news.dart';
 import 'package:medsoft_patient/notification/fcm_service.dart';
 import 'package:medsoft_patient/notification/local_notification_service.dart';
 import 'package:medsoft_patient/notification_screen.dart';
+import 'package:medsoft_patient/patient_call_screen.dart';
 import 'package:medsoft_patient/profile_screen.dart';
 import 'package:medsoft_patient/qr_scan_screen.dart';
 import 'package:medsoft_patient/time_order/time_order_screen.dart';
@@ -692,6 +693,16 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
               backgroundColor: const Color(0xFF00CCCC),
               title: Text(appBarCaption),
               actions: [
+                IconButton(
+                  icon: const Icon(Icons.videocam),
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (context) => const PatientCallScreen()),
+                    );
+                  },
+                ),
+                // Existing Notification Button
                 Padding(
                   padding: const EdgeInsets.only(right: 15.0),
                   child: IconButton(
