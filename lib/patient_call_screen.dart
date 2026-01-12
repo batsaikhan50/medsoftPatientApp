@@ -20,12 +20,6 @@ class _PatientCallScreenState extends State<PatientCallScreen> {
   bool _frontCamera = true;
 
   @override
-  void initState() {
-    super.initState();
-    // Nothing needed here; connect called from button
-  }
-
-  @override
   void dispose() {
     try {
       _listener();
@@ -40,168 +34,156 @@ class _PatientCallScreenState extends State<PatientCallScreen> {
 
   Future<String> _getToken() async {
     final response = await http.get(
-      Uri.parse('${Constants.rtcUrl}/token?identity=patient1&room=testroom'),
+      Uri.parse('${Constants.liveKitTokenUrl}/token?identity=patient1&room=testroom'),
     );
-
     final data = jsonDecode(response.body);
     return data['token'];
   }
 
   Future<void> _connect() async {
-    debugPrint('Connecting to LiveKit server...');
-    await _requestPermissions();
+    try {
+      await _requestPermissions();
+      final token = await _getToken();
+      final room = Room();
 
-    // 1️⃣ Get token
-    final token = await _getToken();
-    debugPrint('Received nodeJS token: $token');
-    // 2️⃣ Create room
-    final room = Room(roomOptions: const RoomOptions(adaptiveStream: true, dynacast: true));
+      // ... listener setup ...
 
-    // 3️⃣ Listen to all room events
+      // USE IT HERE:
+      await room.connect(Constants.livekitUrl, token); // <--- Use the constant here
 
-    _listener = room.events.listen((event) {
-      if (event is ParticipantEvent) {
-        setState(() {}); // update UI when participants join/leave
-      }
-    });
+      await room.localParticipant?.setCameraEnabled(true);
+      await room.localParticipant?.setMicrophoneEnabled(true);
 
-    // 4️⃣ Connect to LiveKit server
-    await room.connect('ws://100.100.10.100:7880', token);
-
-    // 5️⃣ Enable camera and mic
-    await room.localParticipant?.setCameraEnabled(true);
-    await room.localParticipant?.setMicrophoneEnabled(true);
-
-    setState(() {
-      _room = room;
-    });
-  }
-
-  Future<void> _toggleMic() async {
-    _micEnabled = !_micEnabled;
-    await _room?.localParticipant?.setMicrophoneEnabled(_micEnabled);
-    setState(() {});
-  }
-
-  Future<void> _toggleCamera() async {
-    _camEnabled = !_camEnabled;
-    await _room?.localParticipant?.setCameraEnabled(_camEnabled);
-    setState(() {}); // This triggers the build method to refresh the _buildVideo widget
-  }
-
-  Future<void> _switchCamera() async {
-    // 1. Get the track publication for the camera
-    final trackPub = _room?.localParticipant?.videoTrackPublications.firstOrNull;
-    final track = trackPub?.track;
-
-    // 2. Check if it's a LocalVideoTrack and call setCameraPosition there
-    if (track is LocalVideoTrack) {
-      _frontCamera = !_frontCamera;
-      await track.setCameraPosition(_frontCamera ? CameraPosition.front : CameraPosition.back);
-      setState(() {});
+      setState(() {
+        _room = room;
+      });
+    } catch (e) {
+      debugPrint('Connection error: $e');
     }
   }
 
-  Widget _buildVideo(Participant participant, {bool mirror = false}) {
-    // Check if this is the local participant and if camera is disabled
-    bool isMuted = false;
-    if (participant is LocalParticipant) {
-      isMuted = !_camEnabled;
-    } else {
-      // For remote participants, check if their video track is muted
-      isMuted = participant.videoTrackPublications.any((pub) => pub.muted);
+  // --- UI Helpers ---
+
+  // Separated rendering logic to avoid recursion crashes
+  // Update this function in patient_call_screen.dart
+  Widget _renderParticipant(Participant participant) {
+    // Get the first video track
+    final track = participant.videoTrackPublications.firstOrNull?.track;
+
+    if (track == null || track is! VideoTrack) {
+      return const Center(child: CircularProgressIndicator());
     }
 
-    // Find the video track
-    VideoTrack? videoTrack;
-    for (final pub in participant.videoTrackPublications) {
-      if (pub.track is VideoTrack) {
-        videoTrack = pub.track as VideoTrack;
-        break;
-      }
-    }
+    return VideoTrackRenderer(
+      track,
+      fit: VideoViewFit.cover, // Use 'VideoViewFit' (not VideoViewObjectFit)
+    );
+  }
 
-    return Stack(
-      children: [
-        // 1. The Video Track (only show if not muted)
-        if (videoTrack != null && !isMuted)
-          VideoTrackRenderer(
-            videoTrack,
-            mirrorMode: mirror ? VideoViewMirrorMode.mirror : VideoViewMirrorMode.off,
-          )
-        else
-          // 2. The "Camera Hidden" Placeholder
-          Container(
-            color: Colors.grey[800],
-            child: const Center(
-              child: Text(
-                'Camera Hidden',
-                style: TextStyle(color: Colors.white, fontSize: 14),
-                textAlign: TextAlign.center,
-              ),
-            ),
-          ),
-      ],
+  Widget _buildControlButton({
+    required IconData icon,
+    required Color color,
+    required VoidCallback onPressed,
+  }) {
+    return CircleAvatar(
+      radius: 28,
+      backgroundColor: color,
+      child: IconButton(icon: Icon(icon, color: Colors.white), onPressed: onPressed),
     );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.black,
       appBar: AppBar(title: const Text('Patient Call')),
       body:
           _room == null
               ? Center(child: ElevatedButton(onPressed: _connect, child: const Text('Join Call')))
               : Stack(
                 children: [
-                  // 🔹 Remote video (full screen)
-                  if (_room!.remoteParticipants.isNotEmpty)
-                    _buildVideo(_room!.remoteParticipants.values.first)
-                  else
-                    _buildVideo(_room!.localParticipant!),
-
-                  // 🔹 Local preview (top-right)
+                  // 1. FULL SCREEN: Remote Participant (The Doctor)
+                  // Change the remote participant check to this:
+                  Positioned.fill(
+                    child:
+                        _room!.remoteParticipants.isNotEmpty
+                            ? _renderParticipant(
+                              _room!.remoteParticipants.values.first,
+                            ) // Should be the doctor
+                            : const Center(
+                              child: Text(
+                                "Waiting for Doctor...",
+                                style: TextStyle(color: Colors.white),
+                              ),
+                            ),
+                  ),
+                  // 2. OVERLAY: Local Preview (The Patient)
+                  // Inside your build method's Stack:
                   Positioned(
                     top: 16,
                     right: 16,
-                    width: 120,
-                    height: 160,
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(12),
-                      child: _buildVideo(_room!.localParticipant!, mirror: _frontCamera),
+                    width: 110,
+                    height: 150,
+                    child: Container(
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: Colors.white24,
+                          width: 2,
+                        ), // Added width for visibility
+                      ),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(12),
+                        // REMOVED ', mirror: _frontCamera' below
+                        child: _renderParticipant(_room!.localParticipant!),
+                      ),
                     ),
                   ),
 
-                  // 🔹 Bottom control bar
+                  // 3. BOTTOM CONTROLS
                   Positioned(
-                    bottom: 24,
+                    bottom: 30,
                     left: 0,
                     right: 0,
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                       children: [
-                        IconButton(
-                          iconSize: 32,
-                          color: Colors.white,
-                          icon: Icon(_micEnabled ? Icons.mic : Icons.mic_off),
-                          onPressed: _toggleMic,
+                        _buildControlButton(
+                          icon: _micEnabled ? Icons.mic : Icons.mic_off,
+                          color: _micEnabled ? Colors.white24 : Colors.red,
+                          onPressed: () {
+                            _micEnabled = !_micEnabled;
+                            _room?.localParticipant?.setMicrophoneEnabled(_micEnabled);
+                            setState(() {});
+                          },
                         ),
-                        IconButton(
-                          iconSize: 32,
-                          color: Colors.white,
-                          icon: Icon(_camEnabled ? Icons.videocam : Icons.videocam_off),
-                          onPressed: _toggleCamera,
+                        _buildControlButton(
+                          icon: _camEnabled ? Icons.videocam : Icons.videocam_off,
+                          color: _camEnabled ? Colors.white24 : Colors.red,
+                          onPressed: () {
+                            _camEnabled = !_camEnabled;
+                            _room?.localParticipant?.setCameraEnabled(_camEnabled);
+                            setState(() {});
+                          },
                         ),
-                        IconButton(
-                          iconSize: 32,
-                          color: Colors.white,
-                          icon: const Icon(Icons.cameraswitch),
-                          onPressed: _switchCamera,
+                        _buildControlButton(
+                          icon: Icons.cameraswitch,
+                          color: Colors.white24,
+                          onPressed: () async {
+                            final track =
+                                _room?.localParticipant?.videoTrackPublications.firstOrNull?.track;
+                            if (track is LocalVideoTrack) {
+                              _frontCamera = !_frontCamera;
+                              await track.setCameraPosition(
+                                _frontCamera ? CameraPosition.front : CameraPosition.back,
+                              );
+                              setState(() {});
+                            }
+                          },
                         ),
-                        IconButton(
-                          iconSize: 32,
+                        _buildControlButton(
+                          icon: Icons.call_end,
                           color: Colors.red,
-                          icon: const Icon(Icons.call_end),
                           onPressed: () async {
                             await _room?.disconnect();
                             setState(() => _room = null);
