@@ -4,6 +4,7 @@ import 'package:http/http.dart' as http;
 import 'package:livekit_client/livekit_client.dart';
 import 'package:medsoft_patient/constants.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class PatientCallScreen extends StatefulWidget {
   const PatientCallScreen({super.key});
@@ -33,32 +34,57 @@ class _PatientCallScreenState extends State<PatientCallScreen> {
   }
 
   Future<String> _getToken() async {
+    final prefs = await SharedPreferences.getInstance();
+
+    // Get saved username
+    final username = prefs.getString('Username');
+
+    if (username == null || username.isEmpty) {
+      throw Exception('Username not found in SharedPreferences');
+    }
+    // 1. Use the Token Server URL (Port 3000)
     final response = await http.get(
-      Uri.parse('${Constants.liveKitTokenUrl}/token?identity=patient1&room=testroom'),
+      Uri.parse('${Constants.liveKitTokenUrl}/token?identity=$username&room=testroom'),
     );
-    final data = jsonDecode(response.body);
-    return data['token'];
+
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      return data['token'];
+    } else {
+      throw Exception('Failed to fetch token');
+    }
   }
 
   Future<void> _connect() async {
     try {
       await _requestPermissions();
       final token = await _getToken();
+
       final room = Room();
 
-      // ... listener setup ...
+      // Setup listener to refresh UI when participants join
+      _listener = room.events.listen((event) {
+        setState(() {});
+      });
 
-      // USE IT HERE:
-      await room.connect(Constants.livekitUrl, token); // <--- Use the constant here
+      // 2. Use the LiveKit Server URL (ws://... port 7880)
+      await room.connect(Constants.livekitUrl, token);
 
+      // 3. Enable Local Media
       await room.localParticipant?.setCameraEnabled(true);
       await room.localParticipant?.setMicrophoneEnabled(true);
 
       setState(() {
         _room = room;
       });
+
+      debugPrint("Doctor connected to room");
     } catch (e) {
       debugPrint('Connection error: $e');
+      // Show a snackbar so you know why it failed on the phone
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Connect Error: $e")));
+      }
     }
   }
 
@@ -80,6 +106,47 @@ class _PatientCallScreenState extends State<PatientCallScreen> {
     );
   }
 
+  Widget _renderParticipantTile(Participant participant) {
+    // Find the first video track that is subscribed and not muted
+    final trackPub = participant.videoTrackPublications.firstOrNull;
+    final isMuted = trackPub?.muted ?? true;
+
+    return Container(
+      margin: const EdgeInsets.all(4),
+      decoration: BoxDecoration(
+        color: Colors.grey[900],
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.white10),
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(12),
+        child: Stack(
+          children: [
+            // Video Layer
+            if (trackPub?.track is VideoTrack && !isMuted)
+              VideoTrackRenderer(trackPub!.track as VideoTrack, fit: VideoViewFit.cover)
+            else
+              const Center(child: Icon(Icons.videocam_off, color: Colors.white24, size: 40)),
+
+            // Name Tag Overlay
+            Positioned(
+              bottom: 8,
+              left: 8,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                color: Colors.black54,
+                child: Text(
+                  participant.identity ?? "User",
+                  style: const TextStyle(color: Colors.white, fontSize: 12),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildControlButton({
     required IconData icon,
     required Color color,
@@ -94,57 +161,46 @@ class _PatientCallScreenState extends State<PatientCallScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // Combine all participants into one list for the grid
+    List<Participant> allParticipants = [];
+    if (_room != null) {
+      allParticipants.add(_room!.localParticipant!);
+      allParticipants.addAll(_room!.remoteParticipants.values);
+    }
+
     return Scaffold(
       backgroundColor: Colors.black,
-      appBar: AppBar(title: const Text('Patient Call')),
+      appBar: AppBar(title: const Text('Consultation')),
       body:
           _room == null
               ? Center(child: ElevatedButton(onPressed: _connect, child: const Text('Join Call')))
-              : Stack(
+              : Column(
                 children: [
-                  // 1. FULL SCREEN: Remote Participant (The Doctor)
-                  // Change the remote participant check to this:
-                  Positioned.fill(
-                    child:
-                        _room!.remoteParticipants.isNotEmpty
-                            ? _renderParticipant(
-                              _room!.remoteParticipants.values.first,
-                            ) // Should be the doctor
-                            : const Center(
-                              child: Text(
-                                "Waiting for Doctor...",
-                                style: TextStyle(color: Colors.white),
-                              ),
-                            ),
-                  ),
-                  // 2. OVERLAY: Local Preview (The Patient)
-                  // Inside your build method's Stack:
-                  Positioned(
-                    top: 16,
-                    right: 16,
-                    width: 110,
-                    height: 150,
-                    child: Container(
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(
-                          color: Colors.white24,
-                          width: 2,
-                        ), // Added width for visibility
-                      ),
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(12),
-                        // REMOVED ', mirror: _frontCamera' below
-                        child: _renderParticipant(_room!.localParticipant!),
+                  // 1. GRID AREA
+                  Expanded(
+                    child: Padding(
+                      padding: const EdgeInsets.all(8.0),
+                      child: GridView.builder(
+                        itemCount: allParticipants.length,
+                        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount:
+                              allParticipants.length <= 2
+                                  ? 1
+                                  : 2, // 1 col for 2 users, 2 cols for 3+
+                          mainAxisSpacing: 8,
+                          crossAxisSpacing: 8,
+                          childAspectRatio: allParticipants.length <= 2 ? 1.5 : 1.0,
+                        ),
+                        itemBuilder: (context, index) {
+                          return _renderParticipantTile(allParticipants[index]);
+                        },
                       ),
                     ),
                   ),
 
-                  // 3. BOTTOM CONTROLS
-                  Positioned(
-                    bottom: 30,
-                    left: 0,
-                    right: 0,
+                  // 2. CONTROLS AREA (Stay at the bottom)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 20),
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                       children: [
@@ -157,6 +213,7 @@ class _PatientCallScreenState extends State<PatientCallScreen> {
                             setState(() {});
                           },
                         ),
+
                         _buildControlButton(
                           icon: _camEnabled ? Icons.videocam : Icons.videocam_off,
                           color: _camEnabled ? Colors.white24 : Colors.red,
