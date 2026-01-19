@@ -5,6 +5,7 @@ import 'package:livekit_client/livekit_client.dart';
 import 'package:medsoft_patient/constants.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:collection/collection.dart';
 
 class PatientCallScreen extends StatefulWidget {
   const PatientCallScreen({super.key});
@@ -18,8 +19,11 @@ class _PatientCallScreenState extends State<PatientCallScreen> {
   late CancelListenFunc _listener;
   bool _micEnabled = true;
   bool _camEnabled = true;
-  bool _frontCamera = true;
+  bool _isScreenShared = false;
   bool _isConnecting = false;
+
+  // Track which participant is currently "zoomed"
+  Participant? _focusedParticipant;
 
   @override
   void dispose() {
@@ -29,6 +33,8 @@ class _PatientCallScreenState extends State<PatientCallScreen> {
     _room?.disconnect();
     super.dispose();
   }
+
+  // ... (Keep _requestPermissions, _getToken, and _connect exactly as they are)
 
   Future<void> _requestPermissions() async {
     await [Permission.camera, Permission.microphone].request();
@@ -71,54 +77,71 @@ class _PatientCallScreenState extends State<PatientCallScreen> {
     }
   }
 
-  // --- UI Helpers (Mirrored from Doctor Screen) ---
-
   Widget _renderParticipantTile(Participant participant, {bool isLocal = false}) {
-    final trackPub = participant.videoTrackPublications.firstOrNull;
+    var trackPub = participant.videoTrackPublications.firstWhereOrNull((e) => e.isScreenShare);
+    trackPub ??= participant.videoTrackPublications.firstOrNull;
+
     final isMuted = isLocal ? !_camEnabled : (trackPub?.muted ?? true);
 
-    return Container(
-      margin: const EdgeInsets.all(2),
-      decoration: BoxDecoration(
-        color: const Color(0xFF1A1A1A),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: isLocal ? Colors.blueAccent : Colors.white10, width: 2),
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(12),
-        child: Stack(
-          children: [
-            Positioned.fill(
-              child:
-                  (trackPub?.track is VideoTrack && !isMuted)
-                      ? VideoTrackRenderer(
-                        trackPub!.track as VideoTrack,
-                        fit: VideoViewFit.cover,
-                        mirrorMode: isLocal ? VideoViewMirrorMode.mirror : VideoViewMirrorMode.off,
-                      )
-                      : Container(
-                        color: Colors.blueGrey.withOpacity(0.1),
-                        child: const Center(
-                          child: Icon(Icons.person, color: Colors.white24, size: 50),
+    return GestureDetector(
+      onTap: () {
+        setState(() {
+          // If already focused, untap to return to grid. Otherwise, focus this one.
+          _focusedParticipant = (_focusedParticipant == participant) ? null : participant;
+        });
+      },
+      child: Container(
+        margin: const EdgeInsets.all(2),
+        decoration: BoxDecoration(
+          color: const Color(0xFF1A1A1A),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color:
+                trackPub?.isScreenShare == true
+                    ? Colors.greenAccent
+                    : (isLocal ? Colors.blueAccent : Colors.white10),
+            width: 2,
+          ),
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(12),
+          child: Stack(
+            children: [
+              Positioned.fill(
+                child:
+                    (trackPub?.track is VideoTrack && !isMuted)
+                        ? VideoTrackRenderer(
+                          trackPub!.track as VideoTrack,
+                          fit: trackPub.isScreenShare ? VideoViewFit.contain : VideoViewFit.cover,
+                          mirrorMode:
+                              (isLocal && !trackPub.isScreenShare)
+                                  ? VideoViewMirrorMode.mirror
+                                  : VideoViewMirrorMode.off,
+                        )
+                        : Container(
+                          color: Colors.blueGrey.withOpacity(0.1),
+                          child: const Center(
+                            child: Icon(Icons.person, color: Colors.white24, size: 50),
+                          ),
                         ),
-                      ),
-            ),
-            Positioned(
-              bottom: 8,
-              left: 8,
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: Colors.black54,
-                  borderRadius: BorderRadius.circular(4),
-                ),
-                child: Text(
-                  participant.identity ?? (isLocal ? "You" : "User"),
-                  style: const TextStyle(color: Colors.white, fontSize: 12),
+              ),
+              Positioned(
+                bottom: 8,
+                left: 8,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: Colors.black54,
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: Text(
+                    "${participant.identity ?? (isLocal ? "You" : "User")}${trackPub?.isScreenShare == true ? " (Screen)" : ""}",
+                    style: const TextStyle(color: Colors.white, fontSize: 12),
+                  ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -134,34 +157,21 @@ class _PatientCallScreenState extends State<PatientCallScreen> {
     return Scaffold(
       backgroundColor: Colors.black,
       appBar: AppBar(
-        title: const Text('Live Call'),
+        title: const Text('Live Consultation'),
         backgroundColor: Colors.black,
         iconTheme: const IconThemeData(color: Colors.white),
-        titleTextStyle: const TextStyle(color: Colors.white, fontSize: 18),
       ),
       body:
           _room == null
-              ? Center(
-                child:
-                    _isConnecting
-                        ? const CircularProgressIndicator(color: Colors.white)
-                        : ElevatedButton(onPressed: _connect, child: const Text('Join Call')),
-              )
+              ? _buildJoinUI()
               : SafeArea(
                 child: Column(
                   children: [
                     Expanded(
-                      child: LayoutBuilder(
-                        builder: (context, constraints) {
-                          bool isTablet = MediaQuery.of(context).size.shortestSide >= 600;
-                          bool isLandscape = constraints.maxWidth > constraints.maxHeight;
-
-                          if (allParticipants.length == 2 && !isTablet) {
-                            return _buildIPhone1vs1(allParticipants);
-                          }
-                          return _buildNoScrollGrid(allParticipants, isTablet, isLandscape);
-                        },
-                      ),
+                      child:
+                          _focusedParticipant != null
+                              ? _buildZoomedView(allParticipants)
+                              : _buildDefaultLayout(allParticipants),
                     ),
                     _buildControlBar(),
                   ],
@@ -170,91 +180,85 @@ class _PatientCallScreenState extends State<PatientCallScreen> {
     );
   }
 
-  Widget _buildIPhone1vs1(List<Participant> participants) {
-    return Stack(
+  Widget _buildZoomedView(List<Participant> allParticipants) {
+    return Column(
       children: [
-        Positioned.fill(child: _renderParticipantTile(participants[1])), // Remote
-        Positioned(
-          top: 10,
-          right: 10,
-          width: 110,
-          height: 160,
-          child: _renderParticipantTile(participants[0], isLocal: true), // Local
+        // The Big "Zoomed" view
+        Expanded(
+          flex: 4,
+          child: _renderParticipantTile(
+            _focusedParticipant!,
+            isLocal: _focusedParticipant is LocalParticipant,
+          ),
+        ),
+        // The scrolling list of others at the bottom
+        SizedBox(
+          height: 120,
+          child: ListView(
+            scrollDirection: Axis.horizontal,
+            children:
+                allParticipants
+                    .where((p) => p != _focusedParticipant)
+                    .map(
+                      (p) => SizedBox(
+                        width: 100,
+                        child: _renderParticipantTile(p, isLocal: p is LocalParticipant),
+                      ),
+                    )
+                    .toList(),
+          ),
         ),
       ],
     );
   }
 
-  Widget _buildNoScrollGrid(List<Participant> participants, bool isTablet, bool isLandscape) {
-    int count = participants.length;
-    final local = participants[0];
-    final remotes = participants.sublist(1);
-
-    if (isTablet && count == 2) {
-      return Flex(
-        direction: isLandscape ? Axis.horizontal : Axis.vertical,
-        children: [
-          Expanded(child: _renderParticipantTile(remotes[0])),
-          Expanded(child: _renderParticipantTile(local, isLocal: true)),
-        ],
-      );
-    }
-
-    if (count == 3) {
-      Axis dir = (isTablet && isLandscape) ? Axis.horizontal : Axis.vertical;
-      return Flex(
-        direction: dir,
-        children: [
-          Expanded(child: _renderParticipantTile(remotes[0])),
-          Expanded(child: _renderParticipantTile(remotes[1])),
-          Expanded(child: _renderParticipantTile(local, isLocal: true)),
-        ],
-      );
-    }
-
-    if (count >= 4 && count <= 6) {
-      List<Widget> rows = [];
-      int rowCount = count == 4 ? 2 : 3;
-      for (int i = 0; i < rowCount; i++) {
-        List<Widget> rowChildren = [];
-        if (i == 0) {
-          rowChildren = [
-            Expanded(child: _renderParticipantTile(remotes[0])),
-            Expanded(child: _renderParticipantTile(remotes[1])),
-          ];
-        } else if (i == 1) {
-          rowChildren =
-              count == 4
-                  ? [
-                    Expanded(child: _renderParticipantTile(remotes[2])),
-                    Expanded(child: _renderParticipantTile(local, isLocal: true)),
-                  ]
-                  : [
-                    Expanded(child: _renderParticipantTile(remotes[2])),
-                    Expanded(child: _renderParticipantTile(remotes[3])),
-                  ];
-        } else {
-          rowChildren =
-              count == 5
-                  ? [Expanded(child: _renderParticipantTile(local, isLocal: true))]
-                  : [
-                    Expanded(child: _renderParticipantTile(remotes[4])),
-                    Expanded(child: _renderParticipantTile(local, isLocal: true)),
-                  ];
+  Widget _buildDefaultLayout(List<Participant> allParticipants) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        bool isTablet = MediaQuery.of(context).size.shortestSide >= 600;
+        if (allParticipants.length == 2 && !isTablet) {
+          return _buildIPhone1vs1(allParticipants);
         }
-        rows.add(Expanded(child: Row(children: rowChildren)));
-      }
-      return Column(children: rows);
-    }
+        return _buildNoScrollGrid(allParticipants, constraints.maxWidth > constraints.maxHeight);
+      },
+    );
+  }
 
+  // ... (Keep _buildJoinUI, _buildIPhone1vs1, _buildNoScrollGrid, _buildControlBar, and _buildActionButton as they are)
+
+  Widget _buildJoinUI() {
+    return Center(
+      child:
+          _isConnecting
+              ? const CircularProgressIndicator(color: Colors.white)
+              : ElevatedButton(onPressed: _connect, child: const Text('Join Call')),
+    );
+  }
+
+  Widget _buildIPhone1vs1(List<Participant> participants) {
+    return Stack(
+      children: [
+        Positioned.fill(child: _renderParticipantTile(participants[1])),
+        Positioned(
+          top: 10,
+          right: 10,
+          width: 110,
+          height: 160,
+          child: _renderParticipantTile(participants[0], isLocal: true),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildNoScrollGrid(List<Participant> participants, bool isLandscape) {
     return GridView.builder(
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 2,
+      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: isLandscape ? 3 : 2,
         childAspectRatio: 1.0,
       ),
-      itemCount: count,
+      itemCount: participants.length,
       itemBuilder: (context, index) {
-        final p = (index == count - 1) ? participants[0] : participants[index + 1];
+        final p = (index == participants.length - 1) ? participants[0] : participants[index + 1];
         return _renderParticipantTile(p, isLocal: p == participants[0]);
       },
     );
@@ -286,16 +290,17 @@ class _PatientCallScreenState extends State<PatientCallScreen> {
             },
           ),
           _buildActionButton(
-            icon: Icons.cameraswitch,
-            color: Colors.white24,
+            icon: _isScreenShared ? Icons.stop_screen_share : Icons.screen_share,
+            color: _isScreenShared ? Colors.green : Colors.white24,
             onPressed: () async {
-              final track = _room?.localParticipant?.videoTrackPublications.firstOrNull?.track;
-              if (track is LocalVideoTrack) {
-                _frontCamera = !_frontCamera;
-                await track.setCameraPosition(
-                  _frontCamera ? CameraPosition.front : CameraPosition.back,
-                );
+              try {
+                _isScreenShared = !_isScreenShared;
+                await _room?.localParticipant?.setScreenShareEnabled(_isScreenShared);
                 setState(() {});
+              } catch (e) {
+                ScaffoldMessenger.of(
+                  context,
+                ).showSnackBar(SnackBar(content: Text("Screen Share Error: $e")));
               }
             },
           ),
