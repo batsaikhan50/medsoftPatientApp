@@ -3,8 +3,10 @@ import 'dart:io' show Platform;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:medsoft_patient/api/time_order_dao.dart';
+import 'package:medsoft_patient/login.dart';
 import 'package:medsoft_patient/time_order/branch_select_widget.dart';
 import 'package:medsoft_patient/time_order/time_selection_screen.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class DropdownItem {
@@ -195,6 +197,20 @@ class _TimeOrderScreenState extends State<TimeOrderScreen> {
         _error = response.message ?? 'Эмнэлгүүдийг татаж чадсангүй.';
       }
     });
+  }
+
+  void _logOut() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+
+    prefs.clear();
+    // try {
+    //   await platform.invokeMethod('stopLocationUpdates');
+    // } on PlatformException catch (e) {
+    //   debugPrint("Failed to stop location updates: '${e.message}'.");
+    // }
+    if (mounted) {
+      Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => LoginScreen()));
+    }
   }
 
   Future<void> _loadBranches(String tenant) async {

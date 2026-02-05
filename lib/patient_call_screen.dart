@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 import 'package:livekit_client/livekit_client.dart';
 import 'package:medsoft_patient/constants.dart';
@@ -21,6 +22,9 @@ class _PatientCallScreenState extends State<PatientCallScreen> {
   bool _camEnabled = true;
   bool _isScreenShared = false;
   bool _isConnecting = false;
+  bool _isRecording = false;
+
+  bool _isProcessing = false;
 
   // Track which participant is currently "zoomed"
   Participant? _focusedParticipant;
@@ -63,8 +67,24 @@ class _PatientCallScreenState extends State<PatientCallScreen> {
       await _requestPermissions();
       final token = await _getToken();
       final room = Room();
-      _listener = room.events.listen((event) => setState(() {}));
+
+      _listener = room.events.listen((event) {
+        if (event is RoomRecordingStatusChanged) {
+          setState(() => _isRecording = event.activeRecording);
+        } else if (event is DataReceivedEvent) {
+          final message = utf8.decode(event.data);
+          if (message == 'rec_on') setState(() => _isRecording = true);
+          if (message == 'rec_off') setState(() => _isRecording = false);
+        } else {
+          setState(() {});
+        }
+      });
+
       await room.connect(Constants.livekitUrl, token);
+      setState(() {
+        _isRecording = room.isRecording; // Set initial state
+        _room = room;
+      });
       await room.localParticipant?.setCameraEnabled(true);
       await room.localParticipant?.setMicrophoneEnabled(true);
       setState(() => _room = room);
@@ -74,6 +94,31 @@ class _PatientCallScreenState extends State<PatientCallScreen> {
       }
     } finally {
       if (mounted) setState(() => _isConnecting = false);
+    }
+  }
+
+  Future<void> _toggleRecording() async {
+    if (_isProcessing) return;
+    setState(() => _isProcessing = true);
+
+    final bool starting = !_isRecording;
+    final endpoint = starting ? 'start-recording' : 'stop-recording';
+    final url = Uri.parse('${Constants.recordingUrl}/$endpoint?room=testroom');
+
+    try {
+      final response = await http.post(url);
+      if (response.statusCode == 200) {
+        // 1. Update own UI immediately
+        setState(() => _isRecording = starting);
+
+        // 2. BROADCAST to everyone else (Web/App)
+        final data = utf8.encode(starting ? 'rec_on' : 'rec_off');
+        await _room?.localParticipant?.publishData(data);
+      }
+    } catch (e) {
+      debugPrint("Recording Toggle Error: $e");
+    } finally {
+      setState(() => _isProcessing = false);
     }
   }
 
@@ -149,6 +194,18 @@ class _PatientCallScreenState extends State<PatientCallScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final double shortestSide = MediaQuery.of(context).size.shortestSide;
+    final bool isTablet = shortestSide >= 600;
+
+    if (!isTablet) {
+      SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
+    } else {
+      SystemChrome.setPreferredOrientations([
+        DeviceOrientation.portraitUp,
+        DeviceOrientation.landscapeLeft,
+        DeviceOrientation.landscapeRight,
+      ]);
+    }
     List<Participant> allParticipants = [];
     if (_room != null) {
       allParticipants = [_room!.localParticipant!, ..._room!.remoteParticipants.values];
@@ -288,6 +345,29 @@ class _PatientCallScreenState extends State<PatientCallScreen> {
               _room?.localParticipant?.setCameraEnabled(_camEnabled);
               setState(() {});
             },
+          ),
+          _buildActionButton(
+            icon: Icons.flip_camera_ios,
+            color: Colors.white24,
+            onPressed: () async {
+              final track = _room?.localParticipant?.videoTrackPublications.firstOrNull?.track;
+              if (track is LocalVideoTrack) {
+                final settings = track.mediaStreamTrack.getSettings();
+                final isFront = settings['facingMode'] == 'user';
+                await track.restartTrack(
+                  CameraCaptureOptions(
+                    cameraPosition: isFront ? CameraPosition.back : CameraPosition.front,
+                  ),
+                );
+                setState(() {});
+              }
+            },
+          ),
+
+          _buildActionButton(
+            icon: _isRecording ? Icons.stop_circle : Icons.fiber_manual_record,
+            color: _isRecording ? Colors.red : Colors.white24,
+            onPressed: _toggleRecording,
           ),
           _buildActionButton(
             icon: _isScreenShared ? Icons.stop_screen_share : Icons.screen_share,

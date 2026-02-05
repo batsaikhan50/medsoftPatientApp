@@ -305,6 +305,11 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
             _showDoneDialog();
           }
         }
+      } else if (response.statusCode == 401 || response.statusCode == 403) {
+        debugPrint("⚠️ Unauthorized. Logging out.");
+        if (mounted) {
+          _logOut();
+        }
       }
     } catch (e) {
       debugPrint("❌ API error: $e");

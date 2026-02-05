@@ -695,7 +695,6 @@ class _LoginScreenState extends State<LoginScreen> with WidgetsBindingObserver {
   }
 
   Widget _buildLoginForm() {
-
     final mediaQuery = MediaQuery.of(context);
     final screenHeight = mediaQuery.size.height;
 
@@ -706,9 +705,7 @@ class _LoginScreenState extends State<LoginScreen> with WidgetsBindingObserver {
     const double standardHorizontalPadding = 16.0;
 
     // The safe area height available for the content (excluding status/nav bar)
-    final double safeHeight = screenHeight -
-        mediaQuery.padding.top -
-        mediaQuery.padding.bottom;
+    final double safeHeight = screenHeight - mediaQuery.padding.top - mediaQuery.padding.bottom;
 
     // 1. Determine if the keyboard is active
     final bool isKeyboardVisible = mediaQuery.viewInsets.bottom > 0;
@@ -718,10 +715,10 @@ class _LoginScreenState extends State<LoginScreen> with WidgetsBindingObserver {
 
     // 3. The minimum height the content needs to be to force vertical centering
     // Only apply this minHeight when the keyboard is NOT visible.
-    final double minContentHeight = isKeyboardVisible
-        ? 0.0 // Allow content to be its natural size when scrolling (keyboard up)
-        : safeHeight - (verticalPadding * 2); // Center when keyboard is down
-
+    final double minContentHeight =
+        isKeyboardVisible
+            ? 0.0 // Allow content to be its natural size when scrolling (keyboard up)
+            : safeHeight - (verticalPadding * 2); // Center when keyboard is down
 
     return SingleChildScrollView(
       controller: _scrollController,
@@ -740,10 +737,11 @@ class _LoginScreenState extends State<LoginScreen> with WidgetsBindingObserver {
           ),
           child: Form(
             child: Column(
-
-              mainAxisAlignment: isKeyboardVisible
-                  ? MainAxisAlignment.start // Start from top when keyboard is visible
-                  : MainAxisAlignment.center, // Center when keyboard is closed
+              mainAxisAlignment:
+                  isKeyboardVisible
+                      ? MainAxisAlignment
+                          .start // Start from top when keyboard is visible
+                      : MainAxisAlignment.center, // Center when keyboard is closed
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 Image.asset('assets/icon/logoTransparent.png', height: 150),
@@ -1172,5 +1170,4 @@ class _LoginScreenState extends State<LoginScreen> with WidgetsBindingObserver {
       ),
     );
   }
-
 }
