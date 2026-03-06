@@ -76,5 +76,9 @@
 		<string>We need your permission to show notifications for location updates.</string>
 		<key>NSCameraUsageDescription</key>
 		<string>Camera permission is needed for this app to scan a QR code and display your profile on the doctor's Medsoft web application.</string>
+		<key>RTCAppGroupIdentifier</key>
+		<string>group.com.medsoftDoctor</string>
+		<key>RTCScreenSharingExtension</key>
+		<string>com.batsaikhan.medsoftPatient.PatientScreenShare</string>
 	</dict>
 </plist>
