@@ -49,8 +49,7 @@
 			<string>audio</string>
 			<string>fetch</string>
 			<string>location</string>
-			<string>picture-in-picture</string>
-			<string>processing</string>
+<string>processing</string>
 			<string>remote-notification</string>
 			<string>voip</string>
 		</array>
