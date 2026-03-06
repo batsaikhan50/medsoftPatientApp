@@ -72,6 +72,64 @@ import flutter_local_notifications  // <-- ADDED: Necessary for plugin methods
 
     GeneratedPluginRegistrant.register(with: self)
 
+    // PiP channel
+    let pipChannel = FlutterMethodChannel(
+      name: "pip_channel",
+      binaryMessenger: controller.binaryMessenger
+    )
+    pipChannel.setMethodCallHandler { (call, result) in
+      if #available(iOS 15.0, *) {
+        switch call.method {
+        case "setupPiP":
+          if PiPManager.shared == nil { PiPManager.shared = PiPManager() }
+          PiPManager.shared?.setup()
+          result(true)
+        case "startPiP":
+          PiPManager.shared?.startPiP()
+          result(true)
+        case "stopPiP":
+          PiPManager.shared?.stopPiP()
+          result(true)
+        case "remoteStream":
+          if let args = call.arguments as? [String: Any],
+             let remoteId = args["remoteId"] as? String {
+            PiPManager.shared?.setRemoteTrack(trackId: remoteId)
+            result(true)
+          } else {
+            result(FlutterError(code: "INVALID_ARGS", message: "remoteId required", details: nil))
+          }
+        case "teardownPiP":
+          PiPManager.shared?.teardownForScreenShare()
+          result(true)
+        case "restorePiP":
+          PiPManager.shared?.restoreAfterScreenShare()
+          result(true)
+        case "dispose":
+          PiPManager.shared?.disposePiP()
+          PiPManager.shared = nil
+          result(true)
+        default:
+          result(FlutterMethodNotImplemented)
+        }
+      } else {
+        result(FlutterError(code: "UNSUPPORTED", message: "iOS 15+ required for PiP", details: nil))
+      }
+    }
+
+    NotificationCenter.default.addObserver(
+      forName: UIApplication.willResignActiveNotification,
+      object: nil, queue: .main
+    ) { _ in
+      if #available(iOS 15.0, *) { PiPManager.shared?.onAppWillResignActive() }
+    }
+
+    NotificationCenter.default.addObserver(
+      forName: UIApplication.willEnterForegroundNotification,
+      object: nil, queue: .main
+    ) { _ in
+      if #available(iOS 15.0, *) { PiPManager.shared?.onAppDidBecomeActive() }
+    }
+
     BGTaskScheduler.shared.register(
       forTaskWithIdentifier: "com.example.medsoft_patient.sendLocation", using: nil
     ) { task in
@@ -270,6 +328,7 @@ import flutter_local_notifications  // <-- ADDED: Necessary for plugin methods
   override func applicationDidBecomeActive(_ application: UIApplication) {
     checkLocationAuthorizationAndPromptIfNeeded()
     checkNotificationPermissionAndPromptIfNeeded()
+    if #available(iOS 15.0, *) { PiPManager.shared?.onAppDidBecomeActive() }
   }
 
   func checkLocationAuthorizationAndPromptIfNeeded() {

@@ -17,6 +17,7 @@ import 'package:medsoft_patient/news.dart';
 import 'package:medsoft_patient/notification/fcm_service.dart';
 import 'package:medsoft_patient/notification/local_notification_service.dart';
 import 'package:medsoft_patient/notification_screen.dart';
+import 'package:medsoft_patient/call_manager.dart';
 import 'package:medsoft_patient/patient_call_screen.dart';
 import 'package:medsoft_patient/profile_screen.dart';
 import 'package:medsoft_patient/qr_scan_screen.dart';
@@ -25,11 +26,10 @@ import 'package:medsoft_patient/webview_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uni_links/uni_links.dart';
 
-final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
-
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp();
+  CallManager.instance.init();
 
   FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
 
@@ -54,7 +54,10 @@ class MyApp extends StatelessWidget {
       supportedLocales: const [Locale('en', ''), Locale('mn', '')],
 
       debugShowCheckedModeBanner: false,
-      navigatorKey: navigatorKey,
+      navigatorKey: CallManager.navigatorKey,
+      routes: {
+        '/call': (_) => const PatientCallScreen(),
+      },
       title: 'Patient App',
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
@@ -318,7 +321,7 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
 
   void _showDoneDialog() {
     _isDialogShowing = true;
-    final context = navigatorKey.currentState?.overlay?.context;
+    final context = CallManager.navigatorKey.currentState?.overlay?.context;
     if (context == null) return;
 
     showDialog(
