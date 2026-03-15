@@ -25,7 +25,7 @@ import 'package:medsoft_patient/qr_scan_screen.dart';
 import 'package:medsoft_patient/time_order/time_order_screen.dart';
 import 'package:medsoft_patient/webview_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:uni_links/uni_links.dart';
+import 'package:app_links/app_links.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -86,16 +86,15 @@ class MyApp extends StatelessWidget {
   Future<Widget> _getInitialScreen() async {
     final prefs = await SharedPreferences.getInstance();
 
-    final initialLink = await getInitialLink();
-    debugPrint("IN MY MAIN'S _getInitialScreen initialLink: $initialLink");
+    final appLinks = AppLinks();
+    final initialUri = await appLinks.getInitialLink();
+    debugPrint("IN MY MAIN'S _getInitialScreen initialLink: $initialUri");
 
-    if (initialLink != null) {
-      Uri uri = Uri.parse(initialLink);
-
-      if (uri.pathSegments.isNotEmpty &&
-          uri.pathSegments[0] == 'qr' &&
-          uri.pathSegments.length > 1) {
-        String token = uri.pathSegments[1];
+    if (initialUri != null) {
+      if (initialUri.pathSegments.isNotEmpty &&
+          initialUri.pathSegments[0] == 'qr' &&
+          initialUri.pathSegments.length > 1) {
+        String token = initialUri.pathSegments[1];
         await prefs.setString('scannedToken', token);
         debugPrint('Scanned token stored: $token');
       }
@@ -183,9 +182,8 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
       }
     }
 
-    linkStream.listen((link) async {
-      if (link != null) {
-        Uri uri = Uri.parse(link);
+    AppLinks().uriLinkStream.listen((uri) async {
+      {
         if (uri.pathSegments.isNotEmpty && uri.pathSegments[0] == 'qr') {
           String token = uri.pathSegments[1];
           debugPrint('Deep link token: $token');
