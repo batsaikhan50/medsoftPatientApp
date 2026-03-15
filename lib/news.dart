@@ -181,6 +181,18 @@ class NewsFeedWidget extends StatelessWidget {
                   final response = snapshot.data!;
                   final item = response.data;
 
+                  if (!response.success || item == null) {
+                    return Center(
+                      child: Padding(
+                        padding: const EdgeInsets.all(24),
+                        child: Text(
+                          response.message ?? 'Мэдээллийг татаж чадсангүй.',
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+                    );
+                  }
+
                   // 1. Define the Radius once
                   const double dialogRadius = 30.0;
 

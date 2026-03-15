@@ -90,7 +90,7 @@ class _QrScanScreenState extends State<QrScanScreen> {
     } else {
       debugPrint("Wait API failed: ${response.statusCode}");
 
-      final errorMessage = "Error: Status Code ${response.message}";
+      final errorMessage = 'Алдаа: ${response.message}';
 
       if (mounted) {
         ScaffoldMessenger.of(

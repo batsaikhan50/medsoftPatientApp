@@ -346,20 +346,13 @@ class _LoginScreenState extends State<LoginScreen> with WidgetsBindingObserver {
   }
 
   Future<void> callWaitApi(BuildContext context, String token) async {
-    try {
-      final waitResponse = await _authDao.waitQR(token);
-      if (waitResponse.success) {
-        if (!context.mounted) return;
-
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (_) => ClaimQRScreen(token: token)),
-        );
-      } else {
-        debugPrint("Login Wait failed (DAO): ${waitResponse.message ?? 'Unknown error'}");
-      }
-    } catch (e) {
-      debugPrint('Error calling wait API: $e');
+    final waitResponse = await _authDao.waitQR(token);
+    if (waitResponse.success) {
+      if (!context.mounted) return;
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => ClaimQRScreen(token: token)),
+      );
     }
   }
 
@@ -404,8 +397,9 @@ class _LoginScreenState extends State<LoginScreen> with WidgetsBindingObserver {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setBool('isLoggedIn', false);
       setState(() {
-        _errorMessage =
-            response.message ?? 'Нэвтрэх нэр эсвэл нууц үг буруу байна. Дахин оролдоно уу.';
+        _errorMessage = response.statusCode == 400
+            ? 'Нэвтрэх нэр эсвэл нууц үг буруу байна.'
+            : (response.message ?? 'Нэвтрэх нэр эсвэл нууц үг буруу байна.');
         _isLoading = false;
       });
     }

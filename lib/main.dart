@@ -18,6 +18,7 @@ import 'package:medsoft_patient/notification/fcm_service.dart';
 import 'package:medsoft_patient/notification/local_notification_service.dart';
 import 'package:medsoft_patient/notification_screen.dart';
 import 'package:medsoft_patient/call_manager.dart';
+import 'package:medsoft_patient/connectivity_banner.dart';
 import 'package:medsoft_patient/patient_call_screen.dart';
 import 'package:medsoft_patient/profile_screen.dart';
 import 'package:medsoft_patient/qr_scan_screen.dart';
@@ -55,9 +56,8 @@ class MyApp extends StatelessWidget {
 
       debugShowCheckedModeBanner: false,
       navigatorKey: CallManager.navigatorKey,
-      routes: {
-        '/call': (_) => const PatientCallScreen(),
-      },
+      builder: (context, child) => ConnectivityBanner(child: child!),
+      routes: {'/call': (_) => const PatientCallScreen()},
       title: 'Patient App',
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
@@ -142,8 +142,8 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
 
   final List<String> _locationHistory = [];
   Map<String, dynamic> sharedPreferencesData = {};
-  bool _isLoading = false;
   Map<String, dynamic>? roomInfo;
+  int _homeRefreshCounter = 0;
   String? _errorMessage;
   Timer? _timer;
   bool _isDialogShowing = false;
@@ -392,118 +392,67 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
 
   Future<void> fetchRoom() async {
     setState(() {
-      _isLoading = true;
       _errorMessage = null;
     });
 
-    debugPrint('Fetching room... _isLoading: $_isLoading, _errorMessage: $_errorMessage');
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('X-Medsoft-Token') ?? '';
+    if (token.isEmpty) {
+      setState(() {
+        _errorMessage = 'Нэвтрэх эрх байхгүй байна. Дахин нэвтэрнэ үү.';
+      });
+      if (mounted) _logOut();
+      return;
+    }
 
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final token = prefs.getString('X-Medsoft-Token') ?? '';
-      if (token.isEmpty) {
+    final response = await _mapDao.getRoomInfo();
+
+    if (response.success && response.data is Map<String, dynamic>) {
+      roomInfo = response.data;
+
+      if (roomInfo!.containsKey('url') && roomInfo!.containsKey('roomId')) {
+        final url = roomInfo!['url'] as String;
+        final title = "Байршил";
+        final roomId = roomInfo!['roomId'] as String;
+        final tenantName = roomInfo!['serverName'] as String;
+
+        await prefs.setString('currentRoomId', roomId);
+        await prefs.setString('xTenant', tenantName);
+        final roomIdNum = roomInfo!['_id'];
+
+        await platform.invokeMethod('sendRoomIdToAppDelegate', {'roomId': roomId});
+        await platform.invokeMethod('startLocationManagerAfterLogin');
+
+        if (!mounted) return;
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder:
+                (context) =>
+                    WebViewScreen(url: url, title: title, roomId: roomId, roomIdNum: roomIdNum),
+          ),
+        );
+
         setState(() {
-          _isLoading = false;
-          _errorMessage = 'Алдаа: Нэвтрэх эрх байхгүй байна. Дахин нэвтэрнэ үү.';
+          _errorMessage = null;
         });
-        debugPrint('Error: Token is empty, setting error and logging out.');
-        if (mounted) {
-          _logOut();
-        }
-        return;
-      }
-
-      final response = await _mapDao.getRoomInfo();
-
-      if (response.statusCode == 200) {
-        debugPrint('API Response data: ${response.data}');
-
-        if (response.data is Map<String, dynamic> && response.success == true) {
-          roomInfo = response.data;
-
-          if (roomInfo is Map<String, dynamic> &&
-              roomInfo!.containsKey('url') &&
-              roomInfo!.containsKey('roomId')) {
-            final url = roomInfo!['url'] as String;
-            final title = "Байршил";
-            final roomId = roomInfo!['roomId'] as String;
-            final tenantName = roomInfo!['serverName'] as String;
-
-            await prefs.setString('currentRoomId', roomId);
-            await prefs.setString('xTenant', tenantName);
-            final roomIdNum = roomInfo!['_id'];
-
-            debugPrint('roomIdNum: ${roomIdNum.toString()}');
-            await platform.invokeMethod('sendRoomIdToAppDelegate', {'roomId': roomId});
-
-            await platform.invokeMethod('startLocationManagerAfterLogin');
-
-            debugPrint("WebView loading URL: $url");
-            debugPrint("WebView loading roomId: $roomId");
-            debugPrint("WebView loading roomIdNum: $roomIdNum");
-
-            if (!mounted) return;
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder:
-                    (context) =>
-                        WebViewScreen(url: url, title: title, roomId: roomId, roomIdNum: roomIdNum),
-              ),
-            );
-
-            setState(() {
-              _isLoading = false;
-              _errorMessage = null;
-            });
-            debugPrint('Room fetch success! Navigating...');
-          } else {
-            setState(() {
-              _isLoading = false;
-              _errorMessage =
-                  'Алдаа: Серверээс ирсэн мэдээлэл дутуу байна (url эсвэл roomId байхгүй).';
-            });
-            debugPrint(
-              'Error: roomInfo is null or missing "url"/"roomId" keys after successful API call. roomInfo: $roomInfo',
-            );
-          }
-        } else {
-          setState(() {
-            _isLoading = false;
-
-            _errorMessage = response.message ?? 'Алдаа: Мэдээлэл авах боломжгүй байна.';
-          });
-          debugPrint('API success false: ${response.message}');
-        }
       } else {
         setState(() {
-          _isLoading = false;
-          _errorMessage = 'Серверийн алдаа: ${response.statusCode}. Дахин оролдоно уу.';
+          _errorMessage = 'Серверээс ирсэн мэдээлэл дутуу байна.';
         });
-        debugPrint(
-          'Failed to fetch patients with status code: ${response.statusCode}. Body: ${response.data}',
-        );
       }
-    } catch (e) {
+    } else {
       setState(() {
-        _isLoading = false;
-        _errorMessage = 'Учирсан алдаа: ${e.toString()}. Интернет холболтоо шалгана уу.';
+        _errorMessage = response.message ?? 'Алдаа гарлаа. Дахин оролдоно уу.';
       });
-      debugPrint('Exception during fetchRoom: $e');
     }
-    debugPrint('fetchRoom finished. _isLoading: $_isLoading, _errorMessage: $_errorMessage');
 
     if (_errorMessage != null && mounted) {
       final isCallError = _errorMessage! == 'Дуудлага байхгүй';
-
-      final backgroundColor = isCallError ? Colors.black : Colors.red;
-
-      final textColor = Colors.white;
-
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          backgroundColor: backgroundColor,
-          content: Text(_errorMessage!, style: TextStyle(color: textColor)),
+          backgroundColor: isCallError ? Colors.black : Colors.red,
+          content: Text(_errorMessage!, style: const TextStyle(color: Colors.white)),
         ),
       );
     }
@@ -607,7 +556,7 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
     if (applyLandscapeLayout) {
       content = Row(
         children: [
-          const Expanded(child: NewsFeedWidget(isVerticalScroll: true)),
+          Expanded(child: NewsFeedWidget(key: ValueKey(_homeRefreshCounter), isVerticalScroll: true)),
 
           Expanded(
             child: Column(
@@ -635,7 +584,7 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
     } else {
       content = Column(
         children: [
-          const Expanded(flex: 4, child: NewsFeedWidget()),
+          Expanded(flex: 4, child: NewsFeedWidget(key: ValueKey(_homeRefreshCounter))),
 
           Padding(
             padding: const EdgeInsets.only(top: 0.0, bottom: 8.0, left: 16.0, right: 16.0),
@@ -658,17 +607,28 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
       );
     }
 
-    if (maxWidth != null) {
-      return Center(
-        child: ConstrainedBox(constraints: BoxConstraints(maxWidth: maxWidth), child: content),
-      );
-    } else {
-      return content;
-    }
+    final body =
+        maxWidth != null
+            ? Center(
+              child: ConstrainedBox(
+                constraints: BoxConstraints(maxWidth: maxWidth),
+                child: content,
+              ),
+            )
+            : content;
+
+    return RefreshIndicator(
+      onRefresh: () async {
+        setState(() {
+          _homeRefreshCounter++;
+        });
+      },
+      child: body,
+    );
   }
 
   Widget _buildHomeButtonsGrid() {
-    return _HomeButtonsGrid(onMapTap: fetchRoom);
+    return _HomeButtonsGrid(key: ValueKey(_homeRefreshCounter), onMapTap: fetchRoom);
   }
 
   @override
@@ -822,7 +782,7 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
 class _HomeButtonsGrid extends StatefulWidget {
   final VoidCallback onMapTap;
 
-  const _HomeButtonsGrid({required this.onMapTap});
+  const _HomeButtonsGrid({super.key, required this.onMapTap});
 
   @override
   State<_HomeButtonsGrid> createState() => _HomeButtonsGridState();

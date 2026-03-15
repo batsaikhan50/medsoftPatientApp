@@ -103,7 +103,7 @@ class _PatientCallScreenState extends State<PatientCallScreen> {
                     borderRadius: BorderRadius.circular(4),
                   ),
                   child: Text(
-                    "${participant.identity ?? (isLocal ? "You" : "User")}${trackPub?.isScreenShare == true ? " (Screen)" : ""}",
+                    "${participant.identity.isEmpty ? (isLocal ? 'Та' : 'Хэрэглэгч') : participant.identity}${trackPub?.isScreenShare == true ? ' (Дэлгэц)' : ''}",
                     style: const TextStyle(color: Colors.white, fontSize: 12),
                   ),
                 ),
@@ -135,7 +135,7 @@ class _PatientCallScreenState extends State<PatientCallScreen> {
     return Scaffold(
       backgroundColor: Colors.black,
       appBar: AppBar(
-        title: const Text('Live Consultation'),
+        title: const Text('Онлайн зөвлөгөө'),
         backgroundColor: Colors.black,
         iconTheme: const IconThemeData(color: Colors.white),
         titleTextStyle: const TextStyle(color: Colors.white, fontSize: 18),
@@ -168,12 +168,12 @@ class _PatientCallScreenState extends State<PatientCallScreen> {
                 } catch (e) {
                   if (mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text("Connect Error: $e")),
+                      SnackBar(content: Text('Холболтын алдаа: $e')),
                     );
                   }
                 }
               },
-              child: const Text('Join Call'),
+              child: const Text('Дуудлагад нэгдэх'),
             ),
     );
   }

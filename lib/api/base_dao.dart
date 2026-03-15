@@ -1,10 +1,14 @@
+import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
+import 'dart:typed_data';
 
-import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../constants.dart';
+
+const Duration _kRequestTimeout = Duration(seconds: 30);
 
 // API хандалтын үндсэн DAO
 class ApiResponse<T> {
@@ -50,6 +54,31 @@ class RequestConfig {
   });
 }
 
+String statusMessage(int? statusCode) {
+  switch (statusCode) {
+    case 400:
+      return 'Илгээсэн хүсэлт буруу байна.';
+    case 401:
+      return 'Баталгаажуулалт амжилтгүй боллоо. Дахин нэвтэрнэ үү.';
+    case 403:
+      return 'Та энэ үйлдлийг хийх эрхгүй байна.';
+    case 404:
+      return 'Хүссэн мэдээлэл олдсонгүй.';
+    case 409:
+      return 'Хүсэлтийг гүйцэтгэх боломжгүй байна.';
+    case 422:
+      return 'Оруулсан мэдээллээ шалгаад дахин оролдоно уу.';
+    case 429:
+      return 'Хэт олон оролдлого хийсэн байна. Дараа дахин оролдоно уу.';
+    case 500:
+      return 'Системийн алдаа гарлаа.';
+    case 503:
+      return 'Үйлчилгээ түр хугацаанд боломжгүй байна.';
+    default:
+      return 'Алдаа гарлаа. Дахин оролдоно уу.';
+  }
+}
+
 abstract class BaseDAO {
   Future<ApiResponse<T>> post<T>(
     String url, {
@@ -59,18 +88,15 @@ abstract class BaseDAO {
   }) async {
     try {
       final headers = await _buildHeaders(config);
-      debugPrint('POST $url');
-      debugPrint('Headers: $headers');
-      debugPrint('Body: ${jsonEncode(body)}');
-
-      final response = await http.post(
-        Uri.parse(url),
-        headers: headers,
-        body: body != null ? jsonEncode(body) : null,
-      );
-      return _handleResponse<T>(response, url, parse: parse);
+      final response = await http
+          .post(Uri.parse(url), headers: headers, body: body != null ? jsonEncode(body) : null)
+          .timeout(_kRequestTimeout);
+      return _handleResponse<T>(response, parse: parse);
+    } on SocketException {
+      return ApiResponse<T>(success: false, message: 'Интернэт холболтоо шалгана уу.');
+    } on TimeoutException {
+      return ApiResponse<T>(success: false, message: 'Серверт холбогдоход хугацаа дууслаа.');
     } catch (e) {
-      debugPrint('POST error: $e');
       return ApiResponse<T>(success: false, message: e.toString());
     }
   }
@@ -79,29 +105,16 @@ abstract class BaseDAO {
     String url, {
     RequestConfig config = const RequestConfig(),
     T Function(dynamic)? parse,
-    // T Function(dynamic json)? transform,
   }) async {
     try {
       final headers = await _buildHeaders(config);
-      debugPrint('GET $url');
-      debugPrint('Headers: $headers');
-
-      final response = await http.get(Uri.parse(url), headers: headers);
-      final result = _handleResponse<T>(response, url, parse: parse);
-
-      // if (result.success && transform != null && result.data != null) {
-      //   return ApiResponse<T>(success: true, data: transform(result.data), message: result.message);
-      // }
-
-      // *** FIX 2: Return result directly (now that its type is ApiResponse<T>) ***
-      return result;
-      // return ApiResponse<T>(
-      //   success: result.success,
-      //   data: result.data as T?,
-      //   message: result.message,
-      // );
+      final response = await http.get(Uri.parse(url), headers: headers).timeout(_kRequestTimeout);
+      return _handleResponse<T>(response, parse: parse);
+    } on SocketException {
+      return ApiResponse<T>(success: false, message: 'Интернэт холболтоо шалгана уу.');
+    } on TimeoutException {
+      return ApiResponse<T>(success: false, message: 'Серверт холбогдоход хугацаа дууслаа.');
     } catch (e) {
-      debugPrint('GET error: $e');
       return ApiResponse<T>(success: false, message: e.toString());
     }
   }
@@ -138,11 +151,10 @@ abstract class BaseDAO {
         }
         headers['X-Token'] = Constants.xToken;
         if (!config.excludeToken && savedTenant.isNotEmpty) {
-          headers['X-Tenant'] = savedToken;
+          headers['X-Tenant'] = savedTenant;
         }
         break;
       case HeaderType.custom:
-        // do nothing — will merge below
         break;
     }
 
@@ -153,13 +165,14 @@ abstract class BaseDAO {
     return headers;
   }
 
-  ApiResponse<T> _handleResponse<T>(
-    http.Response response,
-    String url, {
-    T Function(dynamic)? parse,
-  }) {
-    debugPrint('_handleResponse [${response.statusCode}]: ${response.body}');
-    debugPrint('_handleResponse url: $url');
+  ApiResponse<T> _handleResponse<T>(http.Response response, {T Function(dynamic)? parse}) {
+    if (response.statusCode >= 400) {
+      return ApiResponse<T>(
+        success: false,
+        message: statusMessage(response.statusCode),
+        statusCode: response.statusCode,
+      );
+    }
 
     try {
       final jsonBody = jsonDecode(response.body);
@@ -167,15 +180,13 @@ abstract class BaseDAO {
     } catch (e) {
       return ApiResponse<T>(
         success: false,
-        message: 'Invalid response format: $e',
+        message: 'Системийн алдаа гарлаа. Мэдээллийн ажилтанд хандаж алдааг шалгуулна уу.',
         statusCode: response.statusCode,
       );
     }
   }
 
   Uint8List _handleRawResponse(http.Response response) {
-    debugPrint('Response [${response.statusCode}]: ${response.body.length} bytes');
-
     if (response.statusCode >= 200 && response.statusCode < 300) {
       return response.bodyBytes;
     } else {
@@ -193,13 +204,13 @@ abstract class BaseDAO {
   Future<Uint8List> getRaw(String url, {RequestConfig config = const RequestConfig()}) async {
     try {
       final headers = await _buildHeaders(config);
-      debugPrint('GET RAW $url');
-      debugPrint('Headers: $headers');
-
-      final response = await http.get(Uri.parse(url), headers: headers);
+      final response = await http.get(Uri.parse(url), headers: headers).timeout(_kRequestTimeout);
       return _handleRawResponse(response);
+    } on SocketException {
+      throw Exception('Интернэт холболтоо шалгана уу.');
+    } on TimeoutException {
+      throw Exception('Серверт холбогдоход хугацаа дууслаа.');
     } catch (e) {
-      debugPrint('GET RAW error: $e');
       rethrow;
     }
   }

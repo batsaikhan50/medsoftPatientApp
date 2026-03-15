@@ -85,7 +85,7 @@ class _WebViewScreenState extends State<WebViewScreen> {
 
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Location sent successfully'),
+          content: Text('Байршил амжилттай илгээгдлээ.'),
           backgroundColor: Colors.green,
           duration: Duration(seconds: 1),
         ),
@@ -97,7 +97,7 @@ class _WebViewScreenState extends State<WebViewScreen> {
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Failed to send location: ${e.message}'),
+          content: Text('Байршил илгээхэд алдаа гарлаа: ${e.message}'),
           backgroundColor: Colors.red,
           duration: const Duration(seconds: 1),
         ),
@@ -177,7 +177,7 @@ class _WebViewScreenState extends State<WebViewScreen> {
                       width: 110,
                       child: _buildActionButton(
                         icon: Icons.refresh,
-                        label: 'Refresh',
+                        label: 'Шинэчлэх',
                         onPressed: () {
                           _controller.reload();
                         },

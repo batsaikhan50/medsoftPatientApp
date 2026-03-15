@@ -105,53 +105,54 @@ class _HistoryScreenState extends State<HistoryScreen> {
       _errorMessage = null;
     });
 
-    try {
-      final tenantResponse = await _historyDAO.getHistoryTenants();
-      if (tenantResponse.success && tenantResponse.data != null) {
-        _tenants =
-            (tenantResponse.data!)
-                .map((e) => HistoryTenant.fromJson(e as Map<String, dynamic>))
-                .toList();
-        _selectedTenant = _tenants.isNotEmpty ? _tenants.first : null;
-      } else {
-        throw Exception('Түрээслэгчдийг татаж чадсангүй.');
-      }
-
-      final availableResponse = await _historyDAO.getHistoryAvailable();
-      if (availableResponse.success && availableResponse.data != null) {
-        _availableHistory =
-            (availableResponse.data!)
-                .map((e) => HistoryAvailable.fromJson(e as Map<String, dynamic>))
-                .toList();
-
-        if (widget.initialHistoryKey != null) {
-          HistoryAvailable? matchingType;
-
-          if (_availableHistory.isNotEmpty) {
-            matchingType = _availableHistory.firstWhere(
-              (type) => type.key == widget.initialHistoryKey,
-              orElse: () => _availableHistory.first,
-            );
-          }
-
-          _selectedHistoryType = matchingType;
-        } else {
-          _selectedHistoryType = _availableHistory.isNotEmpty ? _availableHistory.first : null;
-        }
-      } else {
-        throw Exception('Боломжит түүхийн төрлүүдийг татаж чадсангүй.');
-      }
-
-      if (_selectedTenant != null && _selectedHistoryType != null) {
-        await _fetchHistory();
-      } else {
-        setState(() {
-          _isLoading = false;
-        });
-      }
-    } catch (e) {
+    final tenantResponse = await _historyDAO.getHistoryTenants();
+    if (tenantResponse.success && tenantResponse.data != null) {
+      _tenants =
+          (tenantResponse.data!)
+              .map((e) => HistoryTenant.fromJson(e as Map<String, dynamic>))
+              .toList();
+      _selectedTenant = _tenants.isNotEmpty ? _tenants.first : null;
+    } else {
       setState(() {
-        _errorMessage = 'Эхний өгөгдлийг татахад алдаа гарлаа: ${e.toString()}';
+        _errorMessage = tenantResponse.message ?? 'Түрээслэгчдийг татаж чадсангүй.';
+        _isLoading = false;
+      });
+      return;
+    }
+
+    final availableResponse = await _historyDAO.getHistoryAvailable();
+    if (availableResponse.success && availableResponse.data != null) {
+      _availableHistory =
+          (availableResponse.data!)
+              .map((e) => HistoryAvailable.fromJson(e as Map<String, dynamic>))
+              .toList();
+
+      if (widget.initialHistoryKey != null) {
+        HistoryAvailable? matchingType;
+
+        if (_availableHistory.isNotEmpty) {
+          matchingType = _availableHistory.firstWhere(
+            (type) => type.key == widget.initialHistoryKey,
+            orElse: () => _availableHistory.first,
+          );
+        }
+
+        _selectedHistoryType = matchingType;
+      } else {
+        _selectedHistoryType = _availableHistory.isNotEmpty ? _availableHistory.first : null;
+      }
+    } else {
+      setState(() {
+        _errorMessage = availableResponse.message ?? 'Боломжит түүхийн төрлүүдийг татаж чадсангүй.';
+        _isLoading = false;
+      });
+      return;
+    }
+
+    if (_selectedTenant != null && _selectedHistoryType != null) {
+      await _fetchHistory();
+    } else {
+      setState(() {
         _isLoading = false;
       });
     }
@@ -166,37 +167,27 @@ class _HistoryScreenState extends State<HistoryScreen> {
       _errorMessage = null;
     });
 
-    try {
-      final yearString = _selectedYear.toString();
-      final historyResponse = await _historyDAO.getHistory(
-        yearString,
-        _selectedHistoryType!.key,
-        _selectedTenant!.tenantName,
-      );
+    final yearString = _selectedYear.toString();
+    final historyResponse = await _historyDAO.getHistory(
+      yearString,
+      _selectedHistoryType!.key,
+      _selectedTenant!.tenantName,
+    );
 
-      if (historyResponse.success) {
-        if (historyResponse.data != null) {
-          _historyData =
-              (historyResponse.data!)
-                  .map((e) => HistoryColumn.fromJson(e as Map<String, dynamic>))
-                  .toList();
-        } else {
-          _errorMessage = 'Дата олдсонгүй';
-        }
-      } else if (!historyResponse.success && historyResponse.data == null) {
-        _errorMessage = 'Дата олдсонгүй';
-      } else {
-        throw Exception('Өвчтөний түүхийг татаж чадсангүй.');
-      }
-    } catch (e) {
-      if (_errorMessage == null || _errorMessage!.isEmpty) {
-        _errorMessage = 'Түүхийн өгөгдлийг татахад алдаа гарлаа: ${e.toString()}';
-      }
-    } finally {
-      setState(() {
-        _isLoading = false;
-      });
+    if (historyResponse.success && historyResponse.data != null) {
+      _historyData =
+          (historyResponse.data!)
+              .map((e) => HistoryColumn.fromJson(e as Map<String, dynamic>))
+              .toList();
+    } else if (!historyResponse.success) {
+      _errorMessage = historyResponse.message ?? 'Өвчтөний түүхийг татаж чадсангүй.';
+    } else {
+      _errorMessage = 'Дата олдсонгүй';
     }
+
+    setState(() {
+      _isLoading = false;
+    });
   }
 
   List<List<HistoryCellData>> _getRows() {

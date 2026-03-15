@@ -89,7 +89,7 @@ class CallManager extends ChangeNotifier with WidgetsBindingObserver {
     final prefs = await SharedPreferences.getInstance();
     final username = prefs.getString('Username');
     if (username == null || username.isEmpty) {
-      throw Exception('Username not found in SharedPreferences');
+      throw Exception('Хэрэглэгчийн нэр олдсонгүй.');
     }
     final response = await http.get(
       Uri.parse('${Constants.recordingUrl}/token?identity=$username&room=testroom'),
@@ -99,7 +99,7 @@ class CallManager extends ChangeNotifier with WidgetsBindingObserver {
       return data['token'];
     } else {
       debugPrint(response.body.toString());
-      throw Exception('Failed to fetch token');
+      throw Exception('Token авахад алдаа гарлаа.');
     }
   }
 

@@ -39,29 +39,20 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
       _showPhoneError = false;
     });
 
-    try {
-      final response = await _authDao.sendResetPassOTP({
-        "username": _usernameController.text.trim(),
-      });
+    final response = await _authDao.sendResetPassOTP({
+      "username": _usernameController.text.trim(),
+    });
 
-      setState(() => _isSendingOtp = false);
+    setState(() => _isSendingOtp = false);
+    if (!mounted) return;
 
-      if (response.statusCode == 200) {
-        setState(() => _otpSent = true);
-        if (!mounted) return;
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text('OTP илгээгдлээ.')));
-      } else {
-        if (!mounted) return;
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Алдаа: ${response.message}')));
-      }
-    } catch (e) {
-      if (!mounted) return;
-      setState(() => _isSendingOtp = false);
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Сүлжээний алдаа: $e')));
+    if (response.success) {
+      setState(() => _otpSent = true);
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('OTP илгээгдлээ.')));
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(response.message ?? 'Алдаа гарлаа. Дахин оролдоно уу.')),
+      );
     }
   }
 
@@ -94,27 +85,20 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
       "otp": otp,
     };
 
-    try {
-      final response = await _authDao.resetPassword(body);
+    final response = await _authDao.resetPassword(body);
 
-      setState(() => _isLoading = false);
+    setState(() => _isLoading = false);
+    if (!mounted) return;
 
-      if (response.statusCode == 200) {
-        if (!mounted) return;
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text('Нууц үг амжилттай шинэчлэгдлээ.')));
-        Navigator.pop(context);
-      } else {
-        if (!mounted) return;
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Алдаа: ${response.message}')));
-      }
-    } catch (e) {
-      if (!mounted) return;
-      setState(() => _isLoading = false);
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Сүлжээний алдаа: $e')));
+    if (response.success) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Нууц үг амжилттай шинэчлэгдлээ.')),
+      );
+      Navigator.pop(context);
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(response.message ?? 'Алдаа гарлаа. Дахин оролдоно уу.')),
+      );
     }
   }
 

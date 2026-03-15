@@ -28,7 +28,7 @@ class _PdfViewerScreenState extends State<PdfViewerScreen> {
       try {
         await Share.shareXFiles([
           XFile(widget.pdfPath),
-        ], subject: widget.pdfTitle ?? 'Shared PDF Report');
+        ], subject: widget.pdfTitle ?? 'PDF Тайлан');
       } catch (e) {
         if (mounted) {
           ScaffoldMessenger.of(
