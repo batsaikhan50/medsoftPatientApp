@@ -5,10 +5,23 @@ import 'dart:typed_data';
 
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter/foundation.dart';
 
 import '../constants.dart';
 
 const Duration _kRequestTimeout = Duration(seconds: 30);
+
+// Enhanced error handling with retry logic
+class NetworkError extends Error {
+  final String message;
+  final int? statusCode;
+  final String? endpoint;
+
+  NetworkError(this.message, {this.statusCode, this.endpoint});
+
+  @override
+  String toString() => 'NetworkError: $message (Status: $statusCode, Endpoint: $endpoint)';
+}
 
 // API хандалтын үндсэн DAO
 class ApiResponse<T> {
@@ -85,38 +98,124 @@ abstract class BaseDAO {
     Map<String, dynamic>? body,
     RequestConfig config = const RequestConfig(),
     T Function(dynamic)? parse,
+    int maxRetries = 2,
+    Duration? retryDelay,
   }) async {
-    try {
-      final headers = await _buildHeaders(config);
-      final response = await http
-          .post(Uri.parse(url), headers: headers, body: body != null ? jsonEncode(body) : null)
-          .timeout(_kRequestTimeout);
-      return _handleResponse<T>(response, parse: parse);
-    } on SocketException {
-      return ApiResponse<T>(success: false, message: 'Интернэт холболтоо шалгана уу.');
-    } on TimeoutException {
-      return ApiResponse<T>(success: false, message: 'Серверт холбогдоход хугацаа дууслаа.');
-    } catch (e) {
-      return ApiResponse<T>(success: false, message: e.toString());
+    retryDelay ??= const Duration(milliseconds: 500);
+
+    ApiResponse<T>? lastError;
+
+    for (int attempt = 0; attempt <= maxRetries; attempt++) {
+      try {
+        final headers = await _buildHeaders(config);
+        final response = await http
+            .post(Uri.parse(url), headers: headers, body: body != null ? jsonEncode(body) : null)
+            .timeout(_kRequestTimeout);
+        final result = _handleResponse<T>(response, parse: parse);
+
+        if (result.success || attempt == maxRetries) {
+          return result;
+        }
+
+        lastError = result;
+        if (attempt < maxRetries) {
+          await Future.delayed(retryDelay);
+        }
+      } on SocketException {
+        final error = ApiResponse<T>(
+          success: false,
+          message: 'Интернэт холболтоо шалгана уу. Сүлжээний алдаа.',
+        );
+        if (attempt == maxRetries) return error;
+        lastError = error;
+        if (attempt < maxRetries) {
+          await Future.delayed(retryDelay);
+        }
+      } on TimeoutException {
+        final error = ApiResponse<T>(
+          success: false,
+          message: 'Серверт холбогдоход хугацаа дууслаа. Дахин оролдоно уу.',
+        );
+        if (attempt == maxRetries) return error;
+        lastError = error;
+        if (attempt < maxRetries) {
+          await Future.delayed(retryDelay);
+        }
+      } catch (e) {
+        final error = ApiResponse<T>(
+          success: false,
+          message: 'Системийн алдаа гарлаа: ${e.toString()}',
+        );
+        if (attempt == maxRetries) return error;
+        lastError = error;
+        if (attempt < maxRetries) {
+          await Future.delayed(retryDelay);
+        }
+      }
     }
+
+    return lastError ?? ApiResponse<T>(success: false, message: 'Хүсэлт амжилтгүй боллоо.');
   }
 
   Future<ApiResponse<T>> get<T>(
     String url, {
     RequestConfig config = const RequestConfig(),
     T Function(dynamic)? parse,
+    int maxRetries = 2,
+    Duration? retryDelay,
   }) async {
-    try {
-      final headers = await _buildHeaders(config);
-      final response = await http.get(Uri.parse(url), headers: headers).timeout(_kRequestTimeout);
-      return _handleResponse<T>(response, parse: parse);
-    } on SocketException {
-      return ApiResponse<T>(success: false, message: 'Интернэт холболтоо шалгана уу.');
-    } on TimeoutException {
-      return ApiResponse<T>(success: false, message: 'Серверт холбогдоход хугацаа дууслаа.');
-    } catch (e) {
-      return ApiResponse<T>(success: false, message: e.toString());
+    retryDelay ??= const Duration(milliseconds: 500);
+
+    ApiResponse<T>? lastError;
+
+    for (int attempt = 0; attempt <= maxRetries; attempt++) {
+      try {
+        final headers = await _buildHeaders(config);
+        final response = await http.get(Uri.parse(url), headers: headers).timeout(_kRequestTimeout);
+        final result = _handleResponse<T>(response, parse: parse);
+
+        if (result.success || attempt == maxRetries) {
+          return result;
+        }
+
+        lastError = result;
+        if (attempt < maxRetries) {
+          await Future.delayed(retryDelay);
+        }
+      } on SocketException {
+        final error = ApiResponse<T>(
+          success: false,
+          message: 'Интернэт холболтоо шалгана уу. Сүлжээний алдаа.',
+        );
+        if (attempt == maxRetries) return error;
+        lastError = error;
+        if (attempt < maxRetries) {
+          await Future.delayed(retryDelay);
+        }
+      } on TimeoutException {
+        final error = ApiResponse<T>(
+          success: false,
+          message: 'Серверт холбогдоход хугацаа дууслаа. Дахин оролдоно уу.',
+        );
+        if (attempt == maxRetries) return error;
+        lastError = error;
+        if (attempt < maxRetries) {
+          await Future.delayed(retryDelay);
+        }
+      } catch (e) {
+        final error = ApiResponse<T>(
+          success: false,
+          message: 'Системийн алдаа гарлаа: ${e.toString()}',
+        );
+        if (attempt == maxRetries) return error;
+        lastError = error;
+        if (attempt < maxRetries) {
+          await Future.delayed(retryDelay);
+        }
+      }
     }
+
+    return lastError ?? ApiResponse<T>(success: false, message: 'Хүсэлт амжилтгүй боллоо.');
   }
 
   Future<Map<String, String>> _buildHeaders(RequestConfig config) async {
@@ -207,11 +306,11 @@ abstract class BaseDAO {
       final response = await http.get(Uri.parse(url), headers: headers).timeout(_kRequestTimeout);
       return _handleRawResponse(response);
     } on SocketException {
-      throw Exception('Интернэт холболтоо шалгана уу.');
+      throw NetworkError('Интернэт холболтоо шалгана уу. Сүлжээний алдаа.', endpoint: url);
     } on TimeoutException {
-      throw Exception('Серверт холбогдоход хугацаа дууслаа.');
+      throw NetworkError('Серверт холбогдоход хугацаа дууслаа. Дахин оролдоно уу.', endpoint: url);
     } catch (e) {
-      rethrow;
+      throw NetworkError('Файл татахад алдаа гарлаа: ${e.toString()}', endpoint: url);
     }
   }
 }

@@ -138,12 +138,12 @@ class NewsFeedWidget extends StatelessWidget {
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 12),
               child: Center(
-                child: Text(
+                child: _buildDynamicText(
                   item["title"] ?? "",
                   maxLines: 7,
-                  overflow: TextOverflow.ellipsis,
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  maxFontSize: 18,
+                  minFontSize: 12,
+                  fontWeight: FontWeight.bold,
                 ),
               ),
             ),
@@ -151,6 +151,72 @@ class NewsFeedWidget extends StatelessWidget {
         ),
       ],
     );
+  }
+
+  // Dynamic text widget that adjusts font size based on content length
+  Widget _buildDynamicText(
+    String text, {
+    required int maxLines,
+    required double maxFontSize,
+    required double minFontSize,
+    required FontWeight fontWeight,
+  }) {
+    return LayoutBuilder(
+      builder: (BuildContext context, BoxConstraints constraints) {
+        return Text(
+          text,
+          maxLines: maxLines,
+          overflow: TextOverflow.ellipsis,
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            fontSize: _calculateFontSize(text, constraints, maxFontSize, minFontSize),
+            fontWeight: fontWeight,
+          ),
+        );
+      },
+    );
+  }
+
+  // Calculate optimal font size based on text length and available space
+  double _calculateFontSize(
+    String text,
+    BoxConstraints constraints,
+    double maxFontSize,
+    double minFontSize,
+  ) {
+    if (text.isEmpty) return maxFontSize;
+
+    // Base font size calculation
+    double fontSize = maxFontSize;
+
+    // Adjust font size based on text length
+    final int textLength = text.length;
+
+    if (textLength > 50) {
+      // For very long titles, reduce font size more aggressively
+      fontSize = maxFontSize - (textLength * 0.15);
+    } else if (textLength > 30) {
+      // For moderately long titles, reduce font size moderately
+      fontSize = maxFontSize - (textLength * 0.1);
+    } else if (textLength > 20) {
+      // For slightly long titles, reduce font size slightly
+      fontSize = maxFontSize - (textLength * 0.05);
+    }
+
+    // Ensure font size stays within bounds
+    fontSize = fontSize.clamp(minFontSize, maxFontSize);
+
+    // Additional check based on available width (if constraints are available)
+    if (constraints.maxWidth > 0) {
+      // Simple heuristic: if the text is too long for the available width, reduce font size
+      final double estimatedWidth = text.length * fontSize * 0.6; // Rough width estimation
+      if (estimatedWidth > constraints.maxWidth * 0.9) {
+        fontSize = fontSize * 0.85; // Reduce by 15% if it's too wide
+        fontSize = fontSize.clamp(minFontSize, maxFontSize);
+      }
+    }
+
+    return fontSize;
   }
 
   Uint8List _decodeBase64(String img) {

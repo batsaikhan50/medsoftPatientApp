@@ -8,6 +8,7 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:medsoft_patient/api/auth_dao.dart';
 import 'package:medsoft_patient/api/home_dao.dart';
 import 'package:medsoft_patient/api/map_dao.dart';
+import 'package:medsoft_patient/components/error_handler.dart';
 import 'package:medsoft_patient/claim_qr.dart';
 import 'package:medsoft_patient/constants.dart';
 import 'package:medsoft_patient/guide.dart';
@@ -554,7 +555,9 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
     if (applyLandscapeLayout) {
       content = Row(
         children: [
-          Expanded(child: NewsFeedWidget(key: ValueKey(_homeRefreshCounter), isVerticalScroll: true)),
+          Expanded(
+            child: NewsFeedWidget(key: ValueKey(_homeRefreshCounter), isVerticalScroll: true),
+          ),
 
           Expanded(
             child: Column(
@@ -626,7 +629,13 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
   }
 
   Widget _buildHomeButtonsGrid() {
-    return _HomeButtonsGrid(key: ValueKey(_homeRefreshCounter), onMapTap: fetchRoom);
+    return _HomeButtonsGrid(
+      key: ValueKey(_homeRefreshCounter),
+      onMapTap: fetchRoom,
+      onError: (message) {
+        ErrorHandler.showSnackBar(context, message, isError: true);
+      },
+    );
   }
 
   @override
@@ -779,8 +788,9 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
 
 class _HomeButtonsGrid extends StatefulWidget {
   final VoidCallback onMapTap;
+  final Function(String)? onError;
 
-  const _HomeButtonsGrid({super.key, required this.onMapTap});
+  const _HomeButtonsGrid({super.key, required this.onMapTap, this.onError});
 
   @override
   State<_HomeButtonsGrid> createState() => _HomeButtonsGridState();
@@ -811,10 +821,14 @@ class _HomeButtonsGridState extends State<_HomeButtonsGrid> {
       if (apiResponse.success && apiResponse.data != null) {
         _buttons =
             (apiResponse.data as List<dynamic>).map((e) => Map<String, String>.from(e)).toList();
+      } else {
+        _errorMessage = apiResponse.message ?? 'Товчнуудыг ачаалахад алдаа гарлаа.';
+        widget.onError?.call(_errorMessage!);
       }
     } catch (e) {
-      _errorMessage = 'Учирсан алдаа: ${e.toString()}.';
+      _errorMessage = 'Товчнуудыг ачаалахад алдаа гарлаа: ${e.toString()}';
       debugPrint('Error fetching home buttons: $e');
+      widget.onError?.call(_errorMessage!);
     } finally {
       _buttons.insert(0, {"label": "Газрын зураг харах", "icon": "Map", "navigate": "map"});
 
@@ -880,20 +894,13 @@ class _HomeButtonsGridState extends State<_HomeButtonsGrid> {
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
-      return const Center(child: CircularProgressIndicator());
+      return const LoadingIndicator(message: 'Товчнуудыг ачааллаж байна...');
     }
 
     if (_errorMessage != null) {
-      return Center(
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Text(
-            'Алдаа: $_errorMessage',
-            textAlign: TextAlign.center,
-            style: const TextStyle(color: Colors.red),
-          ),
-        ),
-      );
+      return ErrorHandler.buildErrorWidget(_errorMessage!, () {
+        _fetchButtons();
+      });
     }
 
     const double maxWidth = 700.0;
