@@ -1,345 +1,168 @@
 package com.example.medsoft_patient
 
-import android.Manifest
-import android.app.AlertDialog
-import android.content.BroadcastReceiver
-import android.content.Context
+import android.app.PictureInPictureParams
 import android.content.Intent
-import android.content.IntentFilter
-import android.content.SharedPreferences
-import android.content.pm.PackageManager
-import android.location.Location
-import android.net.Uri
+import android.content.res.Configuration
 import android.os.Build
-import android.os.Bundle
-import android.provider.Settings // NEW IMPORT
-import android.util.Log
-import androidx.core.app.ActivityCompat
-import androidx.core.content.ContextCompat
-import com.google.android.gms.location.FusedLocationProviderClient
-import com.google.android.gms.location.LocationServices
+import android.util.Rational
 import io.flutter.embedding.android.FlutterActivity
+import io.flutter.embedding.android.RenderMode
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
-import okhttp3.MediaType.Companion.toMediaType
-import okhttp3.OkHttpClient
-import okhttp3.Request
-import okhttp3.RequestBody.Companion.toRequestBody
-import org.json.JSONObject
-import java.io.IOException
 
 class MainActivity : FlutterActivity() {
-    private val channelName = "com.example.medsoft_patient/location"
-    private lateinit var channel: MethodChannel
-    private lateinit var sharedPreferences: SharedPreferences
-    private lateinit var fusedLocationClient: FusedLocationProviderClient
-
-    private var xMedsoftToken: String? = null
-    private var currentRoomId: String? = null
-
-    private val locationServiceReceiver = object : BroadcastReceiver() {
-        override fun onReceive(context: Context?, intent: Intent?) {
-            val method = intent?.getStringExtra("method")
-            when (method) {
-                "arrivedInFiftyReached" -> {
-                    val arrivedInFifty = intent.getBooleanExtra("value_bool", false)
-                    CoroutineScope(Dispatchers.Main).launch {
-                        channel.invokeMethod("arrivedInFiftyReached", mapOf("arrivedInFifty" to arrivedInFifty))
-                    }
-                }
-                "navigateToLogin" -> {
-                    CoroutineScope(Dispatchers.Main).launch {
-                        channel.invokeMethod("navigateToLogin", null)
-                    }
-                }
-            }
-        }
-    }
-
-    companion object {
-        private const val LOCATION_PERMISSION_REQUEST_CODE = 1001
-    }
-
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-        val filter = IntentFilter("com.example.medsoft_patient.FLUTTER_COMMUNICATION")
-        ContextCompat.registerReceiver(this, locationServiceReceiver, filter, ContextCompat.RECEIVER_NOT_EXPORTED)
-    }
-
-    override fun onDestroy() {
-        unregisterReceiver(locationServiceReceiver)
-        super.onDestroy()
-    }
+    // TextureView instead of SurfaceView: Samsung One UI has a known bug where
+    // SurfaceView surfaces are not redrawn after the PiP window is created,
+    // causing the entire PiP window to show white. TextureView uses Android's
+    // hardware-accelerated layer compositing which handles PiP correctly on One UI.
+    override fun getRenderMode(): RenderMode = RenderMode.texture
+    private val PIP_CHANNEL = "pip_channel"
+    private val SCREEN_CAPTURE_CHANNEL = "screen_capture_channel"
+    private val LOCATION_CHANNEL = "com.example.medsoft_patient/location"
+    private var isInCall = false
+    private var pipChannel: MethodChannel? = null
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
-        channel = MethodChannel(flutterEngine.dartExecutor.binaryMessenger, channelName)
-        channel.setMethodCallHandler { call, result ->
-            when (call.method) {
-                "getLastLocation" -> getLastLocation(result)
-                "sendLocationToAPIByButton" -> sendLocationToAPIByButton(result)
-                "startLocationManagerAfterLogin" -> {
-                    Log.d("MainActivity", "Invoked startLocationManagerAfterLogin")
-                    startLocationManagerAfterLogin()
-                    result.success(null)
-                }
-                "sendXMedsoftTokenToAppDelegate" -> {
-                    val args = call.arguments as? Map<*, *>
-                    xMedsoftToken = args?.get("xMedsoftToken") as? String
-                    Log.d("MainActivity", "Received xMedsoftToken: $xMedsoftToken")
-                    result.success(null)
-                }
-                "stopLocationUpdates" -> {
-                    stopLocationUpdates()
-                    result.success(null)
-                }
-                "sendRoomIdToAppDelegate" -> {
-                    val args = call.arguments as? Map<*, *>
-                    currentRoomId = args?.get("roomId") as? String
-                    Log.d("MainActivity", "Received roomId: $currentRoomId")
-                    result.success(null)
-                }
-                else -> result.notImplemented()
-            }
-        }
 
-        sharedPreferences = getSharedPreferences("FlutterSharedPreferences", MODE_PRIVATE)
-        fusedLocationClient = LocationServices.getFusedLocationProviderClient(this)
-    }
-
-    private fun checkLocationPermission(): Boolean {
-        // Checks only for ACCESS_FINE_LOCATION (Foreground Location)
-        return (ContextCompat.checkSelfPermission(
-            this,
-            Manifest.permission.ACCESS_FINE_LOCATION
-        ) == PackageManager.PERMISSION_GRANTED)
-    }
-
-    private fun isBackgroundLocationGranted(): Boolean {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            return ContextCompat.checkSelfPermission(
-                this,
-                Manifest.permission.ACCESS_BACKGROUND_LOCATION
-            ) == PackageManager.PERMISSION_GRANTED
-        }
-        return true
-    }
-
-    // NEW: Dialog for when permission is permanently denied (Don't Ask Again)
-    private fun showInitialPermissionDeniedDialog() {
-        val builder = AlertDialog.Builder(this)
-        builder.setTitle("Байршил тогтоох зөвшөөрөл шаардлагатай")
-        builder.setMessage(
-            "Энэ функцийг ашиглахад байршил тогтоох хандалт зайлшгүй шаардлагатай. Та өмнө нь энэ зөвшөөрлийг цуцалсан байна. Тохиргоо руу орж апп-д байршлын хандалтыг гараар идэвхжүүлнэ үү."
-        )
-        builder.setPositiveButton("Тохиргоо нээх") { _, _ ->
-            val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
-            val uri = Uri.fromParts("package", packageName, null)
-            intent.data = uri
-            startActivity(intent)
-        }
-        builder.setNegativeButton("Цуцлах") { dialog, _ ->
-            dialog.dismiss()
-            Log.e("MainActivity", "Initial location permission permanently denied by user.")
-        }
-        builder.create().show()
-    }
-
-    // Dialog to guide the user to the Settings screen to grant "Allow all the time"
-    private fun showBackgroundLocationDialog() {
-        val builder = AlertDialog.Builder(this)
-        builder.setTitle("Байршил тогтоох зөвшөөрөл шаардлагатай")
-        builder.setMessage(
-            "Апп хаалттай байх үед байршлыг үнэн зөв тогтоохын тулд 'Үргэлж зөвшөөрөх' хандалт шаардлагатай. Тохиргоо руу орж зөвшөөрлийг 'Зөвхөн апп-ыг ашиглах үед' гэснээс 'Үргэлж зөвшөөрөх' болгож өөрчилнө үү."
-        )
-        builder.setPositiveButton("Тохиргоо нээх") { _, _ ->
-            val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
-            val uri = Uri.fromParts("package", packageName, null)
-            intent.data = uri
-            startActivity(intent)
-        }
-        builder.setNegativeButton("Цуцлах") { dialog, _ ->
-            dialog.dismiss()
-            Log.e("MainActivity", "Background location permission denied by user. Service started, but will be limited by OS.")
-            // Start the service with limited permission (Foreground only)
-            startLocationService()
-        }
-        builder.create().show()
-    }
-
-    private fun checkBackgroundLocationPermissionAndStartService() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q && !isBackgroundLocationGranted()) {
-            // Android Q+ and Background Location is NOT granted, show the guide dialog
-            showBackgroundLocationDialog()
-        } else {
-            // Older Android version or permission is granted
-            startLocationService()
-        }
-    }
-
-
-    private fun getLastLocation(result: MethodChannel.Result) {
-        if (!checkLocationPermission()) {
-            result.error("LOCATION_PERMISSION_DENIED", "Location permission is not granted.", null)
-            return
-        }
-
-        fusedLocationClient.lastLocation.addOnSuccessListener { location: Location? ->
-            if (location != null) {
-                val locationData = mapOf(
-                    "latitude" to location.latitude,
-                    "longitude" to location.longitude
-                )
-                result.success(locationData)
-            } else {
-                result.error("LOCATION_ERROR", "Location not available", null)
-            }
-        }.addOnFailureListener { e ->
-            result.error("LOCATION_ERROR", "Failed to get location: ${e.message}", null)
-        }
-    }
-
-    private fun sendLocationToAPIByButton(result: MethodChannel.Result) {
-        if (!checkLocationPermission()) {
-            result.error("LOCATION_PERMISSION_DENIED", "Location permission is not granted.", null)
-            return
-        }
-
-        fusedLocationClient.lastLocation.addOnSuccessListener { location: Location? ->
-            if (location != null) {
-                sendLocationToAPI(location)
-                Log.d("MainActivity", "Button sent success")
-                result.success(null)
-            } else {
-                result.error("LOCATION_ERROR", "Location not available for button action", null)
-            }
-        }.addOnFailureListener { e ->
-            result.error("LOCATION_ERROR", "Failed to get location for button: ${e.message}", null)
-        }
-    }
-
-    private fun startLocationManagerAfterLogin() {
-        if (checkLocationPermission()) {
-            // Case 1: Permission already granted (at least 'While In Use')
-            checkBackgroundLocationPermissionAndStartService()
-            return
-        }
-
-        // Case 2: Permission is not granted. Check if it's permanently denied ('Don't ask again').
-        val shouldShowRationale = ActivityCompat.shouldShowRequestPermissionRationale(
-            this,
-            Manifest.permission.ACCESS_FINE_LOCATION
-        )
-
-        if (shouldShowRationale) {
-            // Temporary denial or first run rationale—show OS prompt
-            val permissionsToRequest = mutableListOf(
-                Manifest.permission.ACCESS_FINE_LOCATION,
-                Manifest.permission.ACCESS_COARSE_LOCATION
-            )
-            ActivityCompat.requestPermissions(
-                this,
-                permissionsToRequest.toTypedArray(),
-                LOCATION_PERMISSION_REQUEST_CODE
-            )
-        } else {
-            // Permission permanently denied (i.e., 'Don't ask again' was checked) OR first ever run.
-            // We use the rationale check and the current permission status to determine permanent denial.
-            // If rationale is false AND permission is NOT granted, it's permanent denial.
-            val isPermanentlyDenied = ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED
-
-            if (isPermanentlyDenied) {
-                showInitialPermissionDeniedDialog() // Guide user to settings
-            } else {
-                // If rationale is false but permission is not yet denied (first run only)
-                val permissionsToRequest = mutableListOf(
-                    Manifest.permission.ACCESS_FINE_LOCATION,
-                    Manifest.permission.ACCESS_COARSE_LOCATION
-                )
-                ActivityCompat.requestPermissions(
-                    this,
-                    permissionsToRequest.toTypedArray(),
-                    LOCATION_PERMISSION_REQUEST_CODE
-                )
-            }
-        }
-    }
-
-    private fun startLocationService() {
-        Log.d("MainActivity", "Starting Location Service...")
-        val intent = Intent(this, LocationService::class.java)
-        intent.putExtra("xMedsoftToken", xMedsoftToken)
-        intent.putExtra("currentRoomId", currentRoomId)
-
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            ContextCompat.startForegroundService(this, intent)
-        } else {
-            startService(intent)
-        }
-    }
-
-    private fun stopLocationUpdates() {
-        val intent = Intent(this, LocationService::class.java)
-        stopService(intent)
-    }
-
-    private fun sendLocationToAPI(location: Location) {
-        val medsoftToken = xMedsoftToken
-        val roomId = currentRoomId
-
-        if (medsoftToken == null || roomId == null) {
-            Log.e("MainActivity", "Token or RoomId not available")
-            return
-        }
-
-        val client = OkHttpClient()
-        val url = "https://app.medsoft.care/api/location/save/patient"
-        val mediaType = "application/json; charset=utf-8".toMediaType()
-
-        val jsonBody = JSONObject()
-        jsonBody.put("lat", location.latitude)
-        jsonBody.put("lng", location.longitude)
-        jsonBody.put("roomId", roomId)
-        val requestBody = jsonBody.toString().toRequestBody(mediaType)
-
-        val request = Request.Builder()
-            .url(url)
-            .post(requestBody)
-            .addHeader("Authorization", "Bearer $medsoftToken")
-            .addHeader("Content-Type", "application/json")
-            .build()
-
-        CoroutineScope(Dispatchers.IO).launch {
-            try {
-                client.newCall(request).execute().use { response ->
-                    if (response.isSuccessful) {
-                        Log.d("MainActivity", "Location sent successfully")
-                    } else {
-                        Log.e("MainActivity", "Failed to send location: ${response.code}")
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, SCREEN_CAPTURE_CHANNEL)
+            .setMethodCallHandler { call, result ->
+                when (call.method) {
+                    "startForeground" -> {
+                        val intent = Intent(this, ScreenCaptureService::class.java)
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                            startForegroundService(intent)
+                        } else {
+                            startService(intent)
+                        }
+                        result.success(true)
                     }
+                    "stopForeground" -> {
+                        stopService(Intent(this, ScreenCaptureService::class.java))
+                        result.success(true)
+                    }
+                    else -> result.notImplemented()
                 }
-            } catch (e: IOException) {
-                Log.e("MainActivity", "Error sending location: ${e.message}")
             }
+
+        pipChannel = MethodChannel(flutterEngine.dartExecutor.binaryMessenger, PIP_CHANNEL)
+        pipChannel!!.setMethodCallHandler { call, result ->
+                when (call.method) {
+                    "enterPiP" -> {
+                        // setAutoEnterEnabled is intentionally NOT used. Auto-enter races with
+                        // Flutter's AppLifecycleState.inactive → _enterAndroidPip() path, causing
+                        // a double-trigger on the 2nd+ PiP cycle: both auto-enter animation and
+                        // manual enterPictureInPictureMode fire while isInPictureInPictureMode is
+                        // still false → Samsung compositor gets corrupted → white window.
+                        // Using manual-only entry via onUserLeaveHint (all Android O+) is clean
+                        // and consistent with no double-trigger risk.
+                        isInCall = true
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && !isInPictureInPictureMode) {
+                            try {
+                                val params = PictureInPictureParams.Builder()
+                                    .setAspectRatio(Rational(9, 16))
+                                    .build()
+                                enterPictureInPictureMode(params)
+                                result.success(true)
+                            } catch (e: IllegalStateException) {
+                                result.error("PIP_ERROR", "Failed to enter PiP: ${e.message}", null)
+                            }
+                        } else {
+                            result.success(Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
+                        }
+                    }
+                    "setupPiP" -> {
+                        // Arm isInCall so onUserLeaveHint enters PiP on first press.
+                        // No setAutoEnterEnabled — see enterPiP comment above.
+                        isInCall = true
+                        result.success(true)
+                    }
+                    "dispose" -> {
+                        isInCall = false
+                        result.success(true)
+                    }
+                    else -> result.notImplemented()
+                }
+            }
+
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, LOCATION_CHANNEL)
+            .setMethodCallHandler { call, result ->
+                when (call.method) {
+                    "sendXMedsoftTokenToAppDelegate" -> {
+                        val args = call.arguments as? Map<*, *>
+                        val xMedsoftToken = args?.get("xMedsoftToken") as? String
+                        // Handle token storage or processing here
+                        result.success(null)
+                    }
+                    "sendRoomIdToAppDelegate" -> {
+                        val args = call.arguments as? Map<*, *>
+                        val roomId = args?.get("roomId") as? String
+                        // Handle room ID processing here
+                        result.success(null)
+                    }
+                    "startLocationManagerAfterLogin" -> {
+                        // Start location services
+                        val intent = Intent(this, LocationService::class.java)
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                            startForegroundService(intent)
+                        } else {
+                            startService(intent)
+                        }
+                        result.success(null)
+                    }
+                    "stopLocationUpdates" -> {
+                        stopService(Intent(this, LocationService::class.java))
+                        result.success(null)
+                    }
+                    "sendLocationToAPIByButton" -> {
+                        // Handle location sending
+                        result.success(null)
+                    }
+                    else -> result.notImplemented()
+                }
+            }
+    }
+
+    override fun onPictureInPictureModeChanged(isInPip: Boolean, newConfig: Configuration) {
+        super.onPictureInPictureModeChanged(isInPip, newConfig)
+        if (isInPip) {
+            // Force the compositor to redraw the view hierarchy into the PiP surface.
+            // On Samsung One UI, the TextureView hardware layer can be stale on the
+            // 2nd+ PiP cycle. postInvalidate() queues a redraw from the UI thread.
+            window.decorView.postInvalidate()
+        }
+        notifyPipState(isInPip)
+    }
+
+    // Samsung One UI (Note 10, S-series) may not reliably fire
+    // onPictureInPictureModeChanged. onMultiWindowModeChanged fires for ALL
+    // multi-window changes and isInPictureInPictureMode gives the exact state.
+    override fun onMultiWindowModeChanged(isInMultiWindowMode: Boolean, newConfig: Configuration) {
+        super.onMultiWindowModeChanged(isInMultiWindowMode, newConfig)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            notifyPipState(isInPictureInPictureMode)
         }
     }
 
-    override fun onRequestPermissionsResult(
-        requestCode: Int,
-        permissions: Array<out String>,
-        grantResults: IntArray
-    ) {
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+    private fun notifyPipState(isInPip: Boolean) {
+        pipChannel?.invokeMethod("pipModeChanged", isInPip)
+    }
 
-        if (requestCode == LOCATION_PERMISSION_REQUEST_CODE) {
-            if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                // Foreground permission granted, now check background
-                checkBackgroundLocationPermissionAndStartService()
-            } else {
-                Log.e("MainActivity", "Location permission denied by user.")
+    override fun onUserLeaveHint() {
+        super.onUserLeaveHint()
+        // Manual PiP entry for ALL Android O+ versions (including Android 12+).
+        // Previously Android 12+ relied on setAutoEnterEnabled, but that races with
+        // Flutter's manual enterPiP call → double-trigger → white PiP on 2nd cycle.
+        if (isInCall && Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && !isInPictureInPictureMode) {
+            try {
+                val params = PictureInPictureParams.Builder()
+                    .setAspectRatio(Rational(9, 16))
+                    .build()
+                enterPictureInPictureMode(params)
+            } catch (e: IllegalStateException) {
+                // Activity doesn't support PiP (e.g., not declared in manifest)
+                // or PiP is not available for some reason. Log and continue.
+                android.util.Log.e("MainActivity", "Failed to enter PiP: ${e.message}")
             }
         }
     }

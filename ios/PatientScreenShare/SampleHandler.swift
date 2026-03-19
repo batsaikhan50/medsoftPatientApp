@@ -4,7 +4,7 @@ import OSLog
 let broadcastLogger = OSLog(subsystem: "com.batsaikhan.medsoftPatient", category: "Broadcast")
 
 private enum AppConstants {
-    static let appGroupIdentifier = "group.com.medsoftDoctor"
+    static let appGroupIdentifier = "group.com.medsoftPatient"
 }
 
 class SampleHandler: RPBroadcastSampleHandler {

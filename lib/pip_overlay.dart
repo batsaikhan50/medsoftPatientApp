@@ -19,8 +19,7 @@ class PipOverlayWidget extends StatefulWidget {
   State<PipOverlayWidget> createState() => _PipOverlayWidgetState();
 }
 
-class _PipOverlayWidgetState extends State<PipOverlayWidget>
-    with SingleTickerProviderStateMixin {
+class _PipOverlayWidgetState extends State<PipOverlayWidget> with SingleTickerProviderStateMixin {
   double _xPos = 0;
   double _yPos = 100;
 
@@ -41,10 +40,7 @@ class _PipOverlayWidgetState extends State<PipOverlayWidget>
   void initState() {
     super.initState();
     widget.callManager.addListener(_onCallStateChanged);
-    _animController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 280),
-    );
+    _animController = AnimationController(vsync: this, duration: const Duration(milliseconds: 280));
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       final size = MediaQuery.of(context).size;
@@ -78,9 +74,7 @@ class _PipOverlayWidgetState extends State<PipOverlayWidget>
     final centerX = _xPos + _width / 2;
     _snappedToLeft = centerX < size.width / 2;
 
-    final targetX = _snappedToLeft
-        ? _snapPadding
-        : size.width - _width - _snapPadding;
+    final targetX = _snappedToLeft ? _snapPadding : size.width - _width - _snapPadding;
 
     setState(() {
       _isSnappedToEdge = true;
@@ -93,6 +87,8 @@ class _PipOverlayWidgetState extends State<PipOverlayWidget>
     final size = MediaQuery.of(context).size;
     final newHidden = !_isHidden;
 
+    // When hidden: slide the PiP fully off the edge so only the tab remains
+    // (tab's absolute position = _xPos + _width for left-snap, or _xPos - _tabWidth for right-snap)
     final double targetX;
     if (newHidden) {
       targetX = _snappedToLeft ? -_width : size.width;
@@ -107,9 +103,10 @@ class _PipOverlayWidgetState extends State<PipOverlayWidget>
   void _animateX(double targetX) {
     _currentAnimation?.removeListener(_onAnimTick);
     final startX = _xPos;
-    final anim = Tween<double>(begin: startX, end: targetX).animate(
-      CurvedAnimation(parent: _animController, curve: Curves.easeOutCubic),
-    );
+    final anim = Tween<double>(
+      begin: startX,
+      end: targetX,
+    ).animate(CurvedAnimation(parent: _animController, curve: Curves.easeOutCubic));
     _currentAnimation = anim;
     anim.addListener(_onAnimTick);
     _animController.forward(from: 0);
@@ -128,9 +125,8 @@ class _PipOverlayWidgetState extends State<PipOverlayWidget>
     final remoteParticipant = room.remoteParticipants.values.firstOrNull;
     if (remoteParticipant == null) return _buildPlaceholder();
 
-    final trackPub = remoteParticipant.videoTrackPublications.firstWhereOrNull(
-          (e) => !e.isScreenShare,
-        ) ??
+    final trackPub =
+        remoteParticipant.videoTrackPublications.firstWhereOrNull((e) => !e.isScreenShare) ??
         remoteParticipant.videoTrackPublications.firstOrNull;
 
     if (trackPub?.track is VideoTrack && !(trackPub?.muted ?? true)) {
@@ -147,13 +143,18 @@ class _PipOverlayWidgetState extends State<PipOverlayWidget>
   Widget _buildPlaceholder() {
     return Container(
       color: const Color(0xFF1A1A1A),
-      child: const Center(
-        child: Icon(Icons.videocam, color: Colors.white38, size: 32),
-      ),
+      child: const Center(child: Icon(Icons.videocam, color: Colors.white38, size: 32)),
     );
   }
 
+  // The pull-tab: sticks out from whichever edge the PiP is snapped to.
+  // Tapping it toggles hidden/visible state.
   Widget _buildPullTab() {
+    // Arrow direction:
+    //   Left-snapped, visible  → point left  (tap to hide, slide left)
+    //   Left-snapped, hidden   → point right (tap to reveal)
+    //   Right-snapped, visible → point right (tap to hide, slide right)
+    //   Right-snapped, hidden  → point left  (tap to reveal)
     final IconData icon;
     if (_snappedToLeft) {
       icon = _isHidden ? Icons.chevron_right : Icons.chevron_left;
@@ -168,15 +169,16 @@ class _PipOverlayWidgetState extends State<PipOverlayWidget>
         height: _tabHeight,
         decoration: BoxDecoration(
           color: Colors.black.withValues(alpha: 0.65),
-          borderRadius: _snappedToLeft
-              ? const BorderRadius.only(
-                  topRight: Radius.circular(10),
-                  bottomRight: Radius.circular(10),
-                )
-              : const BorderRadius.only(
-                  topLeft: Radius.circular(10),
-                  bottomLeft: Radius.circular(10),
-                ),
+          borderRadius:
+              _snappedToLeft
+                  ? const BorderRadius.only(
+                    topRight: Radius.circular(10),
+                    bottomRight: Radius.circular(10),
+                  )
+                  : const BorderRadius.only(
+                    topLeft: Radius.circular(10),
+                    bottomLeft: Radius.circular(10),
+                  ),
           border: Border.all(color: Colors.white24, width: 1),
         ),
         child: Icon(icon, color: Colors.white70, size: 18),
@@ -194,20 +196,21 @@ class _PipOverlayWidgetState extends State<PipOverlayWidget>
       child: Stack(
         clipBehavior: Clip.none,
         children: [
-          // Main PiP window
+          // ── Main PiP window ──────────────────────────────────────────
           GestureDetector(
-            onPanUpdate: _isHidden
-                ? null
-                : (details) {
-                    setState(() {
-                      _xPos += details.delta.dx;
-                      _yPos += details.delta.dy;
-                      final size = MediaQuery.of(context).size;
-                      _xPos = _xPos.clamp(0, size.width - _width);
-                      _yPos = _yPos.clamp(0, size.height - _height);
-                      _isSnappedToEdge = false;
-                    });
-                  },
+            onPanUpdate:
+                _isHidden
+                    ? null
+                    : (details) {
+                      setState(() {
+                        _xPos += details.delta.dx;
+                        _yPos += details.delta.dy;
+                        final size = MediaQuery.of(context).size;
+                        _xPos = _xPos.clamp(0, size.width - _width);
+                        _yPos = _yPos.clamp(0, size.height - _height);
+                        _isSnappedToEdge = false;
+                      });
+                    },
             onPanEnd: _isHidden ? null : (_) => _snapToNearestEdge(),
             onTap: _isHidden ? null : widget.onTap,
             child: Material(
@@ -240,8 +243,7 @@ class _PipOverlayWidgetState extends State<PipOverlayWidget>
                                 color: Colors.black54,
                                 shape: BoxShape.circle,
                               ),
-                              child: const Icon(Icons.close,
-                                  color: Colors.white, size: 14),
+                              child: const Icon(Icons.close, color: Colors.white, size: 14),
                             ),
                           ),
                         ),
@@ -256,8 +258,7 @@ class _PipOverlayWidgetState extends State<PipOverlayWidget>
                               color: Colors.black54,
                               shape: BoxShape.circle,
                             ),
-                            child: const Icon(Icons.open_in_full,
-                                color: Colors.white, size: 12),
+                            child: const Icon(Icons.open_in_full, color: Colors.white, size: 12),
                           ),
                         ),
                       ],
@@ -282,7 +283,10 @@ class _PipOverlayWidgetState extends State<PipOverlayWidget>
             ),
           ),
 
-          // Pull-tab
+          // ── Pull-tab (visible only when snapped to an edge) ──────────
+          // Positioned relative to the PiP container using Clip.none overflow.
+          // Left-snapped: tab sits at right edge of the PiP  (left: _width)
+          // Right-snapped: tab sits at left edge of the PiP  (left: -_tabWidth)
           if (_isSnappedToEdge)
             Positioned(
               left: _snappedToLeft ? _width : -_tabWidth,

@@ -10,8 +10,7 @@ plugins {
 
 android {
     namespace = "com.example.medsoft_patient"
-    compileSdk = flutter.compileSdkVersion
-    ndkVersion = flutter.ndkVersion
+    compileSdk = 36
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
@@ -20,27 +19,27 @@ android {
     }
 
     kotlinOptions {
-        jvmTarget = JavaVersion.VERSION_11.toString()
+        jvmTarget = "11"
     }
 
     defaultConfig {
-        // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
         applicationId = "com.example.medsoft_patient"
-        // You can update the following values to match your application needs.
-        // For more information, see: https://flutter.dev/to/review-gradle-config.
         minSdk = flutter.minSdkVersion
-        targetSdk = flutter.targetSdkVersion
-        versionCode = flutter.versionCode
-        versionName = flutter.versionName
+        targetSdk = 36
+        versionCode = 1
+        versionName = "1.0.0"
+        
+        multiDexEnabled = true
     }
 
     buildTypes {
-        release {
-            // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
-            signingConfig = signingConfigs.getByName("debug")
+        getByName("release") {
+            isMinifyEnabled = false
+            isShrinkResources = false
+            proguardFiles(getDefaultProguardFile("proguard-android.txt"), "proguard-rules.pro")
         }
     }
+    
 }
 
 flutter {
@@ -48,11 +47,9 @@ flutter {
 }
 
 dependencies {
+    implementation("androidx.multidex:multidex:2.0.1")
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")
-    // Google Play Services Location (Fixes Unresolved references for FusedLocationProviderClient, LocationServices, etc.)
     implementation("com.google.android.gms:play-services-location:21.0.1")
-// OkHttp (Fixes Unresolved references for OkHttpClient, toMediaType, toRequestBody, etc.)
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
-// Kotlin Coroutines (Fixes Unresolved references for CoroutineScope, Dispatchers, etc.)
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3")
 }

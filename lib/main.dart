@@ -947,20 +947,20 @@ class _HomeButtonsGridState extends State<_HomeButtonsGrid> {
             foregroundColor: Colors.black,
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
             elevation: 0.5,
-            padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 10),
+            padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 8),
           ),
           onPressed: () => _handleNavigation(navigateTo, label),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(iconData, size: 30),
-              const SizedBox(height: 8),
+              Icon(iconData, size: 28),
+              const SizedBox(height: 4),
               Text(
                 // Use the truncated label
                 displayedLabel,
                 textAlign: TextAlign.center,
                 // Using the dynamic font size to improve fit further
-                style: TextStyle(fontSize: constrainedFontSize),
+                style: TextStyle(fontSize: constrainedFontSize - 1, height: 1.1),
                 maxLines: 2, // Added to prevent overflow if the word-wrapping is still tight
                 overflow:
                     TextOverflow.ellipsis, // Fallback for very long single words or tight layouts

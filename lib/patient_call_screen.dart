@@ -14,6 +14,10 @@ class PatientCallScreen extends StatefulWidget {
 class _PatientCallScreenState extends State<PatientCallScreen> {
   final _cm = CallManager.instance;
 
+  // --- UI Test Variables ---
+  bool uiTest = false;
+  int roomSize = 3;
+
   @override
   void initState() {
     super.initState();
@@ -36,7 +40,7 @@ class _PatientCallScreenState extends State<PatientCallScreen> {
       });
     }
 
-    // Reset orientations when leaving the call
+    // Reset orientations to default when leaving the call
     SystemChrome.setPreferredOrientations([
       DeviceOrientation.portraitUp,
       DeviceOrientation.landscapeLeft,
@@ -55,11 +59,13 @@ class _PatientCallScreenState extends State<PatientCallScreen> {
 
     final isMuted = isLocal ? !_cm.camEnabled : (trackPub?.muted ?? true);
 
-    return GestureDetector(
+    // Wrap remote tiles in KeyedSubtree so only the remote VideoTrackRenderer
+    // (decoder) is rebuilt on EGL transitions. Rebuilding the local tile would
+    // restart the VP8 encoder (OMX.Exynos.VP8.Encoder Executing→Idle) causing
+    // a blank feed from the new ImageTextureEntry during encoder reinit.
+    final tile = GestureDetector(
       onTap: () {
-        _cm.setFocusedParticipant(
-          _cm.focusedParticipant == participant ? null : participant,
-        );
+        _cm.setFocusedParticipant(_cm.focusedParticipant == participant ? null : participant);
       },
       child: Container(
         margin: const EdgeInsets.all(2),
@@ -67,9 +73,10 @@ class _PatientCallScreenState extends State<PatientCallScreen> {
           color: const Color(0xFF1A1A1A),
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: trackPub?.isScreenShare == true
-                ? Colors.greenAccent
-                : (isLocal ? Colors.blueAccent : Colors.white10),
+            color:
+                trackPub?.isScreenShare == true
+                    ? Colors.greenAccent
+                    : (isLocal ? Colors.blueAccent : Colors.white10),
             width: 2,
           ),
         ),
@@ -78,20 +85,22 @@ class _PatientCallScreenState extends State<PatientCallScreen> {
           child: Stack(
             children: [
               Positioned.fill(
-                child: (trackPub?.track is VideoTrack && !isMuted)
-                    ? VideoTrackRenderer(
-                        trackPub!.track as VideoTrack,
-                        fit: VideoViewFit.contain,
-                        mirrorMode: (isLocal && !trackPub.isScreenShare)
-                            ? VideoViewMirrorMode.mirror
-                            : VideoViewMirrorMode.off,
-                      )
-                    : Container(
-                        color: Colors.blueGrey.withOpacity(0.1),
-                        child: const Center(
-                          child: Icon(Icons.person, color: Colors.white24, size: 50),
+                child:
+                    (trackPub?.track is VideoTrack && !isMuted)
+                        ? VideoTrackRenderer(
+                          trackPub!.track as VideoTrack,
+                          fit: VideoViewFit.contain,
+                          mirrorMode:
+                              (isLocal && !trackPub.isScreenShare)
+                                  ? VideoViewMirrorMode.mirror
+                                  : VideoViewMirrorMode.off,
+                        )
+                        : Container(
+                          color: Colors.blueGrey.withOpacity(0.1),
+                          child: const Center(
+                            child: Icon(Icons.person, color: Colors.white24, size: 50),
+                          ),
                         ),
-                      ),
               ),
               Positioned(
                 bottom: 8,
@@ -108,6 +117,35 @@ class _PatientCallScreenState extends State<PatientCallScreen> {
                   ),
                 ),
               ),
+            ],
+          ),
+        ),
+      ),
+    );
+
+    if (isLocal) return tile;
+    return KeyedSubtree(
+      key: ValueKey('${participant.identity}_${_cm.videoRebuildToken}'),
+      child: tile,
+    );
+  }
+
+  Widget _buildDummyTile(int index) {
+    return GestureDetector(
+      onTap: () => setState(() => uiTest = false),
+      child: Container(
+        margin: const EdgeInsets.all(2),
+        decoration: BoxDecoration(
+          color: const Color(0xFF1A1A1A),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: Colors.white10, width: 2),
+        ),
+        child: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.bug_report, color: Colors.white24, size: 40),
+              Text("Mock User $index", style: const TextStyle(color: Colors.white24)),
             ],
           ),
         ),
@@ -130,51 +168,61 @@ class _PatientCallScreenState extends State<PatientCallScreen> {
       ]);
     }
 
+    // Never filter participants based on PiP state — removing participants from
+    // the list disposes VideoTrackRenderers during the EGL transition, which
+    // creates new ImageTextureEntry objects in a broken EGL context (white screen).
+    // Local tile visibility in PiP is handled inside _buildIPhone1vs1 instead.
     final allParticipants = _cm.allParticipants;
 
     return Scaffold(
       backgroundColor: Colors.black,
-      appBar: AppBar(
-        title: const Text('Онлайн зөвлөгөө'),
-        backgroundColor: Colors.black,
-        iconTheme: const IconThemeData(color: Colors.white),
-        titleTextStyle: const TextStyle(color: Colors.white, fontSize: 18),
-      ),
-      body: (_cm.room == null)
-          ? _buildInitialUI()
-          : SafeArea(
-              child: Column(
-                children: [
-                  Expanded(
-                    child: _cm.focusedParticipant != null
-                        ? _buildZoomedView(allParticipants)
-                        : _buildDefaultLayout(allParticipants),
-                  ),
-                  _buildControlBar(),
-                ],
+      appBar:
+          _cm.isInAndroidPip
+              ? null
+              : AppBar(
+                title: Text(uiTest ? 'UI TEST MODE ($roomSize)' : 'Patient Portal'),
+                backgroundColor: Colors.black,
+                iconTheme: const IconThemeData(color: Colors.white),
+                titleTextStyle: const TextStyle(color: Colors.white, fontSize: 18),
               ),
-            ),
+      body:
+          (_cm.room == null && !uiTest)
+              ? _buildInitialUI()
+              : SafeArea(
+                child: Column(
+                  children: [
+                    Expanded(
+                      child:
+                          _cm.focusedParticipant != null
+                              ? _buildZoomedView(allParticipants)
+                              : _buildDefaultLayout(allParticipants),
+                    ),
+                    if (!_cm.isInAndroidPip) _buildControlBar(),
+                  ],
+                ),
+              ),
     );
   }
 
   Widget _buildInitialUI() {
     return Center(
-      child: _cm.isConnecting
-          ? const CircularProgressIndicator(color: Colors.white)
-          : ElevatedButton(
-              onPressed: () async {
-                try {
-                  await _cm.connect();
-                } catch (e) {
-                  if (mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Холболтын алдаа: $e')),
-                    );
+      child:
+          _cm.isConnecting
+              ? const CircularProgressIndicator(color: Colors.white)
+              : ElevatedButton(
+                onPressed: () async {
+                  try {
+                    await _cm.connect();
+                  } catch (e) {
+                    if (mounted) {
+                      ScaffoldMessenger.of(
+                        context,
+                      ).showSnackBar(SnackBar(content: Text("Connect Error: $e")));
+                    }
                   }
-                }
-              },
-              child: const Text('Дуудлагад нэгдэх'),
-            ),
+                },
+                child: const Text('Start Consultation'),
+              ),
     );
   }
 
@@ -188,19 +236,20 @@ class _PatientCallScreenState extends State<PatientCallScreen> {
             isLocal: _cm.focusedParticipant is LocalParticipant,
           ),
         ),
-        SizedBox(
-          height: 120,
+        ConstrainedBox(
+          constraints: const BoxConstraints(maxHeight: 120),
           child: ListView(
             scrollDirection: Axis.horizontal,
-            children: allParticipants
-                .where((p) => p != _cm.focusedParticipant)
-                .map(
-                  (p) => SizedBox(
-                    width: 120,
-                    child: _renderParticipantTile(p, isLocal: p is LocalParticipant),
-                  ),
-                )
-                .toList(),
+            children:
+                allParticipants
+                    .where((p) => p != _cm.focusedParticipant)
+                    .map(
+                      (p) => SizedBox(
+                        width: 120,
+                        child: _renderParticipantTile(p, isLocal: p is LocalParticipant),
+                      ),
+                    )
+                    .toList(),
           ),
         ),
       ],
@@ -210,9 +259,21 @@ class _PatientCallScreenState extends State<PatientCallScreen> {
   Widget _buildDefaultLayout(List<Participant> allParticipants) {
     return LayoutBuilder(
       builder: (context, constraints) {
+        int effectiveCount = uiTest ? roomSize : allParticipants.length;
         bool isLandscape = constraints.maxWidth > constraints.maxHeight;
 
-        if (allParticipants.length == 2 && (MediaQuery.of(context).size.shortestSide < 600)) {
+        if (uiTest) {
+          return GridView.builder(
+            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: isLandscape ? 3 : 2,
+              childAspectRatio: 1.0,
+            ),
+            itemCount: roomSize,
+            itemBuilder: (context, index) => _buildDummyTile(index),
+          );
+        }
+
+        if (effectiveCount == 2 && (MediaQuery.of(context).size.shortestSide < 600)) {
           return _buildIPhone1vs1(allParticipants);
         }
 
@@ -225,12 +286,20 @@ class _PatientCallScreenState extends State<PatientCallScreen> {
     return Stack(
       children: [
         Positioned.fill(child: _renderParticipantTile(participants[1])),
+        // Use Visibility(maintainState: true) so the local VideoTrackRenderer
+        // is NEVER disposed during PiP transitions — disposing during the EGL
+        // surface recreation creates a new ImageTextureEntry in a broken
+        // context, causing a white screen on the 2nd+ PiP cycle.
         Positioned(
           top: 10,
           right: 10,
           width: 110,
           height: 160,
-          child: _renderParticipantTile(participants[0], isLocal: true),
+          child: Visibility(
+            visible: !_cm.isInAndroidPip,
+            maintainState: true,
+            child: _renderParticipantTile(participants[0], isLocal: true),
+          ),
         ),
       ],
     );
@@ -254,43 +323,46 @@ class _PatientCallScreenState extends State<PatientCallScreen> {
     return Container(
       color: Colors.black,
       padding: const EdgeInsets.symmetric(vertical: 20),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-        children: [
-          _buildActionButton(
-            icon: _cm.micEnabled ? Icons.mic : Icons.mic_off,
-            color: _cm.micEnabled ? Colors.white24 : Colors.red,
-            onPressed: _cm.toggleMic,
-          ),
-          _buildActionButton(
-            icon: _cm.camEnabled ? Icons.videocam : Icons.videocam_off,
-            color: _cm.camEnabled ? Colors.white24 : Colors.red,
-            onPressed: _cm.toggleCam,
-          ),
-          _buildActionButton(
-            icon: Icons.flip_camera_ios,
-            color: Colors.white24,
-            onPressed: _cm.flipCamera,
-          ),
-          _buildActionButton(
-            icon: _cm.isRecording ? Icons.stop_circle : Icons.fiber_manual_record,
-            color: _cm.isRecording ? Colors.red : Colors.white24,
-            onPressed: _cm.toggleRecording,
-          ),
-          _buildActionButton(
-            icon: _cm.isScreenShared ? Icons.stop_screen_share : Icons.screen_share,
-            color: _cm.isScreenShared ? Colors.green : Colors.white24,
-            onPressed: _cm.toggleScreenShare,
-          ),
-          _buildActionButton(
-            icon: Icons.call_end,
-            color: Colors.red,
-            onPressed: () async {
-              await _cm.disconnect();
-              if (mounted) setState(() {});
-            },
-          ),
-        ],
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+          children: [
+            _buildActionButton(
+              icon: _cm.micEnabled ? Icons.mic : Icons.mic_off,
+              color: _cm.micEnabled ? Colors.white24 : Colors.red,
+              onPressed: _cm.toggleMic,
+            ),
+            _buildActionButton(
+              icon: _cm.camEnabled ? Icons.videocam : Icons.videocam_off,
+              color: _cm.camEnabled ? Colors.white24 : Colors.red,
+              onPressed: _cm.toggleCam,
+            ),
+            _buildActionButton(
+              icon: Icons.flip_camera_ios,
+              color: Colors.white24,
+              onPressed: _cm.flipCamera,
+            ),
+            _buildActionButton(
+              icon: _cm.isRecording ? Icons.stop_circle : Icons.fiber_manual_record,
+              color: _cm.isRecording ? Colors.red : Colors.white24,
+              onPressed: _cm.toggleRecording,
+            ),
+            _buildActionButton(
+              icon: _cm.isScreenShared ? Icons.stop_screen_share : Icons.screen_share,
+              color: _cm.isScreenShared ? Colors.green : Colors.white24,
+              onPressed: _cm.toggleScreenShare,
+            ),
+            _buildActionButton(
+              icon: Icons.call_end,
+              color: Colors.red,
+              onPressed: () async {
+                await _cm.disconnect();
+                if (mounted) setState(() {});
+              },
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -303,10 +375,7 @@ class _PatientCallScreenState extends State<PatientCallScreen> {
     return CircleAvatar(
       radius: 28,
       backgroundColor: color,
-      child: IconButton(
-        icon: Icon(icon, color: Colors.white),
-        onPressed: onPressed,
-      ),
+      child: IconButton(icon: Icon(icon, color: Colors.white), onPressed: onPressed),
     );
   }
 }
