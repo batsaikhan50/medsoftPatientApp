@@ -109,7 +109,7 @@ class CallManager extends ChangeNotifier with WidgetsBindingObserver {
   Future<void> _requestPermissions() async {
     // First request the permissions
     final results = await [Permission.camera, Permission.microphone].request();
-    
+
     // Check if camera permission was granted
     if (results[Permission.camera] != PermissionStatus.granted) {
       debugPrint('Camera permission denied: ${results[Permission.camera]}');
@@ -118,7 +118,7 @@ class CallManager extends ChangeNotifier with WidgetsBindingObserver {
       }
       throw Exception('Camera permission is required for video calls');
     }
-    
+
     // Check if microphone permission was granted
     if (results[Permission.microphone] != PermissionStatus.granted) {
       debugPrint('Microphone permission denied: ${results[Permission.microphone]}');
