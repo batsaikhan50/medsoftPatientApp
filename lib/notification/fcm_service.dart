@@ -14,18 +14,7 @@ Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   await Firebase.initializeApp();
   debugPrint("🔔 Background message received: ${message.messageId}");
 
-  final flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
-
-  const iOSInit = DarwinInitializationSettings(
-    requestAlertPermission: true,
-    requestBadgePermission: true,
-    requestSoundPermission: true,
-    defaultPresentAlert: true,
-    defaultPresentSound: true,
-    defaultPresentBadge: false,
-  );
-  const initSettings = InitializationSettings(iOS: iOSInit);
-  await flutterLocalNotificationsPlugin.initialize(initSettings);
+  final localNotifService = LocalNotificationService();
 
   final notification = message.notification;
   if (notification != null && notification.title != null && notification.body != null) {
@@ -50,7 +39,7 @@ Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
     );
     final details = NotificationDetails(android: androidDetails, iOS: iOSDetails);
 
-    await flutterLocalNotificationsPlugin.show(0, title, body, details);
+    await localNotifService.plugin.show(0, title, body, details);
 
     debugPrint('✅ Notification .show() called successfully');
   } else {
@@ -68,8 +57,6 @@ class FCMService {
     debugPrint("HERE------------------------------");
 
     await _localNotificationService.initializeNotifications();
-
-    await _messaging.requestPermission(alert: true, badge: true, sound: true);
 
     globalFCMToken = await _messaging.getToken();
     debugPrint("✅ FCM Token: $globalFCMToken");
@@ -103,7 +90,7 @@ class FCMService {
         presentSound: true,
         presentBadge: false,
       );
-      
+
       const NotificationDetails notificationDetails = NotificationDetails(
         android: androidDetails,
         iOS: iOSDetails,

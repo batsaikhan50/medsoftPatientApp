@@ -18,6 +18,11 @@ class _PatientCallScreenState extends State<PatientCallScreen> {
   bool uiTest = false;
   int roomSize = 3;
 
+  // --- Join Mode Variables ---
+  String _joinRoomId = '';
+  String _joinError = '';
+  bool _isJoining = false;
+
   @override
   void initState() {
     super.initState();
@@ -205,24 +210,135 @@ class _PatientCallScreenState extends State<PatientCallScreen> {
   }
 
   Widget _buildInitialUI() {
-    return Center(
-      child:
-          _cm.isConnecting
-              ? const CircularProgressIndicator(color: Colors.white)
-              : ElevatedButton(
-                onPressed: () async {
-                  try {
-                    await _cm.connect();
-                  } catch (e) {
-                    if (mounted) {
-                      ScaffoldMessenger.of(
-                        context,
-                      ).showSnackBar(SnackBar(content: Text("Connect Error: $e")));
-                    }
-                  }
-                },
-                child: const Text('Start Consultation'),
+    // Show join screen after join button is tapped
+    if (_isJoining) {
+      return Center(
+        child: Container(
+          constraints: const BoxConstraints(maxWidth: 400),
+          padding: const EdgeInsets.all(40),
+          decoration: BoxDecoration(
+            color: const Color(0xFF1E1F22),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: const Color(0xFF333333)),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text(
+                'Join Video Consultation',
+                style: TextStyle(fontSize: 24, color: Colors.white, fontWeight: FontWeight.bold),
               ),
+              const SizedBox(height: 20),
+              const Text(
+                'Enter the 6-digit Room ID',
+                style: TextStyle(fontSize: 16, color: Color(0xFFDBDEE1)),
+              ),
+              const SizedBox(height: 20),
+              TextField(
+                maxLength: 6,
+                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                onChanged: (val) {
+                  setState(() {
+                    _joinRoomId = val;
+                    _joinError = '';
+                  });
+                },
+                style: const TextStyle(color: Colors.white, fontSize: 24, letterSpacing: 4),
+                textAlign: TextAlign.center,
+                decoration: InputDecoration(
+                  hintText: '000000',
+                  hintStyle: const TextStyle(color: Color(0xFF999999)),
+                  filled: true,
+                  fillColor: const Color(0xFF2C2F33),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide: const BorderSide(color: Color(0xFF5865F2), width: 2),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide: const BorderSide(color: Color(0xFF5865F2), width: 2),
+                  ),
+                  counterText: '',
+                ),
+              ),
+              if (_joinError.isNotEmpty)
+                Padding(
+                  padding: const EdgeInsets.only(top: 10),
+                  child: Text(_joinError, style: const TextStyle(color: Color(0xFFDA373C))),
+                ),
+              const SizedBox(height: 20),
+              Row(
+                children: [
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: () {
+                        setState(() {
+                          _isJoining = false;
+                          _joinRoomId = '';
+                          _joinError = '';
+                        });
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF2C2F33),
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                      ),
+                      child: const Text('Back', style: TextStyle(color: Colors.white)),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: _joinRoomId.length == 6
+                          ? () async {
+                              if (_joinRoomId.length != 6) {
+                                setState(() {
+                                  _joinError = 'Please enter a 6-digit room ID';
+                                });
+                                return;
+                              }
+                              setState(() => _isJoining = false);
+                              try {
+                                await _cm.connect(roomId: _joinRoomId);
+                              } catch (e) {
+                                if (mounted) {
+                                  ScaffoldMessenger.of(
+                                    context,
+                                  ).showSnackBar(SnackBar(content: Text("Join Error: $e")));
+                                  setState(() => _isJoining = true);
+                                }
+                              }
+                            }
+                          : null,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: _joinRoomId.length == 6
+                            ? const Color(0xFF5865F2)
+                            : const Color(0xFF666666),
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                      ),
+                      child: const Text('Join Room'),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    // Show main menu with Join button
+    return Center(
+      child: ElevatedButton(
+        onPressed: () {
+          setState(() {
+            _isJoining = true;
+            _joinRoomId = '';
+            _joinError = '';
+          });
+        },
+        child: const Text('Join Consultation'),
+      ),
     );
   }
 

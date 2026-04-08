@@ -129,8 +129,6 @@ class MyHomePage extends StatefulWidget {
 }
 
 class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
-  final LocalNotificationService _localNotificationService = LocalNotificationService();
-
   static const platform = MethodChannel('com.example.medsoft_patient/location');
 
   final _authDao = AuthDAO();
@@ -157,8 +155,6 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
     //   DeviceOrientation.landscapeLeft,
     //   DeviceOrientation.landscapeRight,
     // ]);
-
-    _initServices();
 
     Future<void> saveScannedToken(String token) async {
       final prefs = await SharedPreferences.getInstance();
@@ -212,10 +208,6 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
         _startApiPolling();
       }
     });
-  }
-
-  Future<void> _initServices() async {
-    await _localNotificationService.initializeNotifications();
   }
 
   @override
@@ -464,7 +456,7 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
       });
     } else if (call.method == 'navigateToLogin') {
       _logOut();
-      _localNotificationService.showLogoutNotification();
+      LocalNotificationService().showLogoutNotification();
     }
   }
 

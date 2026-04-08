@@ -41,11 +41,13 @@ class CallManager extends ChangeNotifier with WidgetsBindingObserver {
   int _videoRebuildToken = 0;
   int get videoRebuildToken => _videoRebuildToken;
 
+  // Room ID for join mode
+  String? _roomId;
+  String? get roomId => _roomId;
+
   // Platform channel for native PiP
   static const _pipChannel = MethodChannel('pip_channel');
   static const _screenCaptureChannel = MethodChannel('screen_capture_channel');
-
-  // Getters
   Room? get room => _room;
   bool get micEnabled => _micEnabled;
   bool get camEnabled => _camEnabled;
@@ -107,36 +109,18 @@ class CallManager extends ChangeNotifier with WidgetsBindingObserver {
   }
 
   Future<void> _requestPermissions() async {
-    // First request the permissions
-    final results = await [Permission.camera, Permission.microphone].request();
-
-    // Check if camera permission was granted
-    if (results[Permission.camera] != PermissionStatus.granted) {
-      debugPrint('Camera permission denied: ${results[Permission.camera]}');
-      if (results[Permission.camera] == PermissionStatus.permanentlyDenied) {
-        openAppSettings();
-      }
-      throw Exception('Camera permission is required for video calls');
-    }
-
-    // Check if microphone permission was granted
-    if (results[Permission.microphone] != PermissionStatus.granted) {
-      debugPrint('Microphone permission denied: ${results[Permission.microphone]}');
-      if (results[Permission.microphone] == PermissionStatus.permanentlyDenied) {
-        openAppSettings();
-      }
-      throw Exception('Microphone permission is required for video calls');
-    }
+    await [Permission.camera, Permission.microphone].request();
   }
 
-  Future<String> _getToken() async {
+  Future<String> _getToken({String? roomId}) async {
     final prefs = await SharedPreferences.getInstance();
     final username = prefs.getString('Username');
     if (username == null || username.isEmpty) {
       throw Exception('Хэрэглэгчийн нэр олдсонгүй.');
     }
+    final effectiveRoomId = roomId ?? 'testroom';
     final response = await http.get(
-      Uri.parse('${Constants.recordingUrl}/token?identity=$username&room=testroom'),
+      Uri.parse('${Constants.recordingUrl}/token?identity=$username&room=$effectiveRoomId'),
     );
     if (response.statusCode == 200) {
       final data = jsonDecode(response.body);
@@ -147,12 +131,13 @@ class CallManager extends ChangeNotifier with WidgetsBindingObserver {
     }
   }
 
-  Future<void> connect({String? existingToken}) async {
+  Future<void> connect({String? existingToken, String? roomId}) async {
     _isConnecting = true;
+    _roomId = roomId;
     notifyListeners();
     try {
       await _requestPermissions();
-      final token = existingToken ?? await _getToken();
+      final token = existingToken ?? await _getToken(roomId: _roomId);
       final room = Room(
         roomOptions: const RoomOptions(
           defaultCameraCaptureOptions: CameraCaptureOptions(

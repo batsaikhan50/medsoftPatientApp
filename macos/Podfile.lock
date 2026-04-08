@@ -1,4 +1,10 @@
 PODS:
+  - app_links (6.4.1):
+    - FlutterMacOS
+  - connectivity_plus (0.0.1):
+    - FlutterMacOS
+  - device_info_plus (0.0.1):
+    - FlutterMacOS
   - Firebase/CoreOnly (11.15.0):
     - FirebaseCore (~> 11.15.0)
   - Firebase/Messaging (11.15.0):
@@ -36,6 +42,9 @@ PODS:
     - FlutterMacOS
   - flutter_local_notifications (0.0.1):
     - FlutterMacOS
+  - flutter_webrtc (1.2.0):
+    - FlutterMacOS
+    - WebRTC-SDK (= 137.7151.04)
   - FlutterMacOS (1.0.0)
   - GoogleDataTransport (10.1.0):
     - nanopb (~> 3.30910.0)
@@ -64,26 +73,45 @@ PODS:
   - GoogleUtilities/UserDefaults (8.1.0):
     - GoogleUtilities/Logger
     - GoogleUtilities/Privacy
+  - livekit_client (2.6.0):
+    - flutter_webrtc
+    - FlutterMacOS
+    - WebRTC-SDK (= 137.7151.04)
   - nanopb (3.30910.0):
     - nanopb/decode (= 3.30910.0)
     - nanopb/encode (= 3.30910.0)
   - nanopb/decode (3.30910.0)
   - nanopb/encode (3.30910.0)
+  - objective_c (0.0.1):
+    - FlutterMacOS
   - PromisesObjC (2.4.0)
+  - share_plus (0.0.1):
+    - FlutterMacOS
   - shared_preferences_foundation (0.0.1):
     - Flutter
     - FlutterMacOS
+  - url_launcher_macos (0.0.1):
+    - FlutterMacOS
+  - WebRTC-SDK (137.7151.04)
   - webview_flutter_wkwebview (0.0.1):
     - Flutter
     - FlutterMacOS
 
 DEPENDENCIES:
+  - app_links (from `Flutter/ephemeral/.symlinks/plugins/app_links/macos`)
+  - connectivity_plus (from `Flutter/ephemeral/.symlinks/plugins/connectivity_plus/macos`)
+  - device_info_plus (from `Flutter/ephemeral/.symlinks/plugins/device_info_plus/macos`)
   - firebase_core (from `Flutter/ephemeral/.symlinks/plugins/firebase_core/macos`)
   - firebase_messaging (from `Flutter/ephemeral/.symlinks/plugins/firebase_messaging/macos`)
   - flutter_app_badger (from `Flutter/ephemeral/.symlinks/plugins/flutter_app_badger/macos`)
   - flutter_local_notifications (from `Flutter/ephemeral/.symlinks/plugins/flutter_local_notifications/macos`)
+  - flutter_webrtc (from `Flutter/ephemeral/.symlinks/plugins/flutter_webrtc/macos`)
   - FlutterMacOS (from `Flutter/ephemeral`)
+  - livekit_client (from `Flutter/ephemeral/.symlinks/plugins/livekit_client/macos`)
+  - objective_c (from `Flutter/ephemeral/.symlinks/plugins/objective_c/macos`)
+  - share_plus (from `Flutter/ephemeral/.symlinks/plugins/share_plus/macos`)
   - shared_preferences_foundation (from `Flutter/ephemeral/.symlinks/plugins/shared_preferences_foundation/darwin`)
+  - url_launcher_macos (from `Flutter/ephemeral/.symlinks/plugins/url_launcher_macos/macos`)
   - webview_flutter_wkwebview (from `Flutter/ephemeral/.symlinks/plugins/webview_flutter_wkwebview/darwin`)
 
 SPEC REPOS:
@@ -97,8 +125,15 @@ SPEC REPOS:
     - GoogleUtilities
     - nanopb
     - PromisesObjC
+    - WebRTC-SDK
 
 EXTERNAL SOURCES:
+  app_links:
+    :path: Flutter/ephemeral/.symlinks/plugins/app_links/macos
+  connectivity_plus:
+    :path: Flutter/ephemeral/.symlinks/plugins/connectivity_plus/macos
+  device_info_plus:
+    :path: Flutter/ephemeral/.symlinks/plugins/device_info_plus/macos
   firebase_core:
     :path: Flutter/ephemeral/.symlinks/plugins/firebase_core/macos
   firebase_messaging:
@@ -107,14 +142,27 @@ EXTERNAL SOURCES:
     :path: Flutter/ephemeral/.symlinks/plugins/flutter_app_badger/macos
   flutter_local_notifications:
     :path: Flutter/ephemeral/.symlinks/plugins/flutter_local_notifications/macos
+  flutter_webrtc:
+    :path: Flutter/ephemeral/.symlinks/plugins/flutter_webrtc/macos
   FlutterMacOS:
     :path: Flutter/ephemeral
+  livekit_client:
+    :path: Flutter/ephemeral/.symlinks/plugins/livekit_client/macos
+  objective_c:
+    :path: Flutter/ephemeral/.symlinks/plugins/objective_c/macos
+  share_plus:
+    :path: Flutter/ephemeral/.symlinks/plugins/share_plus/macos
   shared_preferences_foundation:
     :path: Flutter/ephemeral/.symlinks/plugins/shared_preferences_foundation/darwin
+  url_launcher_macos:
+    :path: Flutter/ephemeral/.symlinks/plugins/url_launcher_macos/macos
   webview_flutter_wkwebview:
     :path: Flutter/ephemeral/.symlinks/plugins/webview_flutter_wkwebview/darwin
 
 SPEC CHECKSUMS:
+  app_links: 05a6ec2341985eb05e9f97dc63f5837c39895c3f
+  connectivity_plus: 4adf20a405e25b42b9c9f87feff8f4b6fde18a4e
+  device_info_plus: 4fb280989f669696856f8b129e4a5e3cd6c48f76
   Firebase: d99ac19b909cd2c548339c2241ecd0d1599ab02e
   firebase_core: 7667f880631ae8ad10e3d6567ab7582fe0682326
   firebase_messaging: df39858bcbbcce792c9e4f1ca51b41123d6181fd
@@ -124,12 +172,18 @@ SPEC CHECKSUMS:
   FirebaseMessaging: 3b26e2cee503815e01c3701236b020aa9b576f09
   flutter_app_badger: 3a1c6d6a491a7a7d987ca4f2aeab96fc5655c395
   flutter_local_notifications: 4bf37a31afde695b56091b4ae3e4d9c7a7e6cda0
+  flutter_webrtc: 718eae22a371cd94e5d56aa4f301443ebc5bb737
   FlutterMacOS: d0db08ddef1a9af05a5ec4b724367152bb0500b1
   GoogleDataTransport: aae35b7ea0c09004c3797d53c8c41f66f219d6a7
   GoogleUtilities: 00c88b9a86066ef77f0da2fab05f65d7768ed8e1
+  livekit_client: 5bac2856eba88d748f5b95ff79b21685890f3bef
   nanopb: fad817b59e0457d11a5dfbde799381cd727c1275
+  objective_c: ec13431e45ba099cb734eb2829a5c1cd37986cba
   PromisesObjC: f5707f49cb48b9636751c5b2e7d227e43fba9f47
+  share_plus: 510bf0af1a42cd602274b4629920c9649c52f4cc
   shared_preferences_foundation: 9e1978ff2562383bd5676f64ec4e9aa8fa06a6f7
+  url_launcher_macos: f87a979182d112f911de6820aefddaf56ee9fbfd
+  WebRTC-SDK: 40d4f5ba05cadff14e4db5614aec402a633f007e
   webview_flutter_wkwebview: 1821ceac936eba6f7984d89a9f3bcb4dea99ebb2
 
 PODFILE CHECKSUM: 54d867c82ac51cbd61b565781b9fada492027009
