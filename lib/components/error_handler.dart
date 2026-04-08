@@ -44,13 +44,16 @@ class ErrorHandler {
   }
 
   static void showSnackBar(BuildContext context, String message, {bool isError = true}) {
+    ScaffoldMessenger.of(context).clearSnackBars();
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(message),
         backgroundColor: isError ? Colors.red : Colors.green,
         behavior: SnackBarBehavior.floating,
+        duration: const Duration(seconds: 5),
         action: SnackBarAction(
           label: 'Хаах',
+          textColor: Colors.white,
           onPressed: () {
             ScaffoldMessenger.of(context).hideCurrentSnackBar();
           },

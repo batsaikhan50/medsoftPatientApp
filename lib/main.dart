@@ -130,7 +130,6 @@ class MyHomePage extends StatefulWidget {
 
 class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
   final LocalNotificationService _localNotificationService = LocalNotificationService();
-  late final FCMService _fcmService;
 
   static const platform = MethodChannel('com.example.medsoft_patient/location');
 
@@ -159,7 +158,6 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
     //   DeviceOrientation.landscapeRight,
     // ]);
 
-    _fcmService = FCMService();
     _initServices();
 
     Future<void> saveScannedToken(String token) async {
@@ -218,7 +216,6 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
 
   Future<void> _initServices() async {
     await _localNotificationService.initializeNotifications();
-    await _fcmService.initFCM();
   }
 
   @override
