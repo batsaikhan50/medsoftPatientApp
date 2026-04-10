@@ -279,12 +279,24 @@ class PiPManager: NSObject, AVPictureInPictureControllerDelegate {
     }
 
     func teardownForScreenShare() {
+        print("PiPManager: Starting teardown for screen share")
         isPiPSuppressed = true
         stopPiP()
+        
+        // Remove renderer from track first
         if let track = remoteVideoTrack, let renderer = frameRenderer, isRendererAttached {
+            print("PiPManager: Removing renderer from track")
             track.remove(renderer)
             isRendererAttached = false
         }
+        
+        // Clear references in safe order
+        remoteVideoTrack = nil
+        hasRemoteTrack = false
+        frameRenderer = nil
+        videoView = nil
+        
+        // Then clear PiP
         pipController = nil
         pipContentSource = nil
         print("PiPManager: Torn down for screen share")
