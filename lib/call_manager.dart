@@ -331,18 +331,21 @@ class CallManager extends ChangeNotifier with WidgetsBindingObserver {
         _camEnabled = false;
 
         if (Platform.isIOS) {
+          // Disable auto-PiP BEFORE requestStop(). requestStop() causes the app
+          // to briefly go inactive, and iOS queues an automatic PiP start if
+          // canStartPictureInPictureAutomaticallyFromInline is still true at that
+          // moment. That queued start fires after teardown and crashes with
+          // EXC_BAD_ACCESS. Tearing down first prevents the queue entry.
+          try {
+            await _pipChannel.invokeMethod('teardownPiP');
+          } catch (_) {}
+
           // Stop any lingering broadcast from a previous attempt to prevent
           // the "Recording interrupted by another application" error popup.
           try {
             await BroadcastManager().requestStop();
           } catch (_) {}
           await Future.delayed(const Duration(milliseconds: 500));
-
-          // Tear down PiP controller to avoid AVPictureInPictureController
-          // conflicting with ReplayKit's broadcast extension.
-          try {
-            await _pipChannel.invokeMethod('teardownPiP');
-          } catch (_) {}
         }
 
         await Future.delayed(const Duration(milliseconds: 300));

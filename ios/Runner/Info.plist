@@ -47,7 +47,7 @@
 	<key>NSScreenCaptureUsageDescription</key>
 	<string>Screen capture is required for sharing content during video consultations.</string>
 	<key>RTCAppGroupIdentifier</key>
-	<string>group.com.medsoftDoctor</string>
+	<string>group.com.medsoftPatient</string>
 	<key>RTCScreenSharingExtension</key>
 	<string>com.batsaikhan.medsoftPatient.PatientScreenShare</string>
 	<key>UIApplicationSupportsIndirectInputEvents</key>

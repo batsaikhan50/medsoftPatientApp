@@ -35,6 +35,11 @@ class RTCFrameRenderer: NSObject, RTCVideoRenderer {
     /// Render every Nth frame
     var frameSkip: Int = 2
 
+    /// Set to false to stop all frame delivery (e.g. during screen share teardown).
+    /// Prevents pending DispatchQueue.main.async enqueue blocks from crashing
+    /// after the PiP/display layer state has changed.
+    var isActive: Bool = true
+
     init(displayLayer: AVSampleBufferDisplayLayer) {
         self.displayLayer = displayLayer
         super.init()
@@ -51,7 +56,7 @@ class RTCFrameRenderer: NSObject, RTCVideoRenderer {
     }
 
     func renderFrame(_ frame: RTCVideoFrame?) {
-        guard let frame = frame else { return }
+        guard let frame = frame, isActive else { return }
 
         frameCount += 1
         if frameCount % frameSkip != 0 { return }
@@ -60,7 +65,7 @@ class RTCFrameRenderer: NSObject, RTCVideoRenderer {
         guard let sampleBuffer = createSampleBuffer(from: pixelBuffer, timestamp: frame.timeStampNs) else { return }
 
         DispatchQueue.main.async { [weak self] in
-            guard let self = self else { return }
+            guard let self = self, self.isActive else { return }
             if self.displayLayer.status == .failed {
                 self.displayLayer.flush()
             }
@@ -279,49 +284,22 @@ class PiPManager: NSObject, AVPictureInPictureControllerDelegate {
     }
 
     func teardownForScreenShare() {
-        print("PiPManager: Starting teardown for screen share")
         isPiPSuppressed = true
+        pipController?.canStartPictureInPictureAutomaticallyFromInline = false
+        frameRenderer?.isActive = false
         stopPiP()
-        
-        // Remove renderer from track first
         if let track = remoteVideoTrack, let renderer = frameRenderer, isRendererAttached {
-            print("PiPManager: Removing renderer from track")
             track.remove(renderer)
             isRendererAttached = false
         }
-        
-        // Clear references in safe order
-        remoteVideoTrack = nil
-        hasRemoteTrack = false
-        frameRenderer = nil
-        videoView = nil
-        
-        // Then clear PiP
-        pipController = nil
-        pipContentSource = nil
+        videoView?.sampleBufferLayer.flush()
         print("PiPManager: Torn down for screen share")
     }
 
     func restoreAfterScreenShare() {
         isPiPSuppressed = false
-
-        guard pipController == nil, let videoView = videoView else {
-            print("PiPManager: Restore skipped (already active or no view)")
-            return
-        }
-
-        let source = AVPictureInPictureController.ContentSource(
-            sampleBufferDisplayLayer: videoView.sampleBufferLayer,
-            playbackDelegate: self
-        )
-        pipContentSource = source
-        pipController = AVPictureInPictureController(contentSource: source)
-        pipController?.delegate = self
+        frameRenderer?.isActive = true
         pipController?.canStartPictureInPictureAutomaticallyFromInline = true
-        if #available(iOS 16.0, *) {
-            pipController?.requiresLinearPlayback = true
-        }
-
         if let track = remoteVideoTrack, let renderer = frameRenderer, !isRendererAttached {
             renderer.frameSkip = 30
             track.add(renderer)

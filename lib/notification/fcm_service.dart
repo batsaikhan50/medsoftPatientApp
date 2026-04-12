@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
@@ -57,6 +58,16 @@ class FCMService {
     debugPrint("HERE------------------------------");
 
     await _localNotificationService.initializeNotifications();
+
+    // On iOS, APNS token may not be ready immediately on first install.
+    // Wait for it before requesting the FCM token.
+    if (Platform.isIOS) {
+      for (int i = 0; i < 10; i++) {
+        final apns = await _messaging.getAPNSToken();
+        if (apns != null) break;
+        await Future.delayed(const Duration(seconds: 1));
+      }
+    }
 
     globalFCMToken = await _messaging.getToken();
     debugPrint("✅ FCM Token: $globalFCMToken");
