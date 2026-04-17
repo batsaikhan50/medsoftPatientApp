@@ -10,7 +10,7 @@ plugins {
 
 android {
     namespace = "com.example.medsoft_patient"
-    compileSdk = 36
+    compileSdk = flutter.compileSdkVersion
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
@@ -25,7 +25,7 @@ android {
     defaultConfig {
         applicationId = "com.example.medsoft_patient"
         minSdk = flutter.minSdkVersion
-        targetSdk = 36
+        targetSdk = 34
         versionCode = 1
         versionName = "1.0.0"
         

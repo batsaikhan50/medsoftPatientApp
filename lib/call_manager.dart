@@ -41,16 +41,18 @@ class CallManager extends ChangeNotifier with WidgetsBindingObserver {
   int _videoRebuildToken = 0;
   int get videoRebuildToken => _videoRebuildToken;
 
-  // Room ID for join mode
+  // Room ID for create/join modes
   String? _roomId;
   String? get roomId => _roomId;
 
   // Platform channel for native PiP
   static const _pipChannel = MethodChannel('pip_channel');
   static const _screenCaptureChannel = MethodChannel('screen_capture_channel');
+
+  // Getters
   Room? get room => _room;
-  bool get micEnabled => _micEnabled;
-  bool get camEnabled => _camEnabled;
+  bool get micEnabled => _room?.localParticipant?.isMicrophoneEnabled() ?? _micEnabled;
+  bool get camEnabled => _room?.localParticipant?.isCameraEnabled() ?? _camEnabled;
   bool get isScreenShared => _isScreenShared;
   bool get isConnecting => _isConnecting;
   bool get isRecording => _isRecording;
@@ -116,7 +118,7 @@ class CallManager extends ChangeNotifier with WidgetsBindingObserver {
     final prefs = await SharedPreferences.getInstance();
     final username = prefs.getString('Username');
     if (username == null || username.isEmpty) {
-      throw Exception('Хэрэглэгчийн нэр олдсонгүй.');
+      throw Exception('Username not found in SharedPreferences');
     }
     final effectiveRoomId = roomId ?? 'testroom';
     final response = await http.get(
@@ -127,13 +129,19 @@ class CallManager extends ChangeNotifier with WidgetsBindingObserver {
       return data['token'];
     } else {
       debugPrint(response.body.toString());
-      throw Exception('Token авахад алдаа гарлаа.');
+      throw Exception('Failed to fetch token');
     }
+  }
+
+  String _generateRoomId() {
+    final random = DateTime.now().millisecondsSinceEpoch % 900000 + 100000;
+    return random.toString();
   }
 
   Future<void> connect({String? existingToken, String? roomId}) async {
     _isConnecting = true;
-    _roomId = roomId;
+    // Generate room ID if not provided (create mode)
+    _roomId = roomId ?? _generateRoomId();
     notifyListeners();
     try {
       await _requestPermissions();
@@ -201,8 +209,8 @@ class CallManager extends ChangeNotifier with WidgetsBindingObserver {
           if (Platform.isIOS && (event is TrackSubscribedEvent)) {
             _feedRemoteTrackToNative();
           }
+          notifyListeners();
         }
-        notifyListeners();
       });
 
       await room.connect(Constants.livekitUrl, token);
@@ -250,6 +258,15 @@ class CallManager extends ChangeNotifier with WidgetsBindingObserver {
           await BroadcastManager().requestStop();
         } catch (_) {}
       }
+      if (Platform.isAndroid) {
+        // Stop the foreground service and give MediaProjection/MediaCodec time
+        // to release native resources before room.disconnect() tears down WebRTC.
+        // Without this delay the MediaCodec encoder is freed while still active → native crash.
+        try {
+          await _screenCaptureChannel.invokeMethod('stopForeground');
+        } catch (_) {}
+        await Future.delayed(const Duration(milliseconds: 400));
+      }
     }
     _isStartingScreenShare = false;
     await _room?.disconnect();
@@ -263,6 +280,7 @@ class CallManager extends ChangeNotifier with WidgetsBindingObserver {
     _isScreenShared = false;
     _isRecording = false;
     _focusedParticipant = null;
+    _roomId = null;
     hidePip();
     try {
       await _pipChannel.invokeMethod('dispose');
@@ -331,21 +349,18 @@ class CallManager extends ChangeNotifier with WidgetsBindingObserver {
         _camEnabled = false;
 
         if (Platform.isIOS) {
-          // Disable auto-PiP BEFORE requestStop(). requestStop() causes the app
-          // to briefly go inactive, and iOS queues an automatic PiP start if
-          // canStartPictureInPictureAutomaticallyFromInline is still true at that
-          // moment. That queued start fires after teardown and crashes with
-          // EXC_BAD_ACCESS. Tearing down first prevents the queue entry.
-          try {
-            await _pipChannel.invokeMethod('teardownPiP');
-          } catch (_) {}
-
           // Stop any lingering broadcast from a previous attempt to prevent
           // the "Recording interrupted by another application" error popup.
           try {
             await BroadcastManager().requestStop();
           } catch (_) {}
           await Future.delayed(const Duration(milliseconds: 500));
+
+          // Tear down PiP controller to avoid AVPictureInPictureController
+          // conflicting with ReplayKit's broadcast extension.
+          try {
+            await _pipChannel.invokeMethod('teardownPiP');
+          } catch (_) {}
         }
 
         await Future.delayed(const Duration(milliseconds: 300));
@@ -439,9 +454,8 @@ class CallManager extends ChangeNotifier with WidgetsBindingObserver {
     if (overlay == null) return;
 
     _pipOverlay = OverlayEntry(
-      builder:
-          (context) =>
-              PipOverlayWidget(callManager: this, onTap: _returnToCallScreen, onClose: hidePip),
+      builder: (context) =>
+          PipOverlayWidget(callManager: this, onTap: _returnToCallScreen, onClose: hidePip),
     );
     overlay.insert(_pipOverlay!);
   }

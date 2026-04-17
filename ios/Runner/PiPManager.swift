@@ -35,11 +35,6 @@ class RTCFrameRenderer: NSObject, RTCVideoRenderer {
     /// Render every Nth frame
     var frameSkip: Int = 2
 
-    /// Set to false to stop all frame delivery (e.g. during screen share teardown).
-    /// Prevents pending DispatchQueue.main.async enqueue blocks from crashing
-    /// after the PiP/display layer state has changed.
-    var isActive: Bool = true
-
     init(displayLayer: AVSampleBufferDisplayLayer) {
         self.displayLayer = displayLayer
         super.init()
@@ -56,7 +51,7 @@ class RTCFrameRenderer: NSObject, RTCVideoRenderer {
     }
 
     func renderFrame(_ frame: RTCVideoFrame?) {
-        guard let frame = frame, isActive else { return }
+        guard let frame = frame else { return }
 
         frameCount += 1
         if frameCount % frameSkip != 0 { return }
@@ -65,7 +60,7 @@ class RTCFrameRenderer: NSObject, RTCVideoRenderer {
         guard let sampleBuffer = createSampleBuffer(from: pixelBuffer, timestamp: frame.timeStampNs) else { return }
 
         DispatchQueue.main.async { [weak self] in
-            guard let self = self, self.isActive else { return }
+            guard let self = self else { return }
             if self.displayLayer.status == .failed {
                 self.displayLayer.flush()
             }
@@ -106,6 +101,7 @@ class RTCFrameRenderer: NSObject, RTCVideoRenderer {
         let dstBase = CVPixelBufferGetBaseAddress(pb)!
         let dstStride = CVPixelBufferGetBytesPerRow(pb)
 
+        // Set up vImage buffers for Y, Cb, Cr planes
         var yPlane = vImage_Buffer(
             data: UnsafeMutableRawPointer(mutating: buffer.dataY),
             height: vImagePixelCount(height),
@@ -131,6 +127,7 @@ class RTCFrameRenderer: NSObject, RTCVideoRenderer {
             rowBytes: dstStride
         )
 
+        // YUV to ARGB conversion info (BT.601 video range)
         var info = vImage_YpCbCrToARGB()
         var pixelRange = vImage_YpCbCrPixelRange(
             Yp_bias: 16, CbCr_bias: 128,
@@ -150,17 +147,19 @@ class RTCFrameRenderer: NSObject, RTCVideoRenderer {
 
         guard error == kvImageNoError else { return nil }
 
+        // Convert I420 to ARGB
         let convError = vImageConvert_420Yp8_Cb8_Cr8ToARGB8888(
             &yPlane, &uPlane, &vPlane,
             &destBuffer,
             &info,
-            nil,
-            255,
+            nil,  // no permuteMap — default ARGB order
+            255,  // alpha fill
             vImage_Flags(kvImageNoFlags)
         )
 
         guard convError == kvImageNoError else { return nil }
 
+        // ARGB → BGRA permutation (swap R and B channels)
         var permuteMap: [UInt8] = [3, 2, 1, 0]  // ARGB → BGRA
         vImagePermuteChannels_ARGB8888(&destBuffer, &destBuffer, &permuteMap, vImage_Flags(kvImageNoFlags))
 
@@ -231,6 +230,7 @@ class PiPManager: NSObject, AVPictureInPictureControllerDelegate {
         videoView = CustomVideoView(frame: CGRect(x: 0, y: 0, width: 180, height: 320))
         frameRenderer = RTCFrameRenderer(displayLayer: videoView!.sampleBufferLayer)
 
+        // Add to the window BELOW the Flutter view controller's view.
         if let window = UIApplication.shared.keyWindow {
             videoView!.frame = window.bounds
             window.insertSubview(videoView!, at: 0)
@@ -265,6 +265,7 @@ class PiPManager: NSObject, AVPictureInPictureControllerDelegate {
             return
         }
 
+        // Remove old track renderer
         if let oldTrack = remoteVideoTrack, let renderer = frameRenderer, isRendererAttached {
             oldTrack.remove(renderer)
             isRendererAttached = false
@@ -273,6 +274,10 @@ class PiPManager: NSObject, AVPictureInPictureControllerDelegate {
         remoteVideoTrack = videoTrack
         hasRemoteTrack = true
 
+        // Keep renderer always attached but at very low rate (~1fps).
+        // CVPixelBuffer path is zero-copy so this costs almost nothing.
+        // I420 path now uses Accelerate framework so it's also fast.
+        // This ensures the display layer always has fresh content for auto-PiP.
         if let renderer = frameRenderer, !isRendererAttached {
             renderer.frameSkip = 30  // ~1fps in foreground
             videoTrack.add(renderer)
@@ -283,47 +288,63 @@ class PiPManager: NSObject, AVPictureInPictureControllerDelegate {
         print("PiPManager: Remote track set successfully")
     }
 
+    /// Suppress auto-PiP during screen share.
+    /// We keep the PiP controller and renderer alive so the display layer
+    /// never goes black — we just disable auto-start so PiP doesn't fight
+    /// with the ReplayKit broadcast picker UI.
     func teardownForScreenShare() {
         isPiPSuppressed = true
-        pipController?.canStartPictureInPictureAutomaticallyFromInline = false
-        frameRenderer?.isActive = false
         stopPiP()
-        if let track = remoteVideoTrack, let renderer = frameRenderer, isRendererAttached {
-            track.remove(renderer)
-            isRendererAttached = false
-        }
-        videoView?.sampleBufferLayer.flush()
-        print("PiPManager: Torn down for screen share")
+        pipController?.canStartPictureInPictureAutomaticallyFromInline = false
+        print("PiPManager: PiP suppressed for screen share")
     }
 
+    /// Re-enable auto-PiP after screen share ends (or once screen share
+    /// is confirmed active so the user can PiP while sharing).
     func restoreAfterScreenShare() {
+        guard isPiPSuppressed else {
+            print("PiPManager: Restore skipped (not suppressed)")
+            return
+        }
         isPiPSuppressed = false
-        frameRenderer?.isActive = true
         pipController?.canStartPictureInPictureAutomaticallyFromInline = true
+        // Ensure renderer is attached and delivering frames
         if let track = remoteVideoTrack, let renderer = frameRenderer, !isRendererAttached {
             renderer.frameSkip = 30
             track.add(renderer)
             isRendererAttached = true
         }
-        print("PiPManager: Restored after screen share")
+        print("PiPManager: PiP restored after screen share")
     }
 
+    /// Called from AppDelegate willResignActive
     func onAppWillResignActive() {
         guard hasRemoteTrack, !isPiPSuppressed else { return }
+        // Restore alpha (may have been zeroed on previous foreground return)
         videoView?.alpha = 1.0
+        // Switch to high frame rate for smooth PiP
         frameRenderer?.frameSkip = 2  // ~15fps
         print("PiPManager: Renderer → active (~15fps)")
     }
 
+    /// Called from AppDelegate willEnterForeground / didBecomeActive
     func onAppDidBecomeActive() {
         guard isPiPActive || pipController?.isPictureInPictureActive == true else {
+            // Not in PiP — just ensure idle state
             frameRenderer?.frameSkip = 30
             return
         }
 
+        // 1. Make the source view transparent so any restore animation is invisible
         videoView?.alpha = 0
+
+        // 2. Flush the display layer — removes all content so PiP window goes blank
         videoView?.sampleBufferLayer.flush()
+
+        // 3. Stop PiP
         stopPiP()
+
+        // 4. Switch back to idle
         frameRenderer?.frameSkip = 30
         isPiPActive = false
         print("PiPManager: PiP dismissed, renderer → idle")
@@ -362,6 +383,7 @@ class PiPManager: NSObject, AVPictureInPictureControllerDelegate {
 
     func pictureInPictureControllerWillStartPictureInPicture(_ c: AVPictureInPictureController) {
         isPiPActive = true
+        // Ensure high frame rate
         frameRenderer?.frameSkip = 2
         print("PiPManager: PiP will start")
     }
@@ -383,6 +405,8 @@ class PiPManager: NSObject, AVPictureInPictureControllerDelegate {
     }
 
     func pictureInPictureController(_ c: AVPictureInPictureController, restoreUserInterfaceForPictureInPictureStopWithCompletionHandler completionHandler: @escaping (Bool) -> Void) {
+        // completionHandler(false) tells iOS NOT to animate PiP expanding
+        // back to the inline source view. PiP just disappears cleanly.
         videoView?.alpha = 0
         videoView?.sampleBufferLayer.flush()
         frameRenderer?.frameSkip = 30

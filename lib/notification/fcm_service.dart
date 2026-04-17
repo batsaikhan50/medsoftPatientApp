@@ -69,12 +69,18 @@ class FCMService {
       }
     }
 
-    globalFCMToken = await _messaging.getToken();
+    try {
+      globalFCMToken = await _messaging.getToken().timeout(const Duration(seconds: 10));
+    } catch (e) {
+      debugPrint("⚠️ FCM getToken failed or timed out: $e");
+    }
     debugPrint("✅ FCM Token: $globalFCMToken");
 
-    await _messaging.subscribeToTopic('all');
-    await _messaging.unsubscribeFromTopic('all');
-    debugPrint("📡 Subscribed and immediately Unsubscribed to topic 'all'");
+    // Fire-and-forget — topic sync is not critical for app startup.
+    _messaging.subscribeToTopic('all').then((_) {
+      _messaging.unsubscribeFromTopic('all');
+      debugPrint("📡 Subscribed and immediately Unsubscribed to topic 'all'");
+    }).catchError((e) { debugPrint("⚠️ Topic sync error: $e"); });
 
     FirebaseMessaging.onMessage.listen(_firebaseMessagingForegroundHandler);
 
