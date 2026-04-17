@@ -272,6 +272,7 @@ class CallManager extends ChangeNotifier with WidgetsBindingObserver {
     await _room?.disconnect();
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove('active_call_token');
+    await prefs.remove('currentRoomId');
     _listener?.call();
     _listener = null;
     _room = null;

@@ -505,6 +505,10 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
   void _logOut() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
 
+    if (CallManager.instance.isConnected) {
+      await CallManager.instance.disconnect();
+    }
+
     prefs.clear();
     // try {
     //   await platform.invokeMethod('stopLocationUpdates');
