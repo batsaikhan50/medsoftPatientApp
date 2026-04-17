@@ -213,7 +213,7 @@ class _PatientCallScreenState extends State<PatientCallScreen> {
                       ],
                     ),
                     // Room ID Display Overlay
-                    if (_cm.roomId != null)
+                    if (_cm.roomId != null && !_cm.isInAndroidPip)
                       Positioned(
                         top: 20,
                         left: 20,
@@ -276,13 +276,15 @@ class _PatientCallScreenState extends State<PatientCallScreen> {
             children: [
               Container(
                 constraints: const BoxConstraints(maxWidth: 400),
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
                 decoration: BoxDecoration(
                   color: const Color(0xFF1E1F22),
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(color: const Color(0xFF333333)),
                 ),
-                child: Column(
+                child: SingleChildScrollView(
+                  physics: const ClampingScrollPhysics(),
+                  child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     const Text(
@@ -295,13 +297,13 @@ class _PatientCallScreenState extends State<PatientCallScreen> {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
-                    const SizedBox(height: 20),
+                    const SizedBox(height: 12),
                     const Text(
                       '6 оронтой нууц дугаар оруулна уу',
                       style: TextStyle(fontSize: 14, color: Color(0xFFDBDEE1)),
                       textAlign: TextAlign.center,
                     ),
-                    const SizedBox(height: 20),
+                    const SizedBox(height: 12),
                     TextField(
                       maxLength: 6,
                       keyboardType: TextInputType.number,
@@ -367,6 +369,7 @@ class _PatientCallScreenState extends State<PatientCallScreen> {
                       ),
                     ],
                   ],
+                ),
                 ),
               ),
               Positioned(
