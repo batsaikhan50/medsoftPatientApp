@@ -39,15 +39,9 @@ class _PatientCallScreenState extends State<PatientCallScreen> {
     _cm.setOnCallScreen(false);
 
     if (_cm.isConnected) {
-      if (_cm.isScreenShared) {
-        // Screen sharing active — keep call alive and show PiP
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          _cm.showPip();
-        });
-      } else {
-        // Not screen sharing — disconnect immediately
-        _cm.disconnect();
-      }
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _cm.showPip();
+      });
     }
 
     // Reset orientations to default when leaving the call
