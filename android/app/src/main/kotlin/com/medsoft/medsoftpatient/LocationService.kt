@@ -1,6 +1,6 @@
 // In android/app/src/main/kotlin/com/example/medsoft_patient/LocationService.kt
 
-package com.example.medsoft_patient
+package com.medsoft.medsoftpatient
 
 import android.app.Notification
 import android.app.NotificationChannel
@@ -231,7 +231,7 @@ class LocationService : Service() {
     }
 
     private fun sendBroadcastToFlutter(methodName: String) {
-        val intent = Intent("com.example.medsoft_patient.FLUTTER_COMMUNICATION")
+        val intent = Intent("com.medsoft.medsoftpatient.FLUTTER_COMMUNICATION")
         intent.putExtra("method", methodName)
         intent.putExtra("value_bool", true)
 

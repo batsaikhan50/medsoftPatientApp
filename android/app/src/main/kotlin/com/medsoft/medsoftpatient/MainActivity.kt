@@ -1,4 +1,4 @@
-package com.example.medsoft_patient
+package com.medsoft.medsoftpatient
 
 import android.app.PictureInPictureParams
 import android.content.Intent
@@ -15,7 +15,7 @@ class MainActivity : FlutterActivity() {
     override fun getRenderMode(): RenderMode = RenderMode.texture
     private val PIP_CHANNEL = "pip_channel"
     private val SCREEN_CAPTURE_CHANNEL = "screen_capture_channel"
-    private val LOCATION_CHANNEL = "com.example.medsoft_patient/location"
+    private val LOCATION_CHANNEL = "com.medsoft.medsoftpatient/location"
     private var isInCall = false
     private var pipChannel: MethodChannel? = null
 

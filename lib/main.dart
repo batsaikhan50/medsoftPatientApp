@@ -129,7 +129,7 @@ class MyHomePage extends StatefulWidget {
 }
 
 class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
-  static const platform = MethodChannel('com.example.medsoft_patient/location');
+  static const platform = MethodChannel('com.medsoft.medsoftpatient/location');
 
   final _authDao = AuthDAO();
   final _mapDao = MapDAO();

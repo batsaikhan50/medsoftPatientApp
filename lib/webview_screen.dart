@@ -29,7 +29,7 @@ class _WebViewScreenState extends State<WebViewScreen> {
   bool arrivedInFifty = false;
   Timer? _pollingTimer;
 
-  static const platform = MethodChannel('com.example.medsoft_patient/location');
+  static const platform = MethodChannel('com.medsoft.medsoftpatient/location');
   @override
   void initState() {
     super.initState();
@@ -51,7 +51,7 @@ class _WebViewScreenState extends State<WebViewScreen> {
       ),
     );
 
-    const platform = MethodChannel('com.example.medsoft_patient/location');
+    const platform = MethodChannel('com.medsoft.medsoftpatient/location');
     platform.setMethodCallHandler((call) async {
       if (call.method == 'arrivedInFiftyReached') {
         final bool arrived = call.arguments?['arrivedInFifty'] ?? false;

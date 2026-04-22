@@ -18,7 +18,7 @@ plugins {
 }
 
 android {
-    namespace = "com.medsoft.patient"
+    namespace = "com.medsoft.medsoftpatient"
     compileSdk = flutter.compileSdkVersion
 
     compileOptions {
@@ -32,21 +32,23 @@ android {
     }
 
     defaultConfig {
-        applicationId = "com.medsoft.patient"
+        applicationId = "com.medsoft.medsoftpatient"
         minSdk = flutter.minSdkVersion
         targetSdk = 34
         versionCode = 1
         versionName = "1.0.0"
-        
+
         multiDexEnabled = true
     }
 
-    signingConfigs {
-        create("release") {
-            keyAlias = keyProperties["keyAlias"] as String
-            keyPassword = keyProperties["keyPassword"] as String
-            storeFile = file(keyProperties["storeFile"] as String)
-            storePassword = keyProperties["storePassword"] as String
+    if (keyPropertiesFile.exists()) {
+        signingConfigs {
+            create("release") {
+                keyAlias = keyProperties["keyAlias"] as String
+                keyPassword = keyProperties["keyPassword"] as String
+                storeFile = file(keyProperties["storeFile"] as String)
+                storePassword = keyProperties["storePassword"] as String
+            }
         }
     }
 
@@ -54,11 +56,13 @@ android {
         getByName("release") {
             isMinifyEnabled = false
             isShrinkResources = false
-            signingConfig = signingConfigs.getByName("release")
+            if (keyPropertiesFile.exists()) {
+                signingConfig = signingConfigs.getByName("release")
+            }
             proguardFiles(getDefaultProguardFile("proguard-android.txt"), "proguard-rules.pro")
         }
     }
-    
+
 }
 
 flutter {
