@@ -1,3 +1,12 @@
+import java.util.Properties
+import java.io.FileInputStream
+
+val keyPropertiesFile = rootProject.file("key.properties")
+val keyProperties = Properties()
+if (keyPropertiesFile.exists()) {
+    keyProperties.load(FileInputStream(keyPropertiesFile))
+}
+
 plugins {
     id("com.android.application")
     // START: FlutterFire Configuration
@@ -9,7 +18,7 @@ plugins {
 }
 
 android {
-    namespace = "com.example.medsoft_patient"
+    namespace = "com.medsoft.patient"
     compileSdk = flutter.compileSdkVersion
 
     compileOptions {
@@ -23,7 +32,7 @@ android {
     }
 
     defaultConfig {
-        applicationId = "com.example.medsoft_patient"
+        applicationId = "com.medsoft.patient"
         minSdk = flutter.minSdkVersion
         targetSdk = 34
         versionCode = 1
@@ -32,10 +41,20 @@ android {
         multiDexEnabled = true
     }
 
+    signingConfigs {
+        create("release") {
+            keyAlias = keyProperties["keyAlias"] as String
+            keyPassword = keyProperties["keyPassword"] as String
+            storeFile = file(keyProperties["storeFile"] as String)
+            storePassword = keyProperties["storePassword"] as String
+        }
+    }
+
     buildTypes {
         getByName("release") {
             isMinifyEnabled = false
             isShrinkResources = false
+            signingConfig = signingConfigs.getByName("release")
             proguardFiles(getDefaultProguardFile("proguard-android.txt"), "proguard-rules.pro")
         }
     }
