@@ -409,6 +409,37 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
         final roomIdNum = roomInfo!['_id'];
 
         await platform.invokeMethod('sendRoomIdToAppDelegate', {'roomId': roomId});
+
+        if (!mounted) return;
+        final accepted = await showDialog<bool>(
+          context: context,
+          barrierDismissible: false,
+          builder: (context) => AlertDialog(
+            title: const Text('Байршлын мэдээлэл ашиглах'),
+            content: const Text(
+              'Medsoft Patient апп нь таны байршлын мэдээллийг түргэн тусламжийн машинтай хуваалцана.\n\n'
+              '• Цуглуулах мэдээлэл: GPS байршил\n'
+              '• Ашиглах зорилго: Түргэн тусламжийн маршрут хянах\n'
+              '• Хуваалцах: Эмнэлгийн диспетчерийн систем\n'
+              '• Горим: Дуудлага идэвхтэй үед тасралтгүй\n\n'
+              'Үргэлжлүүлэхийн тулд "Зөвшөөрөх" товчийг дарна уу.',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(false),
+                child: const Text('Болих'),
+              ),
+              ElevatedButton(
+                onPressed: () => Navigator.of(context).pop(true),
+                child: const Text('Зөвшөөрөх'),
+              ),
+            ],
+          ),
+        );
+
+        if (!mounted) return;
+        if (accepted != true) return;
+
         await platform.invokeMethod('startLocationManagerAfterLogin');
 
         if (!mounted) return;

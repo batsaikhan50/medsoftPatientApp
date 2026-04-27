@@ -343,9 +343,9 @@ import flutter_local_notifications  // <-- ADDED: Necessary for plugin methods
 
   func showLocationPermissionDialog() {
     let alertController = UIAlertController(
-      title: "Location Permission Needed",
+      title: "Байршлын зөвшөөрөл шаардлагатай",
       message:
-        "To provide accurate location updates, we need access to your location always. Would you like to open settings and grant access?",
+        "Тасралтгүй байршил хянахын тулд тохиргооноос байршлын зөвшөөрлийг \"Үргэлж\" болгон тохируулна уу. Тохиргоо руу очих уу?",
       preferredStyle: .alert
     )
 
@@ -378,7 +378,7 @@ import flutter_local_notifications  // <-- ADDED: Necessary for plugin methods
     containerView.bottomAnchor.constraint(equalTo: alertController.view.bottomAnchor, constant: -50)
       .isActive = true
 
-    let openSettingsAction = UIAlertAction(title: "Yes", style: .default) { _ in
+    let openSettingsAction = UIAlertAction(title: "Тохиргоо нээх", style: .default) { _ in
       if let settingsUrl = URL(string: UIApplication.openSettingsURLString) {
         if UIApplication.shared.canOpenURL(settingsUrl) {
           UIApplication.shared.open(settingsUrl, options: [:], completionHandler: nil)
@@ -387,7 +387,7 @@ import flutter_local_notifications  // <-- ADDED: Necessary for plugin methods
     }
     alertController.addAction(openSettingsAction)
 
-    let clearAndLoginAction = UIAlertAction(title: "No", style: .destructive) { _ in
+    let clearAndLoginAction = UIAlertAction(title: "Болих", style: .destructive) { _ in
       self.clearSharedPreferencesAndNavigateToLogin()
     }
     alertController.addAction(clearAndLoginAction)
