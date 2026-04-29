@@ -34,8 +34,8 @@ android {
     defaultConfig {
         applicationId = "com.medsoft.medsoftpatient"
         minSdk = flutter.minSdkVersion
-        targetSdk = 34
-        versionCode = 1
+        targetSdk = 35
+        versionCode = 2
         versionName = "1.0.0"
 
         multiDexEnabled = true
