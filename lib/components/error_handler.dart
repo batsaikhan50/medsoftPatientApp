@@ -54,9 +54,7 @@ class ErrorHandler {
         action: SnackBarAction(
           label: 'Хаах',
           textColor: Colors.white,
-          onPressed: () {
-            ScaffoldMessenger.of(context).hideCurrentSnackBar();
-          },
+          onPressed: () {},
         ),
       ),
     );

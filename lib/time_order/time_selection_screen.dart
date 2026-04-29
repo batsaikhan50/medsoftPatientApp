@@ -179,9 +179,7 @@ class _TimeSelectionScreenState extends State<TimeSelectionScreen> {
       final sortedDates = _targetDates.toList()..sort();
       final earliestDateString = sortedDates.first;
       final parsedDate =
-          DateFormat(
-            'yyyy.MM.dd',
-          ).parse(earliestDateString.replaceAll('.', '-')).toNormalizedDate();
+          DateTime.parse(earliestDateString.replaceAll('.', '-')).toNormalizedDate();
       if (parsedDate.isAfter(DateTime.now().toNormalizedDate())) {
         _selectedDate = parsedDate;
       }

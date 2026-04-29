@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:medsoft_patient/api/auth_dao.dart';
+import 'package:medsoft_patient/api/base_dao.dart';
 import 'package:medsoft_patient/api/home_dao.dart';
 import 'package:medsoft_patient/api/map_dao.dart';
 import 'package:medsoft_patient/components/error_handler.dart';
@@ -149,6 +150,7 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
   @override
   void initState() {
     super.initState();
+    BaseDAO.setOnUnauthorized(_logOut);
 
     // SystemChrome.setPreferredOrientations([
     //   DeviceOrientation.portraitUp,

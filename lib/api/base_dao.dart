@@ -93,6 +93,14 @@ String statusMessage(int? statusCode) {
 }
 
 abstract class BaseDAO {
+  static void Function()? _onUnauthorized;
+  static bool _handlingUnauthorized = false;
+
+  static void setOnUnauthorized(void Function() handler) {
+    _onUnauthorized = handler;
+    _handlingUnauthorized = false;
+  }
+
   Future<ApiResponse<T>> post<T>(
     String url, {
     Map<String, dynamic>? body,
@@ -266,6 +274,10 @@ abstract class BaseDAO {
 
   ApiResponse<T> _handleResponse<T>(http.Response response, {T Function(dynamic)? parse}) {
     if (response.statusCode >= 400) {
+      if ((response.statusCode == 401 || response.statusCode == 403) && !_handlingUnauthorized) {
+        _handlingUnauthorized = true;
+        Future.microtask(() => _onUnauthorized?.call());
+      }
       return ApiResponse<T>(
         success: false,
         message: statusMessage(response.statusCode),

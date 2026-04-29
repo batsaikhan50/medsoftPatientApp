@@ -512,6 +512,12 @@ import flutter_local_notifications  // <-- ADDED: Necessary for plugin methods
         let responseString = String(data: data, encoding: .utf8) ?? "Unable to decode response"
         NSLog("Failed to send location data for roomId \(roomId)")
         NSLog("Status code: \(httpResponse.statusCode), Response body: \(responseString)")
+
+        if httpResponse.statusCode == 401 || httpResponse.statusCode == 403 {
+          DispatchQueue.main.async {
+            self.flutterChannel?.invokeMethod("navigateToLogin", arguments: nil)
+          }
+        }
       }
 
     }

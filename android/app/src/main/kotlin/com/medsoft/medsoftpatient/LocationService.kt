@@ -44,7 +44,7 @@ class LocationService : Service() {
         private const val CHANNEL_ID = "LocationServiceChannel"
         private const val LOCATION_INTERVAL = 10000L // 10 seconds
         private const val FASTEST_LOCATION_INTERVAL = 5000L // 5 seconds
-//        private const val SMALLEST_DISPLACEMENT = 5f // 10 meters (mimics iOS distanceFilter)
+//        private const val SMALLEST_DISPLACEMENT = 1f // 1 meters (mimics iOS distanceFilter)
     }
 
     override fun onCreate() {
