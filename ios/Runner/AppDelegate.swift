@@ -34,7 +34,7 @@ import flutter_local_notifications  // <-- ADDED: Necessary for plugin methods
 
     let controller = window?.rootViewController as! FlutterViewController
     flutterChannel = FlutterMethodChannel(
-      name: "com.example.medsoft_patient/location", binaryMessenger: controller.binaryMessenger
+      name: "com.medsoft.medsoftpatient/location", binaryMessenger: controller.binaryMessenger
     )
 
     flutterChannel?.setMethodCallHandler { [weak self] (call, result) in

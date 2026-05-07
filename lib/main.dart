@@ -867,9 +867,11 @@ class _HomeButtonsGridState extends State<_HomeButtonsGrid> {
       //   {"label": "Эмчийн цаг", "icon": "InsertInvitation", "navigate": "order"},
       //   {"label": "Даатгал", "icon": "HelpOutline", "navigate": "/history?historyKey=insurance"},
       // ]);
-      setState(() {
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
     }
   }
 
